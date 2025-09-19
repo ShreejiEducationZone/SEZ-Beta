@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Directory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-blue': '#3B82F6',
+                        'light-bg': '#F3F4F6',
+                        'dark-bg': '#111827',
+                        'light-card': '#FFFFFF',
+                        'dark-card': '#1F2937',
+                        // Updated & unified color palette
+                        'pastel-orange': '#FFF7ED', 'border-orange': '#FB923C',
+                        'pastel-green': '#F0FDF4', 'border-green': '#4ADE80',
+                        'pastel-gray': '#F9FAFB', 'border-gray': '#9CA3AF',
+                        'pastel-blue': '#EFF6FF', 'border-blue': '#60A5FA',
+                        'pastel-pink': '#FEF2F2', 'border-pink': '#F87171',
+                    }
+                }
+            }
+        }
+    </script>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.1.1/",
+    "react": "https://esm.sh/react@^19.1.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
+    "@google/genai": "https://esm.sh/@google/genai",
+    "recharts": "https://esm.sh/recharts@^2.12.7",
+    "firebase/app": "https://esm.sh/firebase@10.12.2/app",
+    "firebase/database": "https://esm.sh/firebase@10.12.2/database",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.3.0/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-light-bg dark:bg-dark-bg text-gray-900 dark:text-gray-100">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>
