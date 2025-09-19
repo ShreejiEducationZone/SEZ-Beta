@@ -3,16 +3,17 @@ import firebase from "firebase/compat/app";
 import "firebase/compat/database";
 import { getDatabase, Database } from "firebase/database";
 
-// Firebase config
+// Firebase config — read from Vite environment variables when available.
+// On Vercel we will set VITE_FIREBASE_* variables in the project settings.
 const firebaseConfig = {
-  apiKey: "AIzaSyB6YR3oa9G7fKV9obY1FnVXYg9wHclAqOM",
-  authDomain: "sez-v1.firebaseapp.com",
-  databaseURL: "https://sez-v1-default-rtdb.firebaseio.com",
-  projectId: "sez-v1",
-  storageBucket: "sez-v1.firebasestorage.app",
-  messagingSenderId: "778513275768",
-  appId: "1:778513275768:web:e68f4a88ff3e488820c68d",
-  measurementId: "G-6RZPWMQZB4"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyB6YR3oa9G7fKV9obY1FnVXYg9wHclAqOM",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "sez-v1.firebaseapp.com",
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || "https://sez-v1-default-rtdb.firebaseio.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "sez-v1",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "sez-v1.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "778513275768",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:778513275768:web:e68f4a88ff3e488820c68d",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-6RZPWMQZB4"
 };
 
 let db: Database | null = null;
