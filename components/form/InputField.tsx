@@ -24,7 +24,8 @@ const InputField: React.FC<InputFieldProps> = ({ label, name, value, onChange, e
             value={value}
             onChange={onChange}
             readOnly={readOnly}
-            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 ${readOnly ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed' : ''}`}
+            className={`mt-1 block w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-colors duration-200
+            ${readOnly ? 'bg-gray-200 dark:bg-gray-800 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-700/50'}`}
         />
         {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>

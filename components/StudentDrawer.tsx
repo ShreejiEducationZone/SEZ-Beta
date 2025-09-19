@@ -16,6 +16,18 @@ const StudentDrawer: React.FC<StudentDrawerProps> = ({ student, onClose, onEdit,
     const [activeTab, setActiveTab] = useState('Personal');
     const tabs: { [key: string]: number } = { 'Personal': 1, 'Contact': 1, 'Notes': 1 };
 
+    const calculateAge = (dob: string | undefined): string => {
+        if (!dob) return 'N/A';
+        const birthDate = new Date(dob);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age.toString();
+    };
+    
     useEffect(() => {
         console.log("StudentDrawer mounted for:", student?.name, "ID:", student?.id);
     }, [student]);
@@ -62,6 +74,10 @@ const StudentDrawer: React.FC<StudentDrawerProps> = ({ student, onClose, onEdit,
                 <div className="mt-6 flex-grow overflow-y-auto">
                     {activeTab === 'Personal' && (
                         <div className="space-y-4">
+                            <div><strong className="text-gray-500 dark:text-gray-400 w-28 inline-block">Gender:</strong> {student.gender || 'N/A'}</div>
+                            <div><strong className="text-gray-500 dark:text-gray-400 w-28 inline-block">Date of Birth:</strong> {student.dob ? new Date(student.dob).toLocaleDateString('en-GB') : 'N/A'}</div>
+                            <div><strong className="text-gray-500 dark:text-gray-400 w-28 inline-block">Age:</strong> {calculateAge(student.dob)}</div>
+                            <div className="border-t border-gray-200 dark:border-gray-700 my-4"></div>
                             <div><strong className="text-gray-500 dark:text-gray-400 w-28 inline-block">Grade:</strong> {student.grade}</div>
                             {student.programStage && (
                                 <div><strong className="text-gray-500 dark:text-gray-400 w-28 inline-block">Program:</strong> {student.programStage}</div>
@@ -74,15 +90,22 @@ const StudentDrawer: React.FC<StudentDrawerProps> = ({ student, onClose, onEdit,
 
                     {activeTab === 'Contact' && (
                         <div className="space-y-4">
-                            <div><strong className="text-gray-500 dark:text-gray-400 w-28 inline-block">Personal:</strong> {student.personalPhone || 'N/A'}</div>
-                            <div><strong className="text-gray-500 dark:text-gray-400 w-28 inline-block">Father:</strong> {student.fatherPhone || 'N/A'}</div>
-                            <div><strong className="text-gray-500 dark:text-gray-400 w-28 inline-block">Mother:</strong> {student.motherPhone || 'N/A'}</div>
+                            <div><strong className="text-gray-500 dark:text-gray-400 w-28 inline-block">Father's Name:</strong> {student.fatherName || 'N/A'}</div>
+                            <div><strong className="text-gray-500 dark:text-gray-400 w-28 inline-block">Mother's Name:</strong> {student.motherName || 'N/A'}</div>
+                            <div><strong className="text-gray-500 dark:text-gray-400 w-28 inline-block">Occupation:</strong> {student.occupation || 'N/A'}</div>
+                             <div className="border-t border-gray-200 dark:border-gray-700 my-4"></div>
+                            <div><strong className="text-gray-500 dark:text-gray-400 w-28 inline-block">Email:</strong> {student.email || 'N/A'}</div>
+                            <div><strong className="text-gray-500 dark:text-gray-400 w-28 inline-block">Personal Phone:</strong> {student.personalPhone || 'N/A'}</div>
+                            <div><strong className="text-gray-500 dark:text-gray-400 w-28 inline-block">Father's Phone:</strong> {student.fatherPhone || 'N/A'}</div>
+                            <div><strong className="text-gray-500 dark:text-gray-400 w-28 inline-block">Mother's Phone:</strong> {student.motherPhone || 'N/A'}</div>
                             <div><strong className="text-gray-500 dark:text-gray-400 w-28 inline-block align-top">Address:</strong> <span className="inline-block w-60">{student.address || 'N/A'}</span></div>
                         </div>
                     )}
 
                     {activeTab === 'Notes' && (
-                        <p className="text-gray-500 dark:text-gray-400">This is a read-only notes section. No editing here.</p>
+                        <div className="whitespace-pre-wrap text-gray-700 dark:text-gray-300">
+                            {student.notes ? student.notes : <p className="text-gray-500 italic">No notes added yet. Click 'Edit' to add notes.</p>}
+                        </div>
                     )}
                 </div>
 

@@ -111,39 +111,39 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
         return Object.keys(newErrors).length === 0;
     };
 
-    // In components/WorkForm.tsx
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!validate()) return;
 
-const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
+        const [chapterNo, chapterName] = formData.chapter.split('::');
 
-    const [chapterNo, chapterName] = formData.chapter.split('::');
+        const finalWorkItem: WorkItem = {
+            // Properties from the original item that aren't on the form,
+            // ensuring they are preserved during an edit.
+            id: workItem?.id || `w_${Date.now()}`,
+            studentId: student.id,
+            dateCreated: workItem?.dateCreated || new Date().toISOString().split('T')[0],
+            linkedDoubtId: workItem?.linkedDoubtId,
+            source: workItem?.source,
 
-    const finalWorkItem: WorkItem = {
-        // ✅ This is the single line that fixes the bug.
-        // It copies all original properties from the workItem being edited.
-        ...workItem,
+            // Properties from the form state.
+            title: formData.title.trim(),
+            subject: formData.subject,
+            chapterNo,
+            chapterName,
+            topic: formData.topic.trim(),
+            description: formData.description.trim(),
+            dueDate: formData.dueDate,
+            status: formData.status as WorkStatus,
+            priority: formData.priority as WorkPriority,
+            links: formData.links.split(',').map(l => l.trim()).filter(Boolean),
+            files: files,
+            mentorNote: formData.mentorNote.trim(),
+        };
 
-        id: workItem?.id || `w_${Date.now()}`,
-        studentId: student.id,
-        title: formData.title.trim(),
-        subject: formData.subject,
-        chapterNo,
-        chapterName,
-        topic: formData.topic.trim(),
-        description: formData.description.trim(),
-        dueDate: formData.dueDate,
-        status: formData.status as WorkStatus,
-        priority: formData.priority as WorkPriority,
-        links: formData.links.split(',').map(l => l.trim()).filter(Boolean),
-        files: files,
-        mentorNote: formData.mentorNote.trim(),
-        dateCreated: workItem?.dateCreated || new Date().toISOString().split('T')[0],
+        onSave(finalWorkItem);
+        onCancel();
     };
-
-    onSave(finalWorkItem);
-    onCancel();
-};
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">

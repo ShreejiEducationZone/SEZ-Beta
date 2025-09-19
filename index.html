@@ -29,6 +29,22 @@
             }
         }
     </script>
+    <style>
+        .thin-scrollbar::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        .thin-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .thin-scrollbar::-webkit-scrollbar-thumb {
+            background-color: rgba(156, 163, 175, 0.5); /* gray-400 with 50% opacity */
+            border-radius: 20px;
+        }
+        .dark .thin-scrollbar::-webkit-scrollbar-thumb {
+            background-color: rgba(107, 114, 128, 0.5); /* gray-500 with 50% opacity */
+        }
+    </style>
 <script type="importmap">
 {
   "imports": {
@@ -36,10 +52,7 @@
     "react": "https://esm.sh/react@^19.1.1",
     "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
     "@google/genai": "https://esm.sh/@google/genai",
-    "recharts": "https://esm.sh/recharts@^2.12.7",
-    "firebase/app": "https://esm.sh/firebase@10.12.2/app",
-    "firebase/database": "https://esm.sh/firebase@10.12.2/database",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.3.0/"
+    "recharts": "https://esm.sh/recharts@^2.12.7"
   }
 }
 </script>

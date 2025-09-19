@@ -1,6 +1,7 @@
 
 
 export type Board = 'CBSE' | 'ICSE' | 'GSEB' | 'Cambridge' | 'IB';
+export type Gender = 'Male' | 'Female' | 'Other';
 
 export interface Student {
   id: string;
@@ -17,6 +18,15 @@ export interface Student {
   isArchived: boolean;
   avatarUrl: string | null;
   programStage?: string;
+  notes?: string;
+
+  // New fields
+  fatherName?: string;
+  motherName?: string;
+  occupation?: string;
+  gender?: Gender;
+  email?: string;
+  dob?: string; // YYYY-MM-DD
 }
 
 export interface Chapter {
@@ -88,4 +98,32 @@ export interface Doubt {
   resolvedAt?: string; // YYYY-MM-DD
   attachment?: { name: string; dataUrl: string };
   voiceNote?: { name: string; dataUrl: string };
+}
+
+// New Types for Reports & Tests
+export type TestType = 'School Test' | 'Self-Test' | 'Class Test';
+export type TestStatus = 'Upcoming' | 'Completed';
+export type MistakeType = 'Careless' | 'Conceptual' | 'Calculation Error' | 'Step Missing' | 'Formula Misuse' | 'Time Management';
+export type TestPriority = 'Low' | 'Medium' | 'High';
+
+
+export interface Test {
+  id: string; 
+  studentId: string;
+  title: string;
+  subject: string;
+  chapters: { no: string | number; name: string }[];
+  testDate: string; // YYYY-MM-DD
+  status: TestStatus;
+  priority: TestPriority;
+
+  // For completed tests
+  testType?: TestType;
+  marksObtained?: number;
+  totalMarks?: number;
+  mistakeTypes?: MistakeType[];
+  remarks?: string;
+  strongArea?: string;
+  weakArea?: string;
+  retestRequired?: 'Yes' | 'No';
 }

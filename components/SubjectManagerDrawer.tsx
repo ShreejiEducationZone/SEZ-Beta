@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Student, SubjectData, Chapter } from '../types';
 import DeleteIcon from './icons/DeleteIcon';
@@ -23,21 +22,79 @@ const SubjectManagerDrawer: React.FC<SubjectManagerDrawerProps> = ({ student, st
 
     const isArchived = student.isArchived;
 
+    // A safe way to deep-clone data to ensure it's a plain JavaScript object without Firestore's internal properties.
+    const createCleanDataCopy = (sourceData: SubjectData[] | undefined): SubjectData[] => {
+        if (!sourceData) return [];
+        return sourceData.map(subject => ({
+            subject: subject.subject,
+            chapters: subject.chapters.map(chapter => ({
+                no: chapter.no,
+                name: chapter.name,
+            })),
+        }));
+    };
+
     useEffect(() => {
-        const initialData = studentSubjects ? JSON.parse(JSON.stringify(studentSubjects)) : [];
-        setSubjects(initialData);
+        setSubjects(createCleanDataCopy(studentSubjects));
         setIsEditMode(false); // Always start in read-only mode
         setErrors({});
         setShowAiChat(false); // Ensure chat is closed when student changes
     }, [student, studentSubjects]);
 
-    // Handler for applying subjects from the new AI chat assistant
     const handleApplyAiSubjects = (aiSubjects: SubjectData[]) => {
-        // The user prompt for the fix implies no confirmation is needed, just a success toast.
-        // The alert/toast is handled inside AiAssistantChat.
-        setSubjects(aiSubjects);
-        setIsEditMode(true); // Switch to edit mode to allow user review before saving
-        setShowAiChat(false); // Close the chat panel
+        setSubjects(prevSubjects => {
+            // Create a deep, clean copy to avoid mutation issues
+            const newSubjects = createCleanDataCopy(prevSubjects);
+
+            aiSubjects.forEach(aiSubject => {
+                // Find if the subject already exists (case-insensitive)
+                const existingSubjectIndex = newSubjects.findIndex(
+                    s => s.subject.trim().toLowerCase() === aiSubject.subject.trim().toLowerCase()
+                );
+
+                if (existingSubjectIndex !== -1) {
+                    // Subject exists: merge chapters
+                    const existingSubject = newSubjects[existingSubjectIndex];
+                    
+                    // Create sets for quick lookup of existing chapter numbers and names
+                    const existingChapterNos = new Set(existingSubject.chapters.map(c => String(c.no).trim()));
+                    const existingChapterNames = new Set(existingSubject.chapters.map(c => c.name.trim().toLowerCase()));
+
+                    aiSubject.chapters.forEach(aiChapter => {
+                        const chapterNo = String(aiChapter.no).trim();
+                        const chapterName = aiChapter.name.trim().toLowerCase();
+                        
+                        // Add chapter only if its number AND name are new to avoid duplicates
+                        if (!existingChapterNos.has(chapterNo) && !existingChapterNames.has(chapterName)) {
+                            existingSubject.chapters.push({
+                                no: aiChapter.no,
+                                name: aiChapter.name.trim()
+                            });
+                        }
+                    });
+                    
+                    // Sort chapters by number for consistency
+                    existingSubject.chapters.sort((a, b) => {
+                        const noA = Number(a.no);
+                        const noB = Number(b.no);
+                        if (!isNaN(noA) && !isNaN(noB)) {
+                            return noA - noB;
+                        }
+                        // Fallback for non-numeric chapter "numbers"
+                        return String(a.no).localeCompare(String(b.no));
+                    });
+                    
+                } else {
+                    // Subject is new: add it to the list
+                    newSubjects.push(aiSubject);
+                }
+            });
+
+            return newSubjects;
+        });
+        
+        setIsEditMode(true);
+        setShowAiChat(false);
     };
 
     const handleEnterManually = () => {
@@ -98,33 +155,60 @@ const SubjectManagerDrawer: React.FC<SubjectManagerDrawerProps> = ({ student, st
     };
     
     const handleCancel = () => {
-        setSubjects(studentSubjects ? JSON.parse(JSON.stringify(studentSubjects)) : []);
+        setSubjects(createCleanDataCopy(studentSubjects));
         setIsEditMode(false);
         setErrors({});
     };
-    
+
+    // The following state updaters are written defensively to prevent circular reference errors.
+    // They always start by creating a clean, deep copy of the state before applying changes.
+
     const handleInputChange = (sIdx: number, cIdx: number | null, field: keyof SubjectData | keyof Chapter, value: string) => {
-        const newSubjects = JSON.parse(JSON.stringify(subjects));
-        if (cIdx === null) { 
-            newSubjects[sIdx][field as keyof SubjectData] = value; 
-        } else { 
-            newSubjects[sIdx].chapters[cIdx][field as keyof Chapter] = value; 
-        }
-        setSubjects(newSubjects);
+        setSubjects(prevSubjects => {
+            const newSubjects = createCleanDataCopy(prevSubjects); // Create a clean deep copy
+            if (cIdx === null) {
+                // Update a subject property (e.g., the name)
+                (newSubjects[sIdx] as any)[field] = value;
+            } else {
+                // Update a chapter property
+                (newSubjects[sIdx].chapters[cIdx] as any)[field] = value;
+            }
+            return newSubjects;
+        });
     };
     
-    const addSubject = () => setSubjects([...subjects, { subject: '', chapters: [] }]);
-    const deleteSubject = (sIdx: number) => setSubjects(subjects.filter((_, i) => i !== sIdx));
+    const addSubject = () => {
+        setSubjects(prevSubjects => {
+            const newSubjects = createCleanDataCopy(prevSubjects);
+            newSubjects.push({ subject: '', chapters: [] });
+            return newSubjects;
+        });
+    };
+
+    const deleteSubject = (sIdx: number) => {
+        setSubjects(prevSubjects => {
+            const newSubjects = createCleanDataCopy(prevSubjects);
+            return newSubjects.filter((_, i) => i !== sIdx);
+        });
+    };
+    
     const addChapter = (sIdx: number) => {
-        const newSubjects = JSON.parse(JSON.stringify(subjects));
-        newSubjects[sIdx].chapters.push({ no: '', name: '' });
-        setSubjects(newSubjects);
+        setSubjects(prevSubjects => {
+            const newSubjects = createCleanDataCopy(prevSubjects);
+            newSubjects[sIdx].chapters.push({ no: '', name: '' });
+            return newSubjects;
+        });
     };
+    
     const deleteChapter = (sIdx: number, cIdx: number) => {
-        const newSubjects = JSON.parse(JSON.stringify(subjects));
-        newSubjects[sIdx].chapters = newSubjects[sIdx].chapters.filter((_, i) => i !== cIdx);
-        setSubjects(newSubjects);
+        setSubjects(prevSubjects => {
+            const newSubjects = createCleanDataCopy(prevSubjects);
+            newSubjects[sIdx].chapters = newSubjects[sIdx].chapters.filter((_, chapterIndex) => chapterIndex !== cIdx);
+            return newSubjects;
+        });
     };
+    
+    // UI rendering functions remain below...
 
     const readOnlyContent = () => (
         <div className="space-y-6">

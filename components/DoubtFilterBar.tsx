@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Student, DoubtPriority, DoubtStatus, Board } from '../types';
 import SelectField from './form/SelectField';
@@ -75,7 +76,7 @@ const DoubtFilterBar: React.FC<DoubtFilterBarProps> = ({
                         name="searchQuery"
                         id="search"
                         autoComplete="off"
-                        className="block w-full h-10 pl-10 pr-3 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm dark:bg-gray-700 dark:border-gray-600"
+                        className="block w-full h-10 pl-10 pr-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-colors duration-200"
                         placeholder="e.g. Priya Patel"
                         value={filters.searchQuery}
                         onChange={handleSearchInputChange}

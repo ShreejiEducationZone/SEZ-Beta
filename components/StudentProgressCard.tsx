@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Student } from '../types';
 import PlaceholderAvatar from './PlaceholderAvatar';
@@ -26,7 +27,7 @@ const StudentProgressCard: React.FC<StudentProgressCardProps> = ({ student, over
         : null;
 
     return (
-        <div className={`bg-light-card dark:bg-dark-card rounded-2xl shadow-md transition-all duration-300 flex flex-col border-l-4 ${boardStyle.border}`}>
+        <div className={`h-[20rem] bg-light-card dark:bg-dark-card rounded-2xl shadow-md transition-all duration-300 flex flex-col border-l-4 ${boardStyle.border}`}>
             <div className="p-4 flex flex-col h-full">
                 <div className="flex items-start space-x-4">
                      <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex-shrink-0">
@@ -38,11 +39,11 @@ const StudentProgressCard: React.FC<StudentProgressCardProps> = ({ student, over
                     </div>
                 </div>
 
-                <div className="mt-4 border-t border-gray-200 dark:border-gray-700 flex-grow divide-y divide-gray-200 dark:divide-gray-700">
-                    {subjectProgress.slice(0, 3).map((sub) => (
-                         <div key={sub.subject} className="py-3 flex justify-between items-center">
+                <div className="mt-4 border-t border-gray-200 dark:border-gray-700 flex-grow overflow-y-auto thin-scrollbar">
+                    {subjectProgress.map((sub) => (
+                         <div key={sub.subject} className="py-3 pr-2 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 last:border-b-0">
                             <span className="text-sm text-gray-700 dark:text-gray-300">{sub.subject}</span>
-                            <div className="text-right">
+                            <div className="text-right flex-shrink-0">
                                 <p className="text-sm font-semibold text-gray-900 dark:text-white">{sub.completed}/{sub.total} done</p>
                                 {formattedLastUpdate && <p className="text-xs text-gray-500">Last updated: {formattedLastUpdate}</p>}
                             </div>
@@ -54,7 +55,7 @@ const StudentProgressCard: React.FC<StudentProgressCardProps> = ({ student, over
                 </div>
                 
                 <div className="mt-auto pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center">
                          <div>
                             <span className="text-sm font-semibold text-brand-blue">{overallPercentage}%</span>
                             <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">Syllabus Done</span>

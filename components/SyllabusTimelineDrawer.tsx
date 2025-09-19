@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, FC } from 'react';
 import { Student, SubjectData, ChapterProgress, ChapterProgressEntry } from '../types';
 import PlaceholderAvatar from './PlaceholderAvatar';
@@ -63,20 +64,40 @@ const SyllabusTimelineDrawer: React.FC<SyllabusTimelineDrawerProps> = ({ student
         if (editingEntry?.entry) { // Editing existing entry
             newEntries = existingProgress.entries.map(e => e.id === editingEntry.entry.id ? { ...e, date, note } : e);
         } else { // Adding new entry
-            const newEntry: ChapterProgressEntry = { id: `e_${Date.now()}`, date, note, type: editingEntry.type };
+            const newEntry: ChapterProgressEntry = { id: `e_${Date.now()}`, date, note, type: editingEntry!.type };
             newEntries = [...existingProgress.entries, newEntry];
         }
 
         // Sort entries by date
         newEntries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         
-        onSave({ ...existingProgress, entries: newEntries });
+        // Create a clean, plain JavaScript object to send to Firestore.
+        const progressToSave: ChapterProgress = {
+            id: existingProgress.id,
+            studentId: existingProgress.studentId,
+            subject: existingProgress.subject,
+            chapterNo: existingProgress.chapterNo,
+            chapterName: chapterName, // Use chapterName from params to ensure it's up to date
+            entries: newEntries,
+        };
+        
+        onSave(progressToSave);
         setEditingEntry(null);
     };
 
     const handleDeleteEntry = (progress: ChapterProgress, entryId: string) => {
         const newEntries = progress.entries.filter(e => e.id !== entryId);
-        onSave({ ...progress, entries: newEntries });
+        
+        // Create a clean, plain JavaScript object to send to Firestore.
+        const progressToSave: ChapterProgress = {
+            id: progress.id,
+            studentId: progress.studentId,
+            subject: progress.subject,
+            chapterNo: progress.chapterNo,
+            chapterName: progress.chapterName,
+            entries: newEntries,
+        };
+        onSave(progressToSave);
     };
     
     const renderChapterTimeline = (chapter: { no: string | number; name: string }) => {
@@ -113,18 +134,26 @@ const SyllabusTimelineDrawer: React.FC<SyllabusTimelineDrawerProps> = ({ student
 
                 {entries.length > 0 ? (
                     <div className="overflow-x-auto pb-3 -mb-3">
-                        <div className="flex items-start space-x-4 min-w-max pr-4">
+                        <div className="flex items-start space-x-8 min-w-max pr-4">
                             {entries.map((entry, index) => (
                                 <React.Fragment key={entry.id}>
-                                    <div className="flex flex-col items-center text-center w-36 group relative">
+                                    <div className="flex flex-col items-center w-48 group relative">
                                         <div className="relative z-10 p-2 bg-white dark:bg-gray-700 rounded-full shadow">{timelineIcons[entry.type]}</div>
-                                        <div className="mt-2">
-                                            <p className="text-sm font-semibold flex items-center justify-center gap-1"><CalendarIcon className="h-4 w-4 text-gray-400" />{new Date(entry.date).toLocaleDateString('en-CA')}</p>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate" title={entry.note}>{entry.note || 'No note'}</p>
+                                        <div className="mt-2 w-full">
+                                            <p className="text-sm font-semibold flex items-center justify-center gap-1">
+                                                <CalendarIcon className="h-4 w-4 text-gray-400" />{new Date(entry.date).toLocaleDateString('en-CA')}
+                                            </p>
+                                            {entry.note ? (
+                                                <div className="mt-2 text-xs text-left text-gray-600 dark:text-gray-300 whitespace-pre-wrap break-words bg-gray-50 dark:bg-gray-700/50 p-2 rounded-md border border-gray-200 dark:border-gray-600/50">
+                                                    {entry.note}
+                                                </div>
+                                            ) : (
+                                                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 italic text-center">No note</p>
+                                            )}
                                         </div>
                                         <div className="absolute top-2 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col space-y-1 z-20">
                                             <button onClick={() => setEditingEntry({ chapterId, type: entry.type, entry })} className="p-1 bg-white dark:bg-gray-800 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700"><EditIcon className="h-3 w-3 text-blue-500" /></button>
-                                            <button onClick={() => handleDeleteEntry(progress, entry.id)} className="p-1 bg-white dark:bg-gray-800 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700"><DeleteIcon className="h-3 w-3 text-red-500" /></button>
+                                            <button onClick={() => handleDeleteEntry(progress!, entry.id)} className="p-1 bg-white dark:bg-gray-800 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700"><DeleteIcon className="h-3 w-3 text-red-500" /></button>
                                         </div>
                                     </div>
                                     {index < entries.length - 1 && <div className="flex-grow h-0.5 bg-gray-300 dark:bg-gray-600 mt-5 w-16"></div>}

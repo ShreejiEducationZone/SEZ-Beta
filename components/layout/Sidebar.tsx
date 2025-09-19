@@ -1,4 +1,7 @@
 
+
+
+
 import React from 'react';
 import BookIcon from '../icons/BookIcon';
 import DirectoryIcon from '../icons/DirectoryIcon';
@@ -6,12 +9,15 @@ import SubjectsIcon from '../icons/SubjectsIcon';
 import ProgressIcon from '../icons/ProgressIcon';
 import WorkPoolIcon from '../icons/WorkPoolIcon';
 import DoubtIcon from '../icons/DoubtIcon';
+import ChevronLeftIcon from '../icons/ChevronLeftIcon';
+import ChevronRightIcon from '../icons/ChevronRightIcon';
+import ReportsIcon from '../icons/ReportsIcon';
 
-type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts';
+type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports';
 
 interface SidebarProps {
     isExpanded: boolean;
-    onHover: (isExpanded: boolean) => void;
+    onToggle: () => void;
     currentPage: Page;
     onNavigate: (page: Page) => void;
 }
@@ -47,25 +53,34 @@ const NavLink: React.FC<NavLinkProps> = ({ to, icon: Icon, children, currentPage
 };
 
 
-const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onHover, currentPage, onNavigate }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle, currentPage, onNavigate }) => {
     return (
         <aside
             className="fixed top-0 left-0 h-screen bg-light-card dark:bg-dark-card shadow-lg rounded-r-xl transition-all duration-300 z-50"
             style={{ width: isExpanded ? '220px' : '60px' }}
-            onMouseEnter={() => onHover(true)}
-            onMouseLeave={() => onHover(false)}
         >
             <div className="flex flex-col h-full">
                 <div className="flex items-center justify-center h-20 flex-shrink-0">
                     <BookIcon className="h-8 w-8 text-brand-blue" />
                 </div>
-                <nav className="flex flex-col space-y-2 p-2">
+                <nav className="flex-grow flex flex-col space-y-2 p-2">
                     <NavLink to="students" icon={DirectoryIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Student Directory</NavLink>
                     <NavLink to="subjects" icon={SubjectsIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Subject Manager</NavLink>
                     <NavLink to="syllabus" icon={ProgressIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Syllabus Progress</NavLink>
                     <NavLink to="work-pool" icon={WorkPoolIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Work Pool</NavLink>
                     <NavLink to="doubts" icon={DoubtIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Doubt Box</NavLink>
+                    <NavLink to="reports" icon={ReportsIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Reports & Tests</NavLink>
                 </nav>
+                <div className="p-2 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+                    <button
+                        onClick={onToggle}
+                        className="flex items-center justify-center w-full p-3 rounded-lg transition-colors duration-200 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+                        title={isExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
+                    >
+                        {isExpanded ? <ChevronLeftIcon className="h-6 w-6" /> : <ChevronRightIcon className="h-6 w-6" />}
+                    </button>
+                </div>
             </div>
         </aside>
     );

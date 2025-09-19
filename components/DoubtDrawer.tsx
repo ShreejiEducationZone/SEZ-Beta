@@ -1,3 +1,5 @@
+
+
 import React, { useState, useMemo, FC } from 'react';
 import { Student, Doubt, SubjectData, WorkItem, DoubtStatus, DoubtPriority, WorkItem as WorkItemType } from '../types';
 import PlaceholderAvatar from './PlaceholderAvatar';
@@ -185,16 +187,37 @@ const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItem
 
         // If a linked task exists and it's not already completed, mark it as completed.
         if (linkedWorkItem && linkedWorkItem.status !== 'Completed') {
-            onSaveWorkItem({ ...linkedWorkItem, status: 'Completed' });
+            // **FIXED**: Create a sanitized copy of the work item object before saving.
+            const cleanWorkItem: WorkItemType = {
+                id: linkedWorkItem.id, studentId: linkedWorkItem.studentId, title: linkedWorkItem.title, 
+                subject: linkedWorkItem.subject, chapterNo: linkedWorkItem.chapterNo, chapterName: linkedWorkItem.chapterName, 
+                topic: linkedWorkItem.topic, description: linkedWorkItem.description, dueDate: linkedWorkItem.dueDate, 
+                status: 'Completed', priority: linkedWorkItem.priority, links: linkedWorkItem.links, 
+                files: linkedWorkItem.files, mentorNote: linkedWorkItem.mentorNote, dateCreated: linkedWorkItem.dateCreated, 
+                linkedDoubtId: linkedWorkItem.linkedDoubtId, source: linkedWorkItem.source
+            };
+            onSaveWorkItem(cleanWorkItem);
         }
 
-        // Then, resolve the doubt itself.
-        onSaveDoubt({ ...doubt, status: 'Resolved', resolvedAt: new Date().toISOString().split('T')[0] });
+        // **FIXED**: Create a sanitized copy of the doubt object before saving.
+        const cleanDoubt: Doubt = {
+            id: doubt.id, studentId: doubt.studentId, subject: doubt.subject, chapterNo: doubt.chapterNo, 
+            chapterName: doubt.chapterName, testId: doubt.testId, text: doubt.text, priority: doubt.priority, 
+            origin: doubt.origin, createdAt: doubt.createdAt, status: 'Resolved', 
+            resolvedAt: new Date().toISOString().split('T')[0], attachment: doubt.attachment, voiceNote: doubt.voiceNote
+        };
+        onSaveDoubt(cleanDoubt);
     };
 
     const handleUndoResolve = (doubt: Doubt) => {
-        const { resolvedAt, ...rest } = doubt;
-        onSaveDoubt({ ...rest, status: 'Open' });
+        // **FIXED**: Create a sanitized copy of the doubt object before saving.
+         const cleanDoubt: Doubt = {
+            id: doubt.id, studentId: doubt.studentId, subject: doubt.subject, chapterNo: doubt.chapterNo, 
+            chapterName: doubt.chapterName, testId: doubt.testId, text: doubt.text, priority: doubt.priority, 
+            origin: doubt.origin, createdAt: doubt.createdAt, status: 'Open', 
+            resolvedAt: undefined, attachment: doubt.attachment, voiceNote: doubt.voiceNote
+        };
+        onSaveDoubt(cleanDoubt);
     };
 
     const handleConvertToTask = (doubt: Doubt) => {
@@ -224,7 +247,15 @@ const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItem
             source: 'doubt',
         };
         onSaveWorkItem(newWorkItem);
-        onSaveDoubt({ ...doubt, status: 'Tasked' });
+        
+        // **FIXED**: Create a sanitized copy of the doubt object before saving.
+        const cleanDoubt: Doubt = {
+            id: doubt.id, studentId: doubt.studentId, subject: doubt.subject, chapterNo: doubt.chapterNo, 
+            chapterName: doubt.chapterName, testId: doubt.testId, text: doubt.text, priority: doubt.priority, 
+            origin: doubt.origin, createdAt: doubt.createdAt, status: 'Tasked', resolvedAt: doubt.resolvedAt, 
+            attachment: doubt.attachment, voiceNote: doubt.voiceNote
+        };
+        onSaveDoubt(cleanDoubt);
     };
 
 
@@ -385,7 +416,7 @@ const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItem
                                     value={filters.searchQuery}
                                     onChange={handleSearchChange}
                                     placeholder="Search inside doubt text..."
-                                    className="mt-1 block w-full h-10 px-3 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm dark:bg-gray-700 dark:border-gray-600"
+                                    className="mt-1 block w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-colors duration-200"
                                 />
                             </div>
                             

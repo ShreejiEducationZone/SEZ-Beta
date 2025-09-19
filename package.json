@@ -1,5 +1,5 @@
 {
-  "name": "sez-v1",
+  "name": "working-sez",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,8 +12,7 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "@google/genai": "latest",
-    "recharts": "^2.12.7",
-    "firebase": "^12.3.0"
+    "recharts": "^2.12.7"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

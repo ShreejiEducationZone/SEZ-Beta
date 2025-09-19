@@ -21,7 +21,7 @@ const TextareaField: React.FC<TextareaFieldProps> = ({ label, name, value, onCha
              value={value}
              onChange={onChange}
              rows={3}
-             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600"
+             className="mt-1 block w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-colors duration-200"
          ></textarea>
          {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>

@@ -211,9 +211,29 @@ const DoubtBoxPage: React.FC<DoubtBoxPageProps> = ({ students, allStudentSubject
     const handleResolveDoubt = useCallback((doubt: Doubt) => {
         const linkedWorkItem = workItems.find(item => item.linkedDoubtId === doubt.id && item.source === 'doubt');
         if (linkedWorkItem && linkedWorkItem.status !== 'Completed') {
-            onSaveWorkItem({ ...linkedWorkItem, status: 'Completed' });
+            // Create a clean work item object to prevent circular structure errors
+            const cleanWorkItem: WorkItem = {
+                id: linkedWorkItem.id, studentId: linkedWorkItem.studentId, title: linkedWorkItem.title,
+                subject: linkedWorkItem.subject, chapterNo: linkedWorkItem.chapterNo, chapterName: linkedWorkItem.chapterName,
+                topic: linkedWorkItem.topic, description: linkedWorkItem.description, dueDate: linkedWorkItem.dueDate,
+                status: 'Completed',
+                priority: linkedWorkItem.priority, links: linkedWorkItem.links, files: linkedWorkItem.files,
+                mentorNote: linkedWorkItem.mentorNote, dateCreated: linkedWorkItem.dateCreated,
+                linkedDoubtId: linkedWorkItem.linkedDoubtId, source: linkedWorkItem.source
+            };
+            onSaveWorkItem(cleanWorkItem);
         }
-        onSaveDoubt({ ...doubt, status: 'Resolved', resolvedAt: new Date().toISOString().split('T')[0] });
+        // Create a clean doubt object to prevent circular structure errors
+        const cleanDoubt: Doubt = {
+            id: doubt.id, studentId: doubt.studentId, subject: doubt.subject,
+            chapterNo: doubt.chapterNo, chapterName: doubt.chapterName, testId: doubt.testId,
+            text: doubt.text, priority: doubt.priority, origin: doubt.origin,
+            createdAt: doubt.createdAt, 
+            status: 'Resolved',
+            resolvedAt: new Date().toISOString().split('T')[0],
+            attachment: doubt.attachment, voiceNote: doubt.voiceNote
+        };
+        onSaveDoubt(cleanDoubt);
     }, [workItems, onSaveWorkItem, onSaveDoubt]);
 
     const handleViewTask = useCallback((workItem: WorkItem) => {

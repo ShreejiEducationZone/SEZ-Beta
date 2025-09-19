@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { WorkItem, Student, WorkPriority, WorkStatus } from '../types';
 import ChevronLeftIcon from './icons/ChevronLeftIcon';
@@ -157,7 +158,28 @@ const WorkCalendarView: React.FC<WorkCalendarViewProps> = ({ workItems, students
         const itemToUpdate = workItems.find(item => item.id === workItemId);
 
         if (itemToUpdate && itemToUpdate.dueDate !== dateString) {
-            onSaveWorkItem({ ...itemToUpdate, dueDate: dateString });
+            // **FIXED**: Create a new, "clean" object to avoid circular reference errors.
+            // Do NOT use `{ ...itemToUpdate, dueDate: dateString }` as it carries over Firestore's internal properties.
+            const cleanItem: WorkItem = {
+                id: itemToUpdate.id,
+                studentId: itemToUpdate.studentId,
+                title: itemToUpdate.title,
+                subject: itemToUpdate.subject,
+                chapterNo: itemToUpdate.chapterNo,
+                chapterName: itemToUpdate.chapterName,
+                topic: itemToUpdate.topic,
+                description: itemToUpdate.description,
+                dueDate: dateString, // The new due date
+                status: itemToUpdate.status,
+                priority: itemToUpdate.priority,
+                links: itemToUpdate.links,
+                files: itemToUpdate.files,
+                mentorNote: itemToUpdate.mentorNote,
+                dateCreated: itemToUpdate.dateCreated,
+                linkedDoubtId: itemToUpdate.linkedDoubtId,
+                source: itemToUpdate.source
+            };
+            onSaveWorkItem(cleanItem);
         }
     };
 

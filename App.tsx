@@ -1,10 +1,10 @@
 
+
+
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-// Firebase imports
-import { initializeDb } from './firebase/firebaseConfig';
-import { ref, onValue, set, remove, update, Database } from 'firebase/database';
-import { Student, SubjectData, ChapterProgress, WorkItem, Doubt } from './types';
-import { initialStudents, initialSubjects } from './constants';
+import { getCollection, setDocument, deleteDocument, runBatch } from './firebase';
+import { Student, SubjectData, ChapterProgress, WorkItem, Doubt, Test } from './types';
 import StudentCard from './components/StudentCard';
 import StudentDrawer from './components/StudentDrawer';
 import StudentForm from './components/StudentForm';
@@ -13,19 +13,19 @@ import SubjectManagerPage from './components/SubjectManagerPage';
 import SyllabusProgressPage from './components/SyllabusProgressPage';
 import WorkPoolPage from './components/WorkPoolPage';
 import DoubtBoxPage from './components/DoubtBoxPage';
+import ReportsPage from './components/ReportsPage';
 import Sidebar from './components/layout/Sidebar';
 import { updateDoubtStatusFromWorkItems } from './utils/workPoolService';
 
-type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts';
+type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports';
 
 const App: React.FC = () => {
-    const [db, setDb] = useState<Database | null>(null);
-    const [dbError, setDbError] = useState<string | null>(null);
     const [students, setStudents] = useState<Student[]>([]);
     const [allStudentSubjects, setAllStudentSubjects] = useState<{ [key: string]: { studentId: string; subjects: SubjectData[] } }>({});
     const [chapterProgress, setChapterProgress] = useState<ChapterProgress[]>([]);
     const [workItems, setWorkItems] = useState<WorkItem[]>([]);
     const [doubts, setDoubts] = useState<Doubt[]>([]);
+    const [tests, setTests] = useState<Test[]>([]);
 
     const [darkMode, setDarkMode] = useState<boolean>(false);
     const [editingStudent, setEditingStudent] = useState<Partial<Student> | null>(null);
@@ -36,95 +36,89 @@ const App: React.FC = () => {
     const [currentPage, setCurrentPage] = useState<Page>('students');
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
-    // --- DATABASE INITIALIZATION ---
+    const toggleSidebar = () => setIsSidebarExpanded(prev => !prev);
+
+    // Fetch all data from Firestore REST API on initial load
     useEffect(() => {
-        const { db: database, error } = initializeDb();
-        if (database) {
-            setDb(database);
-        } else {
-            setDbError(error || "Failed to initialize Firebase. Check console for details.");
-        }
+        const fetchAllData = async () => {
+            try {
+                const [
+                    studentsData,
+                    subjectsData,
+                    chaptersData,
+                    workData,
+                    doubtsData,
+                    testsData,
+                ] = await Promise.all([
+                    getCollection("students"),
+                    getCollection("studentSubjects"),
+                    getCollection("chapterProgress"),
+                    getCollection("workItems"),
+                    getCollection("doubts"),
+                    getCollection("tests"),
+                ]);
+
+                setStudents(studentsData as Student[]);
+                
+                const subjectsMap = (subjectsData as any[]).reduce((acc, doc) => {
+                    acc[doc.id] = { studentId: doc.id, subjects: doc.subjects || [] };
+                    return acc;
+                }, {});
+                setAllStudentSubjects(subjectsMap);
+                
+                setChapterProgress(chaptersData as ChapterProgress[]);
+                setWorkItems(workData as WorkItem[]);
+                setDoubts(doubtsData as Doubt[]);
+                setTests(testsData as Test[]);
+
+            } catch (error) {
+                console.error("Failed to fetch initial data from Firestore:", error);
+                alert("Could not load data. Please check your internet connection and refresh the page.");
+            }
+        };
+        fetchAllData();
     }, []);
 
-    // --- FIREBASE DATA SYNC ---
+    // Effect to auto-update doubt status if a linked task is completed
     useEffect(() => {
-        if (!db) return;
-        const studentsRef = ref(db, 'students');
-        const unsubscribe = onValue(studentsRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                setStudents(Object.values(data));
-            } else if (!dbError) {
-                // Seed initial data if the node is empty and there's no connection error
-                const initialDataUpdates: { [key: string]: any } = {};
-                initialStudents.forEach(student => {
-                    initialDataUpdates[`students/${student.id}`] = student;
+        const updateDoubtsInFirestore = async (doubtsToUpdate: Doubt[]) => {
+            if (doubtsToUpdate.length === 0) return;
+            try {
+                const writes = doubtsToUpdate.map(doubt => {
+                    const cleanDoubt: Doubt = {
+                        id: doubt.id, studentId: doubt.studentId, subject: doubt.subject,
+                        chapterNo: doubt.chapterNo, chapterName: doubt.chapterName, testId: doubt.testId,
+                        text: doubt.text, priority: doubt.priority, origin: doubt.origin,
+                        createdAt: doubt.createdAt, status: doubt.status, resolvedAt: doubt.resolvedAt,
+                        attachment: doubt.attachment, voiceNote: doubt.voiceNote
+                    };
+                    return { type: 'set' as const, path: `doubts/${doubt.id}`, data: cleanDoubt };
                 });
-                update(ref(db), initialDataUpdates)
-                    .catch(e => console.error("Error seeding students:", e));
+                await runBatch(writes);
+            } catch (error) {
+                console.error("Failed to auto-update doubt status in Firestore:", error);
             }
-        });
-        return () => unsubscribe();
-    }, [db, dbError]);
+        };
 
-    useEffect(() => {
-        if (!db) return;
-        const subjectsRef = ref(db, 'subjects');
-        const unsubscribe = onValue(subjectsRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                setAllStudentSubjects(data);
-            } else if (!dbError) {
-                // Seed initial data
-                update(ref(db, 'subjects'), initialSubjects)
-                    .catch(e => console.error("Error seeding subjects:", e));
+        if (doubts.length > 0 && workItems.length > 0) {
+            const changedDoubts: Doubt[] = [];
+            let stateNeedsUpdate = false;
+
+            const newLocalDoubts = doubts.map(doubt => {
+                const updatedDoubt = updateDoubtStatusFromWorkItems(doubt, workItems);
+                if (updatedDoubt.status !== doubt.status) {
+                    changedDoubts.push(updatedDoubt);
+                    stateNeedsUpdate = true;
+                }
+                return updatedDoubt;
+            });
+
+            if (changedDoubts.length > 0) {
+                updateDoubtsInFirestore(changedDoubts);
+                if (stateNeedsUpdate) {
+                    setDoubts(newLocalDoubts);
+                }
             }
-        });
-        return () => unsubscribe();
-    }, [db, dbError]);
-
-    useEffect(() => {
-        if (!db) return;
-        const chaptersRef = ref(db, 'chapters');
-        const unsubscribe = onValue(chaptersRef, (snapshot) => {
-            const data = snapshot.val();
-            setChapterProgress(data ? Object.values(data) : []);
-        });
-        return () => unsubscribe();
-    }, [db]);
-
-    useEffect(() => {
-        if (!db) return;
-        const workRef = ref(db, 'work');
-        const unsubscribe = onValue(workRef, (snapshot) => {
-            const data = snapshot.val();
-            setWorkItems(data ? Object.values(data) : []);
-        });
-        return () => unsubscribe();
-    }, [db]);
-
-    useEffect(() => {
-        if (!db) return;
-        const doubtsRef = ref(db, 'doubts');
-        const unsubscribe = onValue(doubtsRef, (snapshot) => {
-            const data = snapshot.val();
-            setDoubts(data ? Object.values(data) : []);
-        });
-        return () => unsubscribe();
-    }, [db]);
-
-    useEffect(() => {
-        if (doubts.length === 0) return;
-        let hasChanges = false;
-        const newDoubts = doubts.map(doubt => {
-            const updatedDoubt = updateDoubtStatusFromWorkItems(doubt, workItems);
-            if (updatedDoubt.status !== doubt.status) {
-                hasChanges = true;
-            }
-            return updatedDoubt;
-        });
-        if (hasChanges) {
-            setDoubts(newDoubts);
         }
     }, [workItems, doubts]);
 
@@ -136,172 +130,206 @@ const App: React.FC = () => {
         }
     }, [darkMode]);
 
-    const handleSaveStudent = useCallback((studentData: Student) => {
-        if (!db) { setDbError("Cannot save: Database not connected."); return; }
-        set(ref(db, `students/${studentData.id}`), studentData)
-            .then(() => {
-                setEditingStudent(null);
+
+    const handleSaveStudent = useCallback(async (studentData: Student) => {
+        const isNewStudent = !students.some(s => s.id === studentData.id);
+        try {
+            await setDocument("students", studentData.id, studentData);
+            setEditingStudent(null);
+            
+            setStudents(prev => {
+                const exists = prev.some(s => s.id === studentData.id);
+                if (exists) return prev.map(s => s.id === studentData.id ? studentData : s);
+                return [...prev, studentData];
+            });
+            
+            if (!isNewStudent) {
                 setViewingStudent(studentData);
-            })
-            .catch(error => console.error("Firebase student save error:", error));
-    }, [db]);
+            }
+        } catch (error: any) {
+            console.error("Error saving student:", error);
+            alert(`Failed to save student data. Please check your internet connection. Error: ${error.message}`);
+        }
+    }, [students]);
     
-    const handleSaveSubjects = useCallback((studentId: string, subjects: SubjectData[]) => {
-        if (!db) { setDbError("Cannot save: Database not connected."); return; }
-        const data = { studentId, subjects };
-        update(ref(db), { [`subjects/${studentId}`]: data })
-            .catch(error => console.error("Firebase subjects save error:", error));
-    }, [db]);
+    const handleSaveSubjects = useCallback(async (studentId: string, subjects: SubjectData[]) => {
+        try {
+            await setDocument("studentSubjects", studentId, { studentId, subjects });
+            setAllStudentSubjects(prev => ({ ...prev, [studentId]: { studentId, subjects } }));
+        } catch (error: any) {
+            console.error("Error saving subjects:", error);
+            alert(`Failed to save subjects. Please check your internet connection. Error: ${error.message}`);
+        }
+    }, []);
 
-    const handleSaveChapterProgress = useCallback((progress: ChapterProgress) => {
-        if (!db) { setDbError("Cannot save: Database not connected."); return; }
-        const oldProgress = chapterProgress.find(p => p.id === progress.id);
-        const oldEntries = oldProgress?.entries ?? [];
-        const oldEntryIds = new Set(oldEntries.map(e => e.id));
+    const handleSaveChapterProgress = useCallback(async (progress: ChapterProgress) => {
+        try {
+            const writes: { type: 'set' | 'delete', path: string, data?: any }[] = [];
+
+            const oldProgress = chapterProgress.find(p => p.id === progress.id);
+            const oldEntries = oldProgress?.entries ?? [];
+            const oldEntryIds = new Set(oldEntries.map(e => e.id));
+            const newEntries = progress.entries;
+            const newEntryIds = new Set(newEntries.map(e => e.id));
         
-        const newEntries = progress.entries;
-        const newEntryIds = new Set(newEntries.map(e => e.id));
-    
-        const updates: { [key: string]: any } = {};
-
-        // --- LOGIC FOR ADDING A WORK ITEM ---
-        const addedEntries = newEntries.filter(e => !oldEntryIds.has(e.id));
-        const newStartEntry = addedEntries.find(e => e.type === 'start');
-    
-        if (newStartEntry) {
-            const workAlreadyExists = workItems.some(item => 
-                item.source === 'syllabus' &&
-                item.studentId === progress.studentId &&
-                item.subject === progress.subject &&
-                item.chapterNo === progress.chapterNo
-            );
-    
-            if (!workAlreadyExists) {
+            const addedEntries = newEntries.filter(e => !oldEntryIds.has(e.id));
+            const newStartEntry = addedEntries.find(e => e.type === 'start');
+        
+            if (newStartEntry) {
                 const dueDate = new Date(newStartEntry.date);
                 dueDate.setDate(dueDate.getDate() + 7);
-    
                 const newWorkItem: WorkItem = {
-                    id: `w_${Date.now()}`,
-                    studentId: progress.studentId,
-                    title: `Start reading & note making for ${progress.chapterName}`,
-                    subject: progress.subject,
-                    chapterNo: progress.chapterNo,
-                    chapterName: progress.chapterName,
-                    topic: '',
+                    id: `w_${Date.now()}`, studentId: progress.studentId, title: `Start reading & note making for ${progress.chapterName}`,
+                    subject: progress.subject, chapterNo: progress.chapterNo, chapterName: progress.chapterName, topic: '',
                     description: 'Begin reading and making notes as the chapter has started in school.',
-                    dueDate: dueDate.toISOString().split('T')[0],
-                    status: 'Assign',
-                    priority: 'Low',
-                    links: [],
-                    files: [],
-                    mentorNote: '',
-                    dateCreated: new Date().toISOString().split('T')[0],
-                    source: 'syllabus',
+                    dueDate: dueDate.toISOString().split('T')[0], status: 'Assign', priority: 'Low', links: [], files: [],
+                    mentorNote: '', dateCreated: new Date().toISOString().split('T')[0], source: 'syllabus',
                 };
-                updates[`work/${newWorkItem.id}`] = newWorkItem;
+                writes.push({ type: 'set', path: `workItems/${newWorkItem.id}`, data: newWorkItem });
+                setWorkItems(prev => [...prev, newWorkItem]);
             }
-        }
-    
-        // --- LOGIC FOR REMOVING A WORK ITEM ---
-        const removedEntries = oldEntries.filter(e => !newEntryIds.has(e.id));
-        const removedStartEntry = removedEntries.find(e => e.type === 'start');
         
-        if (removedStartEntry) {
-            const workItemToRemove = workItems.find(item => 
-                item.source === 'syllabus' &&
-                item.studentId === progress.studentId &&
-                item.subject === progress.subject &&
-                item.chapterNo === progress.chapterNo
-            );
-            if (workItemToRemove) {
-                updates[`work/${workItemToRemove.id}`] = null; // Use null to delete in a multi-path update
+            const removedEntries = oldEntries.filter(e => !newEntryIds.has(e.id));
+            const removedStartEntry = removedEntries.find(e => e.type === 'start');
+            
+            if (removedStartEntry) {
+                const workItemToDelete = workItems.find(item =>
+                    item.source === "syllabus" &&
+                    item.studentId === progress.studentId &&
+                    item.subject === progress.subject &&
+                    String(item.chapterNo) === String(progress.chapterNo) &&
+                    item.title === `Start reading & note making for ${progress.chapterName}`
+                );
+                if (workItemToDelete) {
+                    writes.push({ type: 'delete', path: `workItems/${workItemToDelete.id}` });
+                    setWorkItems(prev => prev.filter(w => w.id !== workItemToDelete.id));
+                }
             }
+
+            if (progress.entries.length === 0) {
+                writes.push({ type: 'delete', path: `chapterProgress/${progress.id}` });
+                setChapterProgress(prev => prev.filter(p => p.id !== progress.id));
+            } else {
+                writes.push({ type: 'set', path: `chapterProgress/${progress.id}`, data: progress });
+                setChapterProgress(prev => {
+                    const exists = prev.some(p => p.id === progress.id);
+                    if (exists) return prev.map(p => p.id === progress.id ? progress : p);
+                    return [...prev, progress];
+                });
+            }
+            if (writes.length > 0) await runBatch(writes);
+        } catch (error: any) {
+            console.error("Error saving chapter progress:", error);
+            alert(`Failed to save chapter progress. Please check your internet connection. Error: ${error.message}`);
         }
-        
-        if (progress.entries.length === 0) {
-            updates[`chapters/${progress.id}`] = null;
-        } else {
-            updates[`chapters/${progress.id}`] = progress;
-        }
+    }, [chapterProgress, workItems]);
 
-        if (Object.keys(updates).length > 0) {
-            update(ref(db), updates).catch(e => console.error("Error saving chapter/work updates:", e));
-        }
-
-    }, [chapterProgress, workItems, db]);
-
-    const handleSaveWorkItem = useCallback((workItem: WorkItem) => {
-        if (!db) { setDbError("Cannot save: Database not connected."); return; }
-        update(ref(db), { [`work/${workItem.id}`]: workItem })
-            .catch(e => console.error("Error saving work item:", e));
-    }, [db]);
-
-    const handleDeleteWorkItem = useCallback((workItemId: string) => {
-        if (!db) { setDbError("Cannot delete: Database not connected."); return; }
-        remove(ref(db, `work/${workItemId}`))
-            .catch(e => console.error("Error deleting work item:", e));
-    }, [db]);
-
-    const handleSaveDoubt = useCallback((doubt: Doubt) => {
-        if (!db) { setDbError("Cannot save: Database not connected."); return; }
-        update(ref(db), { [`doubts/${doubt.id}`]: doubt })
-            .catch(e => console.error("Error saving doubt:", e));
-    }, [db]);
-
-    const handleDeleteDoubt = useCallback((doubtId: string) => {
-        if (!db) { setDbError("Cannot delete: Database not connected."); return; }
-        const updates: { [key: string]: any } = {};
-        const linkedWorkItem = workItems.find(item => item.linkedDoubtId === doubtId && item.source === 'doubt');
-        
-        if (linkedWorkItem) {
-            updates[`work/${linkedWorkItem.id}`] = null;
-        }
-        
-        updates[`doubts/${doubtId}`] = null;
-        
-        update(ref(db), updates).catch(e => console.error("Error deleting doubt/work updates:", e));
-    }, [workItems, db]);
-
-    const handleArchive = useCallback((id: string) => {
-        if (!db) { setDbError("Cannot archive: Database not connected."); return; }
-        const studentToUpdate = students.find(s => s.id === id);
-        if (studentToUpdate) {
-            update(ref(db, `students/${id}`), { isArchived: !studentToUpdate.isArchived })
-                .then(() => setViewingStudent(null))
-                .catch(e => console.error("Error archiving student:", e));
-        }
-    }, [students, db]);
-
-    const handleDelete = useCallback((id: string) => {
-        if (!db) { setDbError("Cannot delete: Database not connected."); return; }
-        if (!window.confirm("Are you sure you want to permanently delete this student and all their associated data? This action cannot be undone.")) {
-            return;
-        }
-
-        const updates: { [key: string]: any } = {};
-        updates[`/students/${id}`] = null;
-        updates[`/subjects/${id}`] = null;
-
-        chapterProgress.filter(p => p.studentId === id).forEach(p => {
-            updates[`/chapters/${p.id}`] = null;
-        });
-        workItems.filter(w => w.studentId === id).forEach(w => {
-            updates[`/work/${w.id}`] = null;
-        });
-        doubts.filter(d => d.studentId === id).forEach(d => {
-            updates[`/doubts/${d.id}`] = null;
-        });
-
-        update(ref(db), updates)
-            .then(() => {
-                setViewingStudent(null);
-                console.log(`Successfully deleted student ${id} and all related data.`);
-            })
-            .catch(error => {
-                console.error("Firebase multi-path delete error:", error);
-                alert("Failed to delete student data. Please try again.");
+    const handleSaveWorkItem = useCallback(async (workItem: WorkItem) => {
+        try {
+            await setDocument("workItems", workItem.id, workItem);
+            setWorkItems(prev => {
+                const exists = prev.some(w => w.id === workItem.id);
+                if (exists) return prev.map(w => w.id === workItem.id ? workItem : w);
+                return [...prev, workItem];
             });
-    }, [chapterProgress, workItems, doubts, db]);
+        } catch (error: any) {
+            console.error("Error saving work item:", error);
+            alert(`Failed to save work item. Please check your internet connection. Error: ${error.message}`);
+        }
+    }, []);
+
+    const handleDeleteWorkItem = useCallback(async (workItemId: string) => {
+        try {
+            await deleteDocument("workItems", workItemId);
+            setWorkItems(prev => prev.filter(w => w.id !== workItemId));
+        } catch (error: any) {
+            console.error("Error deleting work item:", error);
+            alert(`Failed to delete work item. Please check your internet connection. Error: ${error.message}`);
+        }
+    }, []);
+
+    const handleSaveDoubt = useCallback(async (doubt: Doubt) => {
+        try {
+            await setDocument("doubts", doubt.id, doubt);
+            setDoubts(prev => {
+                const exists = prev.some(d => d.id === doubt.id);
+                if (exists) return prev.map(d => d.id === doubt.id ? doubt : d);
+                return [...prev, doubt];
+            });
+        } catch (error: any) {
+            console.error("Error saving doubt:", error);
+            alert(`Failed to save doubt. Please check your internet connection. Error: ${error.message}`);
+        }
+    }, []);
+
+    const handleDeleteDoubt = useCallback(async (doubtId: string) => {
+        try {
+            const writes: { type: 'delete', path: string }[] = [];
+            const linkedWorkItem = workItems.find(item => item.linkedDoubtId === doubtId && item.source === 'doubt');
+            if (linkedWorkItem) {
+                writes.push({ type: 'delete', path: `workItems/${linkedWorkItem.id}` });
+            }
+            writes.push({ type: 'delete', path: `doubts/${doubtId}` });
+            await runBatch(writes);
+            
+            setDoubts(prev => prev.filter(d => d.id !== doubtId));
+            if(linkedWorkItem) setWorkItems(prev => prev.filter(w => w.id !== linkedWorkItem.id));
+
+        } catch (error: any) {
+            console.error("Error deleting doubt:", error);
+            alert(`Failed to delete doubt. Please check your internet connection. Error: ${error.message}`);
+        }
+    }, [workItems]);
+
+    const handleSaveTest = useCallback(async (test: Test) => {
+        try {
+            await setDocument("tests", test.id, test);
+            setTests(prev => {
+                const exists = prev.some(t => t.id === test.id);
+                if (exists) return prev.map(t => t.id === test.id ? test : t);
+                return [...prev, test];
+            });
+        } catch (error: any) {
+            console.error("Error saving test:", error);
+            alert(`Failed to save test. Please check your internet connection. Error: ${error.message}`);
+        }
+    }, []);
+
+    const handleDeleteTest = useCallback(async (testId: string) => {
+        try {
+            await deleteDocument("tests", testId);
+            setTests(prev => prev.filter(t => t.id !== testId));
+        } catch (error: any) {
+            console.error("Error deleting test:", error);
+            alert(`Failed to delete test. Please check your internet connection. Error: ${error.message}`);
+        }
+    }, []);
+
+    const handleArchive = useCallback(async (id: string) => {
+        try {
+            const student = students.find(s => s.id === id);
+            if (student) {
+                const updatedStudent = { ...student, isArchived: !student.isArchived };
+                await setDocument("students", id, updatedStudent);
+                setStudents(prev => prev.map(s => s.id === id ? updatedStudent : s));
+            }
+            setViewingStudent(null);
+        } catch (error: any) {
+            console.error("Error archiving student:", error);
+            alert(`Failed to archive student. Please check your internet connection. Error: ${error.message}`);
+        }
+    }, [students]);
+
+    const handleDelete = useCallback(async (id: string) => {
+        try {
+            await deleteDocument("students", id);
+            setStudents(prev => prev.filter(s => s.id !== id));
+            setViewingStudent(null);
+        } catch (error: any) {
+            console.error("Error deleting student:", error);
+            alert(`Failed to delete student. Please check your internet connection. Error: ${error.message}`);
+        }
+    }, []);
 
     const handleFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -373,6 +401,16 @@ const App: React.FC = () => {
                         onSaveWorkItem={handleSaveWorkItem}
                     />
                 );
+            case 'reports':
+                return (
+                    <ReportsPage
+                        students={students}
+                        allStudentSubjects={allStudentSubjects}
+                        tests={tests}
+                        onSaveTest={handleSaveTest}
+                        onDeleteTest={handleDeleteTest}
+                    />
+                );
             case 'students':
             default:
                 return (
@@ -419,6 +457,7 @@ const App: React.FC = () => {
             case 'syllabus': return 'Syllabus Progress';
             case 'work-pool': return 'Work Pool';
             case 'doubts': return 'Doubt Box';
+            case 'reports': return 'Test Tracker';
             case 'students':
             default: return 'Student Directory';
         }
@@ -427,20 +466,15 @@ const App: React.FC = () => {
 
     return (
         <div className="relative min-h-screen">
-            {dbError && (
-                <div className="fixed top-0 left-0 right-0 bg-red-600 text-white p-3 text-center z-[100] shadow-lg text-sm font-semibold">
-                    <strong>Database Connection Error:</strong> {dbError}
-                </div>
-            )}
             <Sidebar
                 isExpanded={isSidebarExpanded}
-                onHover={setIsSidebarExpanded}
+                onToggle={toggleSidebar}
                 currentPage={currentPage}
                 onNavigate={setCurrentPage}
             />
              <div 
                 className="flex-grow transition-all duration-300"
-                style={{ marginLeft: isSidebarExpanded ? '220px' : '60px', paddingTop: dbError ? '48px' : '0' }}
+                style={{ marginLeft: isSidebarExpanded ? '220px' : '60px' }}
             >
                 <header className="flex justify-between items-center h-20 px-8">
                     <h1 className="text-2xl font-bold">
