@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Student, SubjectData, Test, TestStatus, TestPriority, TestType, MistakeType, Chapter } from '../types';
-import { TEST_PRIORITIES, TEST_TYPES, MISTAKE_TYPES } from '../constants';
+import { Student, SubjectData, Test, TestStatus, TestPriority, TestType, Chapter } from '../types';
+import { TEST_PRIORITIES, TEST_TYPES } from '../constants';
 import InputField from './form/InputField';
 import SelectField from './form/SelectField';
 import TextareaField from './form/TextareaField';
@@ -11,11 +11,13 @@ interface TestFormProps {
     test?: Test | null;
     onSave: (test: Test) => void;
     onCancel: () => void;
+    allMistakeTypes: string[];
 }
 
-const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onSave, onCancel }) => {
+const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onSave, onCancel, allMistakeTypes }) => {
     const isEditMode = !!test;
-    const [status, setStatus] = useState<TestStatus>(test?.status || 'Upcoming');
+    const [status, setStatus] = useState<TestStatus>(test?.status === 'Upcoming' ? 'Completed' : (test?.status || 'Upcoming'));
+    const [isAbsent, setIsAbsent] = useState(test?.status === 'Absent');
     
     const [formData, setFormData] = useState({
         title: test?.title || '',
@@ -32,7 +34,8 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
     });
     
     const [selectedChapters, setSelectedChapters] = useState<Chapter[]>(test?.chapters || []);
-    const [mistakeTypes, setMistakeTypes] = useState<Set<MistakeType>>(new Set(test?.mistakeTypes || []));
+    const [mistakeTypes, setMistakeTypes] = useState<Set<string>>(new Set(test?.mistakeTypes || []));
+    const [otherMistakeText, setOtherMistakeText] = useState('');
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
     const availableChapters = useMemo(() => {
@@ -41,12 +44,42 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
     }, [formData.subject, studentSubjects]);
 
     useEffect(() => {
-        // When subject changes, if it's a new test, clear the selected chapters.
-        // In edit mode, we keep them to allow changing subject without losing chapter data if user mis-clicks.
         if (!isEditMode) {
             setSelectedChapters([]);
         }
     }, [formData.subject, isEditMode]);
+    
+    useEffect(() => {
+        if(status === 'Completed' && test?.status === 'Absent') {
+            setIsAbsent(true);
+        } else {
+            setIsAbsent(false);
+        }
+    }, [status, test]);
+
+    useEffect(() => {
+        if (test?.mistakeTypes) {
+            const predefinedMistakes = new Set(allMistakeTypes);
+            const customMistake = test.mistakeTypes.find(m => !predefinedMistakes.has(m));
+            if (customMistake) {
+                setMistakeTypes(prev => {
+                    const newSet = new Set(prev);
+                    // Remove custom text and add 'Other' to check the box
+                    if (newSet.has(customMistake)) {
+                        newSet.delete(customMistake);
+                    }
+                    newSet.add('Other');
+                    return newSet;
+                });
+                setOtherMistakeText(customMistake);
+            }
+        }
+    }, [test, allMistakeTypes]);
+
+    const availableMistakeTypes = useMemo(() => {
+        return allMistakeTypes.filter(m => m !== 'Other');
+    }, [allMistakeTypes]);
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -64,7 +97,7 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
         });
     };
 
-    const handleMistakeTypeToggle = (type: MistakeType) => {
+    const handleMistakeTypeToggle = (type: string) => {
         setMistakeTypes(prev => {
             const newSet = new Set(prev);
             if (newSet.has(type)) {
@@ -83,7 +116,7 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
         if (!formData.testDate) newErrors.testDate = 'Test Date is required';
         if (selectedChapters.length === 0) newErrors.chapters = 'At least one chapter must be selected';
 
-        if (status === 'Completed') {
+        if (status === 'Completed' && !isAbsent) {
             if (!formData.testType) newErrors.testType = 'Test Type is required';
             const marks = parseFloat(formData.marksObtained);
             const total = parseFloat(formData.totalMarks);
@@ -91,6 +124,7 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
             if (formData.totalMarks === '' || isNaN(total)) newErrors.totalMarks = 'Must be a number';
             if (!isNaN(marks) && !isNaN(total) && marks > total) newErrors.marksObtained = 'Cannot exceed total marks';
             if (!isNaN(total) && total <= 0) newErrors.totalMarks = 'Must be positive';
+            if(mistakeTypes.has('Other') && !otherMistakeText.trim()) newErrors.otherMistake = 'Please specify the mistake';
         }
         
         setErrors(newErrors);
@@ -101,23 +135,37 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
         e.preventDefault();
         if (!validate()) return;
         
+        let finalStatus: TestStatus = status;
+        if (status === 'Completed' && isAbsent) {
+            finalStatus = 'Absent';
+        }
+
+        const finalMistakes = new Set(mistakeTypes);
+        if (finalMistakes.has('Other')) {
+            finalMistakes.delete('Other');
+            if (otherMistakeText.trim()) {
+                finalMistakes.add(otherMistakeText.trim());
+            }
+        }
+
         const finalTest: Test = {
             id: test?.id || `t_${Date.now()}`,
             studentId: student.id,
-            status,
+            status: finalStatus,
             title: formData.title.trim(),
             subject: formData.subject,
             chapters: selectedChapters,
             testDate: formData.testDate,
             priority: formData.priority as TestPriority,
-            testType: status === 'Completed' ? (formData.testType as TestType) : undefined,
-            marksObtained: status === 'Completed' && formData.marksObtained !== '' ? parseFloat(formData.marksObtained) : undefined,
-            totalMarks: status === 'Completed' && formData.totalMarks !== '' ? parseFloat(formData.totalMarks) : undefined,
-            mistakeTypes: status === 'Completed' ? Array.from(mistakeTypes) : undefined,
-            remarks: status === 'Completed' ? formData.remarks.trim() : undefined,
-            strongArea: status === 'Completed' ? formData.strongArea.trim() : undefined,
-            weakArea: status === 'Completed' ? formData.weakArea.trim() : undefined,
-            retestRequired: status === 'Completed' ? (formData.retestRequired as 'Yes' | 'No') : undefined,
+            // Clear completed data if not in a completed/absent state or if absent
+            testType: finalStatus === 'Completed' ? (formData.testType as TestType) : undefined,
+            marksObtained: finalStatus === 'Completed' && formData.marksObtained !== '' ? parseFloat(formData.marksObtained) : undefined,
+            totalMarks: finalStatus === 'Completed' && formData.totalMarks !== '' ? parseFloat(formData.totalMarks) : undefined,
+            mistakeTypes: finalStatus === 'Completed' ? Array.from(finalMistakes) : undefined,
+            remarks: finalStatus === 'Completed' ? formData.remarks.trim() : undefined,
+            strongArea: finalStatus === 'Completed' ? formData.strongArea.trim() : undefined,
+            weakArea: finalStatus === 'Completed' ? formData.weakArea.trim() : undefined,
+            retestRequired: finalStatus === 'Completed' ? (formData.retestRequired as 'Yes' | 'No') : undefined,
         };
         
         onSave(finalTest);
@@ -139,7 +187,7 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
                     </button>
                     <button
                         onClick={() => setStatus('Completed')}
-                        className={`w-1/2 px-3 py-2 text-sm font-semibold rounded-md transition-colors ${status === 'Completed' ? 'bg-white dark:bg-dark-card shadow' : 'text-gray-600 dark:text-gray-300'}`}
+                        className={`w-1/2 px-3 py-2 text-sm font-semibold rounded-md transition-colors ${(status === 'Completed' || status === 'Absent') ? 'bg-white dark:bg-dark-card shadow' : 'text-gray-600 dark:text-gray-300'}`}
                     >
                         ✅ Completed Test
                     </button>
@@ -171,39 +219,65 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
                         </div>
                     </div>
 
-                    {status === 'Completed' && (
+                    {(status === 'Completed' || status === 'Absent') && (
                         <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <SelectField label="Test Type" name="testType" value={formData.testType} onChange={handleChange} options={TEST_TYPES} error={errors.testType} required />
-                                <InputField label="Marks Obtained" name="marksObtained" type="number" value={formData.marksObtained} onChange={handleChange} error={errors.marksObtained} required />
-                                <InputField label="Total Marks" name="totalMarks" type="number" value={formData.totalMarks} onChange={handleChange} error={errors.totalMarks} required />
+                             <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Attendance</label>
+                                <div className="mt-2 flex gap-4">
+                                    <label><input type="radio" name="attendance" value="present" checked={!isAbsent} onChange={() => setIsAbsent(false)} className="mr-1" /> Present</label>
+                                    <label><input type="radio" name="attendance" value="absent" checked={isAbsent} onChange={() => setIsAbsent(true)} className="mr-1" /> Absent</label>
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Mistake Types</label>
-                                <div className="mt-2 flex flex-wrap gap-2">
-                                    {MISTAKE_TYPES.map(type => (
-                                        <label key={type} className="flex items-center space-x-2 p-2 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/50 has-[:checked]:border-blue-500">
+                            
+                            {!isAbsent && (
+                                <>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <SelectField label="Test Type" name="testType" value={formData.testType} onChange={handleChange} options={TEST_TYPES} error={errors.testType} required />
+                                    <InputField label="Marks Obtained" name="marksObtained" type="number" value={formData.marksObtained} onChange={handleChange} error={errors.marksObtained} required />
+                                    <InputField label="Total Marks" name="totalMarks" type="number" value={formData.totalMarks} onChange={handleChange} error={errors.totalMarks} required />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Mistake Types</label>
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {availableMistakeTypes.map(type => (
+                                            <label key={type} className="flex items-center space-x-2 p-2 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/50 has-[:checked]:border-blue-500">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={mistakeTypes.has(type)}
+                                                    onChange={() => handleMistakeTypeToggle(type)}
+                                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                />
+                                                <span className="text-sm">{type}</span>
+                                            </label>
+                                        ))}
+                                        <label key="Other" className="flex items-center space-x-2 p-2 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/50 has-[:checked]:border-blue-500">
                                             <input
                                                 type="checkbox"
-                                                checked={mistakeTypes.has(type)}
-                                                onChange={() => handleMistakeTypeToggle(type)}
+                                                checked={mistakeTypes.has('Other')}
+                                                onChange={() => handleMistakeTypeToggle('Other')}
                                                 className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                                             />
-                                            <span className="text-sm">{type}</span>
+                                            <span className="text-sm">Other</span>
                                         </label>
-                                    ))}
+                                    </div>
+                                    {mistakeTypes.has('Other') && (
+                                        <div className="mt-2">
+                                            <InputField label="Specify Other Mistake" name="otherMistake" value={otherMistakeText} onChange={(e) => setOtherMistakeText(e.target.value)} error={errors.otherMistake} required />
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
-                            <TextareaField label="Remarks" name="remarks" value={formData.remarks} onChange={handleChange} />
-                            <TextareaField label="Strong Area" name="strongArea" value={formData.strongArea} onChange={handleChange} />
-                            <TextareaField label="Weak Area" name="weakArea" value={formData.weakArea} onChange={handleChange} />
-                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Retest Required?</label>
-                                <div className="mt-2 flex gap-4">
-                                    <label><input type="radio" name="retestRequired" value="No" checked={formData.retestRequired === 'No'} onChange={handleChange} className="mr-1" /> No</label>
-                                    <label><input type="radio" name="retestRequired" value="Yes" checked={formData.retestRequired === 'Yes'} onChange={handleChange} className="mr-1" /> Yes</label>
+                                <TextareaField label="Remarks" name="remarks" value={formData.remarks} onChange={handleChange} />
+                                <TextareaField label="Strong Area" name="strongArea" value={formData.strongArea} onChange={handleChange} />
+                                <TextareaField label="Weak Area" name="weakArea" value={formData.weakArea} onChange={handleChange} />
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Retest Required?</label>
+                                    <div className="mt-2 flex gap-4">
+                                        <label><input type="radio" name="retestRequired" value="No" checked={formData.retestRequired === 'No'} onChange={handleChange} className="mr-1" /> No</label>
+                                        <label><input type="radio" name="retestRequired" value="Yes" checked={formData.retestRequired === 'Yes'} onChange={handleChange} className="mr-1" /> Yes</label>
+                                    </div>
                                 </div>
-                            </div>
+                                </>
+                             )}
                         </div>
                     )}
                     

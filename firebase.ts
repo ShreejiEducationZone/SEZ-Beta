@@ -124,6 +124,28 @@ export const getCollection = async (collectionPath: string) => {
 };
 
 /**
+ * Fetches a single document by its ID.
+ * Returns null if the document is not found.
+ */
+export const getDocument = async (collectionPath: string, documentId: string) => {
+    const url = `${BASE_URL}/${collectionPath}/${documentId}`;
+    try {
+        const doc = await firestoreRequest(url, { method: 'GET' });
+        return transformFirestoreDocResponse(doc);
+    } catch (error: any) {
+        // Handle 404 Not Found gracefully by returning null.
+        // The error message for a 404 contains "not found".
+        if (error.message && error.message.toLowerCase().includes('not found')) {
+            return null;
+        }
+        // Re-throw other types of errors.
+        console.error(`Failed to get document ${collectionPath}/${documentId}:`, error);
+        throw error;
+    }
+};
+
+
+/**
  * Creates or updates a document. Behaves like setDoc with merge:true.
  */
 export const setDocument = async (collectionPath: string, documentId: string, data: any) => {

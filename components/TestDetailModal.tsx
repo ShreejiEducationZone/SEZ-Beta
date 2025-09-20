@@ -5,6 +5,9 @@ interface TestDetailModalProps {
     test: Test;
     student: Student;
     onClose: () => void;
+    onAddMarking: (test: Test) => void;
+    onEdit: (test: Test) => void;
+    onDelete: (testId: string) => void;
 }
 
 const PRIORITY_STYLES: Record<TestPriority, string> = {
@@ -16,6 +19,7 @@ const PRIORITY_STYLES: Record<TestPriority, string> = {
 const STATUS_STYLES: Record<TestStatus, string> = {
     Completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
     Upcoming: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    Absent: 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
 };
 
 const DetailRow: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({ label, children, className }) => (
@@ -26,7 +30,7 @@ const DetailRow: React.FC<{ label: string; children: React.ReactNode; className?
 );
 
 
-const TestDetailModal: React.FC<TestDetailModalProps> = ({ test, student, onClose }) => {
+const TestDetailModal: React.FC<TestDetailModalProps> = ({ test, student, onClose, onAddMarking, onEdit, onDelete }) => {
     
     const scorePercentage = (test.marksObtained != null && test.totalMarks != null && test.totalMarks > 0)
         ? Math.round((test.marksObtained / test.totalMarks) * 100)
@@ -89,10 +93,21 @@ const TestDetailModal: React.FC<TestDetailModalProps> = ({ test, student, onClos
                     </div>
                 )}
                 
-                 <div className="mt-8 flex justify-end">
-                    <button onClick={onClose} className="py-2 px-5 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500 font-semibold">
+                <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-end items-center gap-3">
+                    <button onClick={onClose} className="py-2 px-5 rounded-lg bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 font-semibold">
                         Close
                     </button>
+                    <button onClick={() => onDelete(test.id)} className="h-10 px-4 rounded-md bg-red-600 text-white hover:bg-red-700 text-sm font-semibold">
+                        Delete
+                    </button>
+                     <button onClick={() => onEdit(test)} className="h-10 px-4 rounded-md bg-gray-700 text-white hover:bg-gray-800 dark:bg-gray-500 dark:hover:bg-gray-400 text-sm font-semibold">
+                        Edit Test
+                    </button>
+                    {test.status === 'Upcoming' && (
+                        <button onClick={() => onAddMarking(test)} className="h-10 px-4 rounded-md bg-brand-blue text-white hover:bg-blue-600 text-sm font-semibold">
+                            + Add Marking
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

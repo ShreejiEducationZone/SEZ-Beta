@@ -102,7 +102,7 @@ export interface Doubt {
 
 // New Types for Reports & Tests
 export type TestType = 'School Test' | 'Self-Test' | 'Class Test';
-export type TestStatus = 'Upcoming' | 'Completed';
+export type TestStatus = 'Upcoming' | 'Completed' | 'Absent';
 export type MistakeType = 'Careless' | 'Conceptual' | 'Calculation Error' | 'Step Missing' | 'Formula Misuse' | 'Time Management';
 export type TestPriority = 'Low' | 'Medium' | 'High';
 
@@ -121,9 +121,17 @@ export interface Test {
   testType?: TestType;
   marksObtained?: number;
   totalMarks?: number;
-  mistakeTypes?: MistakeType[];
+  mistakeTypes?: string[];
   remarks?: string;
   strongArea?: string;
   weakArea?: string;
   retestRequired?: 'Yes' | 'No';
+}
+
+// New Types for Attendance
+export interface StudentAttendance {
+    studentId: string;
+    status: 'Present' | 'Absent';
+    lastSeen: string | null; // ISO string for timestamp
+    attendanceLog: { [date: string]: 'Present' | 'Absent' }; // 'YYYY-MM-DD' keys
 }

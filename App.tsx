@@ -1,9 +1,5 @@
-
-
-
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { getCollection, setDocument, deleteDocument, runBatch } from './firebase';
+import { getCollection, setDocument, deleteDocument, runBatch, getDocument } from './firebase';
 import { Student, SubjectData, ChapterProgress, WorkItem, Doubt, Test } from './types';
 import StudentCard from './components/StudentCard';
 import StudentDrawer from './components/StudentDrawer';
@@ -15,9 +11,11 @@ import WorkPoolPage from './components/WorkPoolPage';
 import DoubtBoxPage from './components/DoubtBoxPage';
 import ReportsPage from './components/ReportsPage';
 import Sidebar from './components/layout/Sidebar';
+import AttendancePage from './components/AttendancePage';
 import { updateDoubtStatusFromWorkItems } from './utils/workPoolService';
+import { MISTAKE_TYPES } from './constants';
 
-type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports';
+type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'attendance';
 
 const App: React.FC = () => {
     const [students, setStudents] = useState<Student[]>([]);
@@ -26,6 +24,7 @@ const App: React.FC = () => {
     const [workItems, setWorkItems] = useState<WorkItem[]>([]);
     const [doubts, setDoubts] = useState<Doubt[]>([]);
     const [tests, setTests] = useState<Test[]>([]);
+    const [customMistakeTypes, setCustomMistakeTypes] = useState<string[]>([]);
 
     const [darkMode, setDarkMode] = useState<boolean>(false);
     const [editingStudent, setEditingStudent] = useState<Partial<Student> | null>(null);
@@ -49,6 +48,7 @@ const App: React.FC = () => {
                     workData,
                     doubtsData,
                     testsData,
+                    mistakeTypesDoc,
                 ] = await Promise.all([
                     getCollection("students"),
                     getCollection("studentSubjects"),
@@ -56,6 +56,7 @@ const App: React.FC = () => {
                     getCollection("workItems"),
                     getCollection("doubts"),
                     getCollection("tests"),
+                    getDocument("configuration", "mistakeTypes"),
                 ]);
 
                 setStudents(studentsData as Student[]);
@@ -70,6 +71,9 @@ const App: React.FC = () => {
                 setWorkItems(workData as WorkItem[]);
                 setDoubts(doubtsData as Doubt[]);
                 setTests(testsData as Test[]);
+                if (mistakeTypesDoc && (mistakeTypesDoc as any).types) {
+                    setCustomMistakeTypes((mistakeTypesDoc as any).types);
+                }
 
             } catch (error) {
                 console.error("Failed to fetch initial data from Firestore:", error);
@@ -283,6 +287,18 @@ const App: React.FC = () => {
 
     const handleSaveTest = useCallback(async (test: Test) => {
         try {
+            // New logic for custom mistake types
+            if (test.mistakeTypes && test.mistakeTypes.length > 0) {
+                const allKnownMistakeTypes = new Set([...MISTAKE_TYPES, ...customMistakeTypes]);
+                const newMistakes = test.mistakeTypes.filter(m => !allKnownMistakeTypes.has(m));
+                
+                if (newMistakes.length > 0) {
+                    const updatedCustomTypes = [...customMistakeTypes, ...newMistakes];
+                    setCustomMistakeTypes(updatedCustomTypes);
+                    await setDocument("configuration", "mistakeTypes", { types: updatedCustomTypes });
+                }
+            }
+
             await setDocument("tests", test.id, test);
             setTests(prev => {
                 const exists = prev.some(t => t.id === test.id);
@@ -293,7 +309,7 @@ const App: React.FC = () => {
             console.error("Error saving test:", error);
             alert(`Failed to save test. Please check your internet connection. Error: ${error.message}`);
         }
-    }, []);
+    }, [customMistakeTypes]);
 
     const handleDeleteTest = useCallback(async (testId: string) => {
         try {
@@ -359,6 +375,13 @@ const App: React.FC = () => {
             return true;
         });
     }, [students, showArchived, filters, searchQuery]);
+    
+    const allMistakeTypes = useMemo(() => {
+        // Use a Set to handle potential duplicates, then convert back to array
+        const combined = new Set([...MISTAKE_TYPES, ...customMistakeTypes]);
+        return Array.from(combined);
+    }, [customMistakeTypes]);
+
 
     const renderPageContent = () => {
         switch (currentPage) {
@@ -409,7 +432,12 @@ const App: React.FC = () => {
                         tests={tests}
                         onSaveTest={handleSaveTest}
                         onDeleteTest={handleDeleteTest}
+                        allMistakeTypes={allMistakeTypes}
                     />
+                );
+            case 'attendance':
+                return (
+                    <AttendancePage students={students} />
                 );
             case 'students':
             default:
@@ -458,6 +486,7 @@ const App: React.FC = () => {
             case 'work-pool': return 'Work Pool';
             case 'doubts': return 'Doubt Box';
             case 'reports': return 'Test Tracker';
+            case 'attendance': return 'Attendance';
             case 'students':
             default: return 'Student Directory';
         }

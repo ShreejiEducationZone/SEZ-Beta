@@ -1,8 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Test } from '../types';
-import { TEST_TYPES } from '../constants';
 import SelectField from './form/SelectField';
-import InputField from './form/InputField';
 import EditIcon from './icons/EditIcon';
 import DeleteIcon from './icons/DeleteIcon';
 
@@ -16,9 +14,7 @@ interface CompletedTestsTableProps {
 const CompletedTestsTable: React.FC<CompletedTestsTableProps> = ({ tests, onTestSelect, onEditTest, onDeleteTest }) => {
     const [filters, setFilters] = useState({
         subject: '',
-        testType: '',
-        minScore: '',
-        status: 'All'
+        tag: 'All',
     });
     
     const uniqueSubjects = useMemo(() => Array.from(new Set(tests.map(t => t.subject))).sort(), [tests]);
@@ -27,18 +23,39 @@ const CompletedTestsTable: React.FC<CompletedTestsTableProps> = ({ tests, onTest
         setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
+    const clearFilters = () => {
+        setFilters({ subject: '', tag: 'All' });
+    };
+
+    const TAG_OPTIONS = ['All', 'Good Score', 'Medium Score', 'Low Score', 'Absent', 'Retest'];
+
     const filteredTests = useMemo(() => {
         return tests.filter(test => {
             if (filters.subject && test.subject !== filters.subject) return false;
-            if (filters.testType && test.testType !== filters.testType) return false;
             
             const score = (test.marksObtained != null && test.totalMarks != null && test.totalMarks > 0)
                 ? (test.marksObtained / test.totalMarks) * 100
                 : null;
             
-            if (filters.minScore && (score == null || score < parseInt(filters.minScore, 10))) return false;
-            if (filters.status === 'Retests' && test.retestRequired !== 'Yes') return false;
-            if (filters.status === 'Low Score' && (score == null || score >= 60)) return false;
+            switch (filters.tag) {
+                case 'Good Score':
+                    if (score == null || score < 80) return false;
+                    break;
+                case 'Medium Score':
+                    if (score == null || score < 60 || score >= 80) return false;
+                    break;
+                case 'Low Score':
+                    if (score == null || score >= 60) return false;
+                    break;
+                case 'Absent':
+                    if (test.status !== 'Absent') return false;
+                    break;
+                case 'Retest':
+                    if (test.retestRequired !== 'Yes') return false;
+                    break;
+                default:
+                    break;
+            }
             
             return true;
         }).sort((a,b) => new Date(b.testDate).getTime() - new Date(a.testDate).getTime());
@@ -47,16 +64,14 @@ const CompletedTestsTable: React.FC<CompletedTestsTableProps> = ({ tests, onTest
     return (
         <div className="bg-light-card dark:bg-dark-card p-6 rounded-2xl shadow-sm">
             <h3 className="text-xl font-bold mb-4">Completed Test Log</h3>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 items-end">
                 <SelectField label="Subject" name="subject" value={filters.subject} onChange={handleFilterChange} options={uniqueSubjects} />
-                <SelectField label="Test Type" name="testType" value={filters.testType} onChange={handleFilterChange} options={TEST_TYPES} />
-                <InputField label="Min Score %" name="minScore" type="number" value={filters.minScore} onChange={handleFilterChange} />
-                <SelectField label="Status" name="status" value={filters.status} onChange={handleFilterChange} options={['All', 'Retests', 'Low Score']} />
+                <SelectField label="Tags" name="tag" value={filters.tag} onChange={handleFilterChange} options={TAG_OPTIONS} />
                 <button
-                    onClick={() => setFilters({ subject: '', testType: '', minScore: '', status: 'All' })}
+                    onClick={clearFilters}
                     className="h-10 px-4 rounded-lg bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-sm font-medium"
                 >
-                    Clear
+                    Clear Filters
                 </button>
             </div>
             
@@ -84,11 +99,23 @@ const CompletedTestsTable: React.FC<CompletedTestsTableProps> = ({ tests, onTest
                                     <td className="px-4 py-3">{new Date(test.testDate).toLocaleDateString('en-CA', {timeZone: 'UTC'})}</td>
                                     <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{test.title}</td>
                                     <td className="px-4 py-3">{test.subject}</td>
-                                    <td className={`px-4 py-3 font-semibold ${isLowScore ? 'text-red-500' : ''}`}>{score != null ? `${score}%` : 'N/A'}</td>
+                                    <td className={`px-4 py-3 font-semibold ${isLowScore ? 'text-red-500' : ''}`}>
+                                        {test.status === 'Absent' ? 'Absent' : score != null ? `${score}%` : 'N/A'}
+                                    </td>
                                     <td className="px-4 py-3">
                                         <div className="flex flex-wrap gap-1">
+                                            {test.status === 'Absent' ? (
+                                                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300">Absent</span>
+                                            ) : score !== null ? (
+                                                score >= 80 ? (
+                                                    <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Good Score</span>
+                                                ) : score >= 60 ? (
+                                                    <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Medium Score</span>
+                                                ) : (
+                                                    <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Low Score</span>
+                                                )
+                                            ) : null}
                                             {test.retestRequired === 'Yes' && <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Retest</span>}
-                                            {isLowScore && <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Low Score</span>}
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-right">
