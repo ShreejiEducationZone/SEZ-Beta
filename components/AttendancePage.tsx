@@ -81,7 +81,11 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescripto
     // Load face-api.js models on component mount
     useEffect(() => {
         const loadModels = async () => {
-            const MODEL_URL = '/models';
+            // Use Vite's BASE_URL so the models path works both locally and when
+            // the app is deployed under a subpath (Vercel, GitHub Pages, etc.).
+            // import.meta.env.BASE_URL ends with '/' by Vite, so joining with
+            // 'models' yields the correct path.
+            const MODEL_URL = `${(import.meta as any).env.BASE_URL}models`;
             try {
                 await Promise.all([
                     faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -110,9 +114,9 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescripto
         const roster = students
             .filter(s => !s.isArchived)
             .map(student => {
-                const descriptorArray = descriptorMap.get(student.id);
-                const descriptor = descriptorArray ? new Float32Array(descriptorArray) : null;
-                const todaysRecord = todaysRecords.get(student.id);
+                const descriptorArray = descriptorMap.get(student.id) as unknown as number[] | undefined;
+                const descriptor = descriptorArray ? new Float32Array(descriptorArray as number[]) : null;
+                const todaysRecord = todaysRecords.get(student.id) as AttendanceRecord | undefined;
 
                 return {
                     ...student,
