@@ -1,10 +1,9 @@
 import React from 'react';
 
 const AttendanceIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w.org/2000/svg" className={className || "h-6 w-6"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M20.285 18.285A10 10 0 0012 2c-5.523 0-10 4.477-10 10" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.715 18.285A10 10 0 0112 22c5.523 0 10-4.477 10-10" />
+    <svg xmlns="http://www.w3.org/2000/svg" className={className || "h-6 w-6"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l2 2 4-4" />
     </svg>
 );
 

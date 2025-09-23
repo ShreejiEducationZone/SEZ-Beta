@@ -9,8 +9,9 @@ import ChevronLeftIcon from '../icons/ChevronLeftIcon';
 import ChevronRightIcon from '../icons/ChevronRightIcon';
 import ReportsIcon from '../icons/ReportsIcon';
 import AttendanceIcon from '../icons/AttendanceIcon';
+import SettingsIcon from '../icons/SettingsIcon';
 
-type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'attendance';
+type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'attendance' | 'settings';
 
 interface SidebarProps {
     isExpanded: boolean;
@@ -68,6 +69,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle, currentPage, on
                     <NavLink to="doubts" icon={DoubtIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Doubt Box</NavLink>
                     <NavLink to="reports" icon={ReportsIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Reports & Tests</NavLink>
                     <NavLink to="attendance" icon={AttendanceIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Attendance</NavLink>
+                    <div className="flex-grow" />
+                    <NavLink to="settings" icon={SettingsIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Settings</NavLink>
                 </nav>
                 <div className="p-2 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
                     <button

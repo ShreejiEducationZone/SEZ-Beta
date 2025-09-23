@@ -128,7 +128,8 @@ const DoubtBoxPage: React.FC<DoubtBoxPageProps> = ({ students, allStudentSubject
                 .map(d => d.studentId)
         );
 
-        return students.filter(student => {
+        // FIX: Explicitly type 'student' as Student to fix property access errors where type was inferred as 'unknown'.
+        return students.filter((student: Student) => {
             if (student.isArchived !== showArchived) return false;
             
             if (filters.board && student.board !== filters.board) return false;

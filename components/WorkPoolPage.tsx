@@ -55,7 +55,8 @@ const WorkPoolPage: React.FC<WorkPoolPageProps> = ({ students, allStudentSubject
 
     const allSubjects = useMemo(() => {
         const subjectsSet = new Set<string>();
-        Object.values(allStudentSubjects).forEach(studentSubjects => {
+        // FIX: Explicitly type studentSubjects to resolve 'subjects' property error.
+        Object.values(allStudentSubjects).forEach((studentSubjects: { subjects: SubjectData[] }) => {
             studentSubjects.subjects.forEach(subject => subjectsSet.add(subject.subject));
         });
         return Array.from(subjectsSet).sort();
@@ -76,7 +77,8 @@ const WorkPoolPage: React.FC<WorkPoolPageProps> = ({ students, allStudentSubject
     }, [workItems]);
 
     const filteredWorkItems = useMemo(() => {
-        const studentMap = new Map(students.map(s => [s.id, s]));
+        // FIX: Explicitly type the Map to ensure correct type inference for 'student'.
+        const studentMap = new Map<string, Student>(students.map(s => [s.id, s]));
 
         return workItems.filter(item => {
             const student = studentMap.get(item.studentId);

@@ -1,5 +1,7 @@
+
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { Student, SubjectData, Test, TestStatus, TestPriority, TestType, Chapter } from '../types';
+import { Student, SubjectData, Test, TestStatus, TestPriority, TestType, Chapter, MistakeTypeDefinition } from '../types';
 import { TEST_PRIORITIES, TEST_TYPES } from '../constants';
 import InputField from './form/InputField';
 import SelectField from './form/SelectField';
@@ -11,7 +13,7 @@ interface TestFormProps {
     test?: Test | null;
     onSave: (test: Test) => void;
     onCancel: () => void;
-    allMistakeTypes: string[];
+    allMistakeTypes: MistakeTypeDefinition[];
 }
 
 const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onSave, onCancel, allMistakeTypes }) => {
@@ -35,7 +37,6 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
     
     const [selectedChapters, setSelectedChapters] = useState<Chapter[]>(test?.chapters || []);
     const [mistakeTypes, setMistakeTypes] = useState<Set<string>>(new Set(test?.mistakeTypes || []));
-    const [otherMistakeText, setOtherMistakeText] = useState('');
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
     const availableChapters = useMemo(() => {
@@ -57,29 +58,6 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
         }
     }, [status, test]);
 
-    useEffect(() => {
-        if (test?.mistakeTypes) {
-            const predefinedMistakes = new Set(allMistakeTypes);
-            const customMistake = test.mistakeTypes.find(m => !predefinedMistakes.has(m));
-            if (customMistake) {
-                setMistakeTypes(prev => {
-                    const newSet = new Set(prev);
-                    // Remove custom text and add 'Other' to check the box
-                    if (newSet.has(customMistake)) {
-                        newSet.delete(customMistake);
-                    }
-                    newSet.add('Other');
-                    return newSet;
-                });
-                setOtherMistakeText(customMistake);
-            }
-        }
-    }, [test, allMistakeTypes]);
-
-    const availableMistakeTypes = useMemo(() => {
-        return allMistakeTypes.filter(m => m !== 'Other');
-    }, [allMistakeTypes]);
-
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -97,13 +75,13 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
         });
     };
 
-    const handleMistakeTypeToggle = (type: string) => {
+    const handleMistakeTypeToggle = (title: string) => {
         setMistakeTypes(prev => {
             const newSet = new Set(prev);
-            if (newSet.has(type)) {
-                newSet.delete(type);
+            if (newSet.has(title)) {
+                newSet.delete(title);
             } else {
-                newSet.add(type);
+                newSet.add(title);
             }
             return newSet;
         });
@@ -124,7 +102,6 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
             if (formData.totalMarks === '' || isNaN(total)) newErrors.totalMarks = 'Must be a number';
             if (!isNaN(marks) && !isNaN(total) && marks > total) newErrors.marksObtained = 'Cannot exceed total marks';
             if (!isNaN(total) && total <= 0) newErrors.totalMarks = 'Must be positive';
-            if(mistakeTypes.has('Other') && !otherMistakeText.trim()) newErrors.otherMistake = 'Please specify the mistake';
         }
         
         setErrors(newErrors);
@@ -140,14 +117,6 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
             finalStatus = 'Absent';
         }
 
-        const finalMistakes = new Set(mistakeTypes);
-        if (finalMistakes.has('Other')) {
-            finalMistakes.delete('Other');
-            if (otherMistakeText.trim()) {
-                finalMistakes.add(otherMistakeText.trim());
-            }
-        }
-
         const finalTest: Test = {
             id: test?.id || `t_${Date.now()}`,
             studentId: student.id,
@@ -161,7 +130,7 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
             testType: finalStatus === 'Completed' ? (formData.testType as TestType) : undefined,
             marksObtained: finalStatus === 'Completed' && formData.marksObtained !== '' ? parseFloat(formData.marksObtained) : undefined,
             totalMarks: finalStatus === 'Completed' && formData.totalMarks !== '' ? parseFloat(formData.totalMarks) : undefined,
-            mistakeTypes: finalStatus === 'Completed' ? Array.from(finalMistakes) : undefined,
+            mistakeTypes: finalStatus === 'Completed' ? Array.from(mistakeTypes) : undefined,
             remarks: finalStatus === 'Completed' ? formData.remarks.trim() : undefined,
             strongArea: finalStatus === 'Completed' ? formData.strongArea.trim() : undefined,
             weakArea: finalStatus === 'Completed' ? formData.weakArea.trim() : undefined,
@@ -238,33 +207,23 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Mistake Types</label>
-                                    <div className="mt-2 flex flex-wrap gap-2">
-                                        {availableMistakeTypes.map(type => (
-                                            <label key={type} className="flex items-center space-x-2 p-2 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/50 has-[:checked]:border-blue-500">
+                                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {allMistakeTypes.map(type => (
+                                            <label key={type.title} className="flex items-start gap-2 p-3 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/50 has-[:checked]:border-blue-500">
                                                 <input
                                                     type="checkbox"
-                                                    checked={mistakeTypes.has(type)}
-                                                    onChange={() => handleMistakeTypeToggle(type)}
-                                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                    checked={mistakeTypes.has(type.title)}
+                                                    onChange={() => handleMistakeTypeToggle(type.title)}
+                                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mt-1 flex-shrink-0"
                                                 />
-                                                <span className="text-sm">{type}</span>
+                                                <div>
+                                                    <span className="font-semibold">{type.title}</span>
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400">{type.description}</p>
+                                                </div>
                                             </label>
                                         ))}
-                                        <label key="Other" className="flex items-center space-x-2 p-2 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/50 has-[:checked]:border-blue-500">
-                                            <input
-                                                type="checkbox"
-                                                checked={mistakeTypes.has('Other')}
-                                                onChange={() => handleMistakeTypeToggle('Other')}
-                                                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                            />
-                                            <span className="text-sm">Other</span>
-                                        </label>
                                     </div>
-                                    {mistakeTypes.has('Other') && (
-                                        <div className="mt-2">
-                                            <InputField label="Specify Other Mistake" name="otherMistake" value={otherMistakeText} onChange={(e) => setOtherMistakeText(e.target.value)} error={errors.otherMistake} required />
-                                        </div>
-                                    )}
+                                     <p className="text-xs text-gray-500 mt-2">To add or remove mistake types, go to the Settings page.</p>
                                 </div>
                                 <TextareaField label="Remarks" name="remarks" value={formData.remarks} onChange={handleChange} />
                                 <TextareaField label="Strong Area" name="strongArea" value={formData.strongArea} onChange={handleChange} />

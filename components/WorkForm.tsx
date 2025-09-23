@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Student, SubjectData, WorkItem, WorkStatus, WorkPriority } from '../types';
 import { WORK_STATUSES, WORK_PRIORITIES } from '../constants';
@@ -56,7 +57,8 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFiles = Array.from(e.target.files || []);
-        selectedFiles.forEach(file => {
+        // FIX: Explicitly type 'file' as File to resolve property access and method argument errors.
+        selectedFiles.forEach((file: File) => {
             const reader = new FileReader();
             reader.onload = (event) => {
                 setFiles(prev => [...prev, { name: file.name, dataUrl: event.target?.result as string }]);

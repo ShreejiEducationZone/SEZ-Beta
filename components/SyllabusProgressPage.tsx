@@ -21,7 +21,8 @@ const SyllabusProgressPage: React.FC<SyllabusProgressPageProps> = ({ students, a
 
     const allSubjects = useMemo(() => {
         const subjectsSet = new Set<string>();
-        Object.values(allStudentSubjects).forEach(studentSubjects => {
+        // FIX: Explicitly type studentSubjects to resolve 'subjects' property error.
+        Object.values(allStudentSubjects).forEach((studentSubjects: { subjects: SubjectData[] }) => {
             studentSubjects.subjects.forEach(subject => subjectsSet.add(subject.subject));
         });
         return Array.from(subjectsSet).sort();

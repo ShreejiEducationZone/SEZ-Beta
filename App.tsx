@@ -1,6 +1,8 @@
+
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getCollection, setDocument, deleteDocument, runBatch, getDocument } from './firebase';
-import { Student, SubjectData, ChapterProgress, WorkItem, Doubt, Test, FaceDescriptorData, AttendanceRecord } from './types';
+import { Student, SubjectData, ChapterProgress, WorkItem, Doubt, Test, FaceDescriptorData, AttendanceRecord, MistakeTypeDefinition } from './types';
 import StudentCard from './components/StudentCard';
 import StudentDrawer from './components/StudentDrawer';
 import StudentForm from './components/StudentForm';
@@ -11,11 +13,12 @@ import WorkPoolPage from './components/WorkPoolPage';
 import DoubtBoxPage from './components/DoubtBoxPage';
 import ReportsPage from './components/ReportsPage';
 import AttendancePage from './components/AttendancePage';
+import SettingsPage from './components/SettingsPage';
 import Sidebar from './components/layout/Sidebar';
 import { updateDoubtStatusFromWorkItems } from './utils/workPoolService';
 import { MISTAKE_TYPES } from './constants';
 
-type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'attendance';
+type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'attendance' | 'settings';
 
 const App: React.FC = () => {
     const [students, setStudents] = useState<Student[]>([]);
@@ -24,7 +27,7 @@ const App: React.FC = () => {
     const [workItems, setWorkItems] = useState<WorkItem[]>([]);
     const [doubts, setDoubts] = useState<Doubt[]>([]);
     const [tests, setTests] = useState<Test[]>([]);
-    const [customMistakeTypes, setCustomMistakeTypes] = useState<string[]>([]);
+    const [customMistakeTypes, setCustomMistakeTypes] = useState<MistakeTypeDefinition[]>([]);
     const [faceDescriptors, setFaceDescriptors] = useState<FaceDescriptorData[]>([]);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
 
@@ -80,8 +83,24 @@ const App: React.FC = () => {
                 setTests(testsData as Test[]);
                 setFaceDescriptors(descriptorsData as FaceDescriptorData[]);
                 setAttendanceRecords(attendanceData as AttendanceRecord[]);
-                if (mistakeTypesDoc && (mistakeTypesDoc as any).types) {
-                    setCustomMistakeTypes((mistakeTypesDoc as any).types);
+                if (mistakeTypesDoc && Array.isArray((mistakeTypesDoc as any).types)) {
+                    const fetchedTypes = (mistakeTypesDoc as any).types;
+                    // Data migration: handle old string-based types and new object-based types to prevent crashes
+                    const migratedTypes = fetchedTypes.map((type: any) => {
+                        if (typeof type === 'string') {
+                            // If it's an old string type, convert it to the new object format
+                            return { title: type, description: 'Custom mistake type (migrated).' };
+                        }
+                        // If it's an object, ensure it has the required properties
+                        if (typeof type === 'object' && type !== null && typeof type.title === 'string') {
+                            return { title: type.title, description: type.description || '' };
+                        }
+                        return null; // Ignore malformed/invalid entries
+                    }).filter((type: MistakeTypeDefinition | null): type is MistakeTypeDefinition => type !== null);
+
+                    setCustomMistakeTypes(migratedTypes);
+                } else {
+                    setCustomMistakeTypes([]);
                 }
 
             } catch (error) {
@@ -296,18 +315,6 @@ const App: React.FC = () => {
 
     const handleSaveTest = useCallback(async (test: Test) => {
         try {
-            // New logic for custom mistake types
-            if (test.mistakeTypes && test.mistakeTypes.length > 0) {
-                const allKnownMistakeTypes = new Set([...MISTAKE_TYPES, ...customMistakeTypes]);
-                const newMistakes = test.mistakeTypes.filter(m => !allKnownMistakeTypes.has(m));
-                
-                if (newMistakes.length > 0) {
-                    const updatedCustomTypes = [...customMistakeTypes, ...newMistakes];
-                    setCustomMistakeTypes(updatedCustomTypes);
-                    await setDocument("configuration", "mistakeTypes", { types: updatedCustomTypes });
-                }
-            }
-
             await setDocument("tests", test.id, test);
             setTests(prev => {
                 const exists = prev.some(t => t.id === test.id);
@@ -318,7 +325,7 @@ const App: React.FC = () => {
             console.error("Error saving test:", error);
             alert(`Failed to save test. Please check your internet connection. Error: ${error.message}`);
         }
-    }, [customMistakeTypes]);
+    }, []);
 
     const handleDeleteTest = useCallback(async (testId: string) => {
         try {
@@ -355,6 +362,19 @@ const App: React.FC = () => {
         } catch (error: any) {
             console.error("Error saving attendance record:", error);
             alert(`Failed to save attendance. Please check your internet connection. Error: ${error.message}`);
+        }
+    }, []);
+    
+    const handleSaveCustomMistakeTypes = useCallback(async (types: MistakeTypeDefinition[]) => {
+        try {
+            const uniqueTypes = types.filter((type, index, self) => 
+                index === self.findIndex((t) => t.title.trim().toLowerCase() === type.title.trim().toLowerCase())
+            );
+            await setDocument("configuration", "mistakeTypes", { types: uniqueTypes });
+            setCustomMistakeTypes(uniqueTypes);
+        } catch (error: any) {
+            console.error("Error saving custom mistake types:", error);
+            alert(`Failed to save custom mistake types. Please check your internet connection. Error: ${error.message}`);
         }
     }, []);
 
@@ -414,10 +434,24 @@ const App: React.FC = () => {
     }, [students, showArchived, filters, searchQuery]);
     
     const allMistakeTypes = useMemo(() => {
-        // Use a Set to handle potential duplicates, then convert back to array
-        const combined = new Set([...MISTAKE_TYPES, ...customMistakeTypes]);
-        return Array.from(combined);
+        const combined = new Map<string, MistakeTypeDefinition>();
+        // Add defaults first
+        MISTAKE_TYPES.forEach(type => combined.set(type.title.toLowerCase(), type));
+        // Override with custom types if titles match
+        customMistakeTypes.forEach(type => combined.set(type.title.toLowerCase(), type));
+        return Array.from(combined.values());
     }, [customMistakeTypes]);
+
+    const todaysAttendanceMap = useMemo(() => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const map = new Map<string, 'Present'>();
+        attendanceRecords.forEach(record => {
+            if (record.date === todayStr && record.status === 'Present') {
+                map.set(record.studentId, 'Present');
+            }
+        });
+        return map;
+    }, [attendanceRecords]);
 
 
     const renderPageContent = () => {
@@ -480,6 +514,17 @@ const App: React.FC = () => {
                             attendanceRecords={attendanceRecords}
                             onSaveAttendanceRecord={handleSaveAttendanceRecord}
                         />;
+             case 'settings':
+                return (
+                    <SettingsPage
+                        darkMode={darkMode}
+                        onToggleDarkMode={() => setDarkMode(prev => !prev)}
+                        customMistakeTypes={customMistakeTypes}
+                        onSaveMistakeTypes={handleSaveCustomMistakeTypes}
+                        students={students.filter(s => !s.isArchived)}
+                        onSaveStudent={handleSaveStudent}
+                    />
+                );
             case 'students':
             default:
                 return (
@@ -504,10 +549,18 @@ const App: React.FC = () => {
                             </label>
                         </div>
                         {filteredStudents.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                {filteredStudents.map(student => (
-                                    <StudentCard key={student.id} student={student} onClick={handleCardClick} />
-                                ))}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                                {filteredStudents.map(student => {
+                                    const attendanceStatus = todaysAttendanceMap.get(student.id) || 'Absent';
+                                    return (
+                                        <StudentCard
+                                            key={student.id}
+                                            student={student}
+                                            onClick={handleCardClick}
+                                            attendanceStatus={attendanceStatus}
+                                        />
+                                    );
+                                })}
                             </div>
                         ) : (
                             <div className="text-center py-16 text-gray-500 dark:text-gray-400">
@@ -528,6 +581,7 @@ const App: React.FC = () => {
             case 'doubts': return 'Doubt Box';
             case 'reports': return 'Test Tracker';
             case 'attendance': return 'Attendance';
+            case 'settings': return 'Settings';
             case 'students':
             default: return 'Student Directory';
         }

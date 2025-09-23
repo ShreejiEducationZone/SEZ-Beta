@@ -27,6 +27,7 @@ export interface Student {
   gender?: Gender;
   email?: string;
   dob?: string; // YYYY-MM-DD
+  password?: string;
 }
 
 export interface Chapter {
@@ -103,8 +104,12 @@ export interface Doubt {
 // New Types for Reports & Tests
 export type TestType = 'School Test' | 'Self-Test' | 'Class Test';
 export type TestStatus = 'Upcoming' | 'Completed' | 'Absent';
-export type MistakeType = 'Careless' | 'Conceptual' | 'Calculation Error' | 'Step Missing' | 'Formula Misuse' | 'Time Management';
 export type TestPriority = 'Low' | 'Medium' | 'High';
+
+export interface MistakeTypeDefinition {
+  title: string;
+  description: string;
+}
 
 
 export interface Test {

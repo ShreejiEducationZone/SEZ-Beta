@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Student, SubjectData, Test } from '../types';
+import { Student, SubjectData, Test, MistakeTypeDefinition } from '../types';
 import TestForm from './TestForm';
 import TestDetailModal from './TestDetailModal';
 import ScoreTrendChart from './ScoreTrendChart';
@@ -22,7 +22,7 @@ interface ReportsPageProps {
     tests: Test[];
     onSaveTest: (test: Test) => void;
     onDeleteTest: (testId: string) => void;
-    allMistakeTypes: string[];
+    allMistakeTypes: MistakeTypeDefinition[];
 }
 
 const getScoreColor = (score: number) => {
