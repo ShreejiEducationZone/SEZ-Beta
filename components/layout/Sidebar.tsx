@@ -1,7 +1,3 @@
-
-
-
-
 import React from 'react';
 import BookIcon from '../icons/BookIcon';
 import DirectoryIcon from '../icons/DirectoryIcon';

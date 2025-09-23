@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getCollection, setDocument, deleteDocument, runBatch, getDocument } from './firebase';
-import { Student, SubjectData, ChapterProgress, WorkItem, Doubt, Test } from './types';
+import { Student, SubjectData, ChapterProgress, WorkItem, Doubt, Test, FaceDescriptorData, AttendanceRecord } from './types';
 import StudentCard from './components/StudentCard';
 import StudentDrawer from './components/StudentDrawer';
 import StudentForm from './components/StudentForm';
@@ -10,8 +10,8 @@ import SyllabusProgressPage from './components/SyllabusProgressPage';
 import WorkPoolPage from './components/WorkPoolPage';
 import DoubtBoxPage from './components/DoubtBoxPage';
 import ReportsPage from './components/ReportsPage';
-import Sidebar from './components/layout/Sidebar';
 import AttendancePage from './components/AttendancePage';
+import Sidebar from './components/layout/Sidebar';
 import { updateDoubtStatusFromWorkItems } from './utils/workPoolService';
 import { MISTAKE_TYPES } from './constants';
 
@@ -25,6 +25,9 @@ const App: React.FC = () => {
     const [doubts, setDoubts] = useState<Doubt[]>([]);
     const [tests, setTests] = useState<Test[]>([]);
     const [customMistakeTypes, setCustomMistakeTypes] = useState<string[]>([]);
+    const [faceDescriptors, setFaceDescriptors] = useState<FaceDescriptorData[]>([]);
+    const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+
 
     const [darkMode, setDarkMode] = useState<boolean>(false);
     const [editingStudent, setEditingStudent] = useState<Partial<Student> | null>(null);
@@ -49,6 +52,8 @@ const App: React.FC = () => {
                     doubtsData,
                     testsData,
                     mistakeTypesDoc,
+                    descriptorsData,
+                    attendanceData,
                 ] = await Promise.all([
                     getCollection("students"),
                     getCollection("studentSubjects"),
@@ -57,6 +62,8 @@ const App: React.FC = () => {
                     getCollection("doubts"),
                     getCollection("tests"),
                     getDocument("configuration", "mistakeTypes"),
+                    getCollection("faceDescriptors"),
+                    getCollection("attendance"),
                 ]);
 
                 setStudents(studentsData as Student[]);
@@ -71,6 +78,8 @@ const App: React.FC = () => {
                 setWorkItems(workData as WorkItem[]);
                 setDoubts(doubtsData as Doubt[]);
                 setTests(testsData as Test[]);
+                setFaceDescriptors(descriptorsData as FaceDescriptorData[]);
+                setAttendanceRecords(attendanceData as AttendanceRecord[]);
                 if (mistakeTypesDoc && (mistakeTypesDoc as any).types) {
                     setCustomMistakeTypes((mistakeTypesDoc as any).types);
                 }
@@ -321,6 +330,34 @@ const App: React.FC = () => {
         }
     }, []);
 
+    const handleSaveFaceDescriptor = useCallback(async (descriptorData: FaceDescriptorData) => {
+        try {
+            await setDocument("faceDescriptors", descriptorData.id, descriptorData);
+            setFaceDescriptors(prev => {
+                const exists = prev.some(d => d.id === descriptorData.id);
+                if (exists) return prev.map(d => d.id === descriptorData.id ? descriptorData : d);
+                return [...prev, descriptorData];
+            });
+        } catch (error: any) {
+            console.error("Error saving face descriptor:", error);
+            alert(`Failed to save face registration data. Please check your internet connection. Error: ${error.message}`);
+        }
+    }, []);
+
+    const handleSaveAttendanceRecord = useCallback(async (record: AttendanceRecord) => {
+        try {
+            await setDocument("attendance", record.id, record);
+            setAttendanceRecords(prev => {
+                const exists = prev.some(r => r.id === record.id);
+                if (exists) return prev.map(r => r.id === record.id ? record : r);
+                return [...prev, record];
+            });
+        } catch (error: any) {
+            console.error("Error saving attendance record:", error);
+            alert(`Failed to save attendance. Please check your internet connection. Error: ${error.message}`);
+        }
+    }, []);
+
     const handleArchive = useCallback(async (id: string) => {
         try {
             const student = students.find(s => s.id === id);
@@ -436,9 +473,13 @@ const App: React.FC = () => {
                     />
                 );
             case 'attendance':
-                return (
-                    <AttendancePage students={students} />
-                );
+                return <AttendancePage 
+                            students={students} 
+                            faceDescriptors={faceDescriptors} 
+                            onSaveFaceDescriptor={handleSaveFaceDescriptor}
+                            attendanceRecords={attendanceRecords}
+                            onSaveAttendanceRecord={handleSaveAttendanceRecord}
+                        />;
             case 'students':
             default:
                 return (

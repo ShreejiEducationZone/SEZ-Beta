@@ -128,10 +128,16 @@ export interface Test {
   retestRequired?: 'Yes' | 'No';
 }
 
-// New Types for Attendance
-export interface StudentAttendance {
-    studentId: string;
-    status: 'Present' | 'Absent';
-    lastSeen: string | null; // ISO string for timestamp
-    attendanceLog: { [date: string]: 'Present' | 'Absent' }; // 'YYYY-MM-DD' keys
+export interface FaceDescriptorData {
+  id: string; // Student ID
+  descriptor: number[];
+}
+
+export interface AttendanceRecord {
+  id: string; // Composite key: studentId_YYYY-MM-DD
+  studentId: string;
+  date: string; // YYYY-MM-DD
+  status: 'Present';
+  inTime: string; // HH:MM:SS
+  lastSeen: string; // HH:MM:SS
 }

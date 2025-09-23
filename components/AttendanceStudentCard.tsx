@@ -1,61 +1,73 @@
-import React, { useMemo } from 'react';
-import { Student, StudentAttendance } from '../types';
+import React from 'react';
+import { Student } from '../types';
 import PlaceholderAvatar from './PlaceholderAvatar';
+import FaceIdIcon from './icons/FaceIdIcon';
+import CheckCircleIcon from './icons/CheckCircleIcon';
 
-interface AttendanceStudentCardProps {
-    student: Student;
-    attendance?: StudentAttendance;
-    onClick: (student: Student) => void;
+interface StudentAttendanceData extends Student {
+    status: 'Present' | 'Absent';
+    lastSeen: string | null;
+    isRegistered: boolean;
 }
 
-const AttendanceStudentCard: React.FC<AttendanceStudentCardProps> = ({ student, attendance, onClick }) => {
-    const isPresent = attendance?.status === 'Present';
+interface AttendanceStudentCardProps {
+    student: StudentAttendanceData;
+    onCardClick: () => void;
+    onRegisterClick: () => void;
+    isRegistering?: boolean;
+}
 
-    // FIX: useMemo was used without being imported.
-    const lastSeenTime = useMemo(() => {
-        if (!attendance?.lastSeen) return null;
-        try {
-            return new Date(attendance.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        } catch {
-            return null;
-        }
-    }, [attendance?.lastSeen]);
-    
+const AttendanceStudentCard: React.FC<AttendanceStudentCardProps> = ({ student, onCardClick, onRegisterClick, isRegistering }) => {
+    const isPresent = student.status === 'Present';
+
+    const handleRegister = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onRegisterClick();
+    };
+
     return (
         <div
-            onClick={() => onClick(student)}
+            onClick={onCardClick}
             className={`
-                bg-light-card dark:bg-dark-card rounded-2xl shadow-md p-4 transition-all duration-300 cursor-pointer
-                border-l-4
-                ${isPresent ? 'border-green-500' : 'border-gray-300 dark:border-gray-600'}
-                hover:shadow-lg hover:-translate-y-1
+                relative min-h-[240px] rounded-2xl p-4 flex flex-col items-center justify-between
+                bg-gray-200/50 dark:bg-gray-800/40 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50
+                transition-all duration-300 hover:shadow-lg hover:border-gray-400/50 dark:hover:border-gray-600/50
+                cursor-pointer group
+                ${isRegistering ? 'ring-2 ring-brand-blue shadow-xl' : ''}
             `}
         >
-            <div className="flex flex-col h-full">
-                <div className="flex items-center space-x-4">
-                    <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex-shrink-0">
-                        {student.avatarUrl ? <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" /> : <PlaceholderAvatar />}
-                    </div>
-                    <div className="flex-1">
-                        <h3 className="text-base font-semibold text-gray-900 dark:text-white">{student.name}</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Grade {student.grade}</p>
-                    </div>
+            {/* Status Dot */}
+            <div
+                title={`Status: ${student.status}`}
+                className={`absolute top-3.5 right-3.5 w-3 h-3 rounded-full border-2 border-light-card dark:border-dark-card
+                ${isPresent ? 'bg-green-500' : 'bg-red-500'}`}
+            ></div>
+            
+            {/* Main content */}
+            <div className="text-center w-full">
+                <div className="w-20 h-20 mx-auto rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 border-2 border-white/50 dark:border-gray-600/50 shadow-md mb-2">
+                    {student.avatarUrl ? <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" /> : <PlaceholderAvatar />}
                 </div>
-
-                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                     <div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Status</p>
-                        <p className={`text-lg font-bold ${isPresent ? 'text-green-600 dark:text-green-400' : 'text-gray-500'}`}>
-                            {attendance?.status || 'Absent'}
-                        </p>
+                <p className="font-semibold text-gray-900 dark:text-white truncate">{student.name}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{`Grade ${student.grade} • Batch ${student.batch}`}</p>
+            </div>
+            
+            {/* Footer */}
+            <div className="w-full">
+                {student.isRegistered ? (
+                    <div className="flex items-center justify-center gap-2 text-sm font-medium text-green-700 dark:text-green-300 bg-green-500/10 dark:bg-green-500/20 rounded-lg px-3 py-1.5">
+                        <CheckCircleIcon className="h-4 w-4" /> Registered
                     </div>
-                    {lastSeenTime && isPresent && (
-                         <div className="text-right">
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Last Seen</p>
-                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{lastSeenTime}</p>
-                        </div>
-                    )}
-                </div>
+                ) : (
+                    <button
+                        onClick={handleRegister}
+                        disabled={isRegistering}
+                        className="w-full flex items-center justify-center gap-2 h-9 px-3 rounded-lg bg-brand-blue text-white hover:bg-blue-600 text-sm font-semibold transition-colors disabled:bg-gray-400 disabled:cursor-wait"
+                    >
+                        <FaceIdIcon className="h-4 w-4" />
+                        <span>{isRegistering ? 'Scanning...' : 'Register'}</span>
+                    </button>
+                )}
             </div>
         </div>
     );
