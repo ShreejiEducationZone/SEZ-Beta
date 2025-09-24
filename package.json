@@ -1,5 +1,6 @@
 {
-  "name": "copy-of-working-sez-9/24/2025",
+  "name": "sez-live",
+  "description": "copy-of-working-sez-9/24/2025",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,6 +8,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
+  },
+  "engines": {
+    "node": "18.x"
   },
   "dependencies": {
     "react": "^19.1.1",

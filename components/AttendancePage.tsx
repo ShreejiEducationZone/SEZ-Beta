@@ -30,20 +30,60 @@ interface AttendancePageProps {
     showToast: (message: string, type: Toast['type']) => void;
 }
 
-const StatCard: React.FC<{ title: string, value: string | number, icon: React.ReactNode, className?: string }> = ({ title, value, icon, className }) => (
-    <div className={`p-4 rounded-xl flex flex-col justify-between ${className}`}>
-        <div className="p-2 bg-white/20 dark:bg-black/20 rounded-lg w-min">
-            {icon}
+interface DonutChartProps {
+    value: number;
+    total: number;
+    label: string;
+    colorClass: string;
+    trackColorClass?: string;
+}
+
+const DonutChart: React.FC<DonutChartProps> = ({ value, total, label, colorClass, trackColorClass = 'text-gray-200 dark:text-gray-700' }) => {
+    const percentage = total > 0 ? (value / total) * 100 : 0;
+    const radius = 52;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+    return (
+        <div className="flex flex-col items-center gap-3">
+            <div className="relative w-32 h-32">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
+                    <circle
+                        className={trackColorClass}
+                        stroke="currentColor"
+                        strokeWidth="14"
+                        fill="transparent"
+                        r={radius}
+                        cx="60"
+                        cy="60"
+                    />
+                    <circle
+                        className={colorClass}
+                        stroke="currentColor"
+                        strokeWidth="14"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={strokeDashoffset}
+                        strokeLinecap="round"
+                        fill="transparent"
+                        r={radius}
+                        cx="60"
+                        cy="60"
+                        style={{ transition: 'stroke-dashoffset 0.5s ease-out' }}
+                    />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-3xl font-bold text-gray-800 dark:text-white">{value}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">of {total}</span>
+                </div>
+            </div>
+            <p className="text-base font-semibold text-gray-700 dark:text-gray-300">{label}</p>
         </div>
-        <div>
-            <p className="text-2xl font-bold">{value}</p>
-            <p className="text-sm font-medium opacity-90 truncate">{title}</p>
-        </div>
-    </div>
-);
+    );
+};
+
 
 const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescriptors, attendanceRecords, onSaveFaceDescriptor, onSaveAttendanceRecord, showToast }) => {
-    const [modelsLoaded, setModelsLoaded] = useState(false);
+    const [loadingStatus, setLoadingStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
     const [isCameraOn, setIsCameraOn] = useState(false);
     const [studentRoster, setStudentRoster] = useState<StudentAttendanceData[]>([]);
     const [viewingStudentId, setViewingStudentId] = useState<string | null>(null);
@@ -93,14 +133,15 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescripto
                     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
                     faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
                 ]);
-                setModelsLoaded(true);
+                setLoadingStatus('loaded');
             } catch (error) {
                 console.error("Failed to load face-api models:", error);
-                setMessage("Error loading AI models. Check console.");
+                setLoadingStatus('error');
+                showToast("Error loading AI models. Check console for details.", 'error');
             }
         };
         loadModels();
-    }, []);
+    }, [showToast]);
 
     // Initialize student roster from props and saved descriptors
     useEffect(() => {
@@ -404,10 +445,8 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescripto
         const totalRegistered = studentRoster.filter(s => s.isRegistered).length;
         const totalPresent = studentRoster.filter(s => s.status === 'Present').length;
         const totalStudents = studentRoster.length;
-        const totalUnregistered = totalStudents - totalRegistered;
-        const totalAbsent = totalStudents - totalPresent;
 
-        return { totalRegistered, totalUnregistered, totalPresent, totalAbsent };
+        return { totalRegistered, totalPresent, totalStudents };
     }, [studentRoster]);
 
     const filteredRoster = useMemo(() => {
@@ -506,20 +545,34 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescripto
                             <p className="text-gray-600 dark:text-gray-300 font-medium min-h-[24px]">{message}</p>
                         </div>
                         <div className="mt-4 flex gap-2">
-                            <button onClick={startCamera} disabled={!modelsLoaded} className="flex-1 h-12 px-4 rounded-md bg-green-600 text-white font-semibold hover:bg-green-700 disabled:bg-gray-400">
-                                {modelsLoaded ? 'Start Camera' : 'Loading Models...'}
+                            <button onClick={startCamera} disabled={loadingStatus !== 'loaded'} className="flex-1 h-12 px-4 rounded-md bg-green-600 text-white font-semibold hover:bg-green-700 disabled:bg-gray-400">
+                                {
+                                    loadingStatus === 'loaded' ? 'Start Camera' :
+                                    loadingStatus === 'loading' ? 'Loading Models...' :
+                                    'Models Failed'
+                                }
                             </button>
                             <button onClick={stopAllCameras} className="flex-1 h-12 px-4 rounded-md bg-red-600 text-white font-semibold hover:bg-red-700">Stop Camera</button>
                         </div>
                     </div>
 
                     <div>
-                        <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">Attendance Status</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <StatCard title="Present Today" value={stats.totalPresent} icon={<CheckCircleIcon className="h-6 w-6"/>} className="bg-green-500 text-white" />
-                            <StatCard title="Absent Today" value={stats.totalAbsent} icon={<XCircleIcon className="h-6 w-6"/>} className="bg-red-500 text-white" />
-                            <StatCard title="Registered" value={stats.totalRegistered} icon={<FaceIdIcon className="h-6 w-6"/>} className="bg-blue-500 text-white" />
-                            <StatCard title="Unregistered" value={stats.totalUnregistered} icon={<AttendanceIcon className="h-6 w-6"/>} className="bg-gray-500 text-white" />
+                        <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">Today's Summary</h3>
+                        <div className="bg-light-card dark:bg-dark-card p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row justify-around items-center gap-6">
+                            <DonutChart 
+                                value={stats.totalPresent} 
+                                total={stats.totalStudents}
+                                label="Present"
+                                colorClass="text-green-500"
+                                trackColorClass="text-red-500/30 dark:text-red-500/20"
+                            />
+                            <div className="h-24 w-px bg-gray-200 dark:bg-gray-700 hidden sm:block"></div>
+                            <DonutChart 
+                                value={stats.totalRegistered}
+                                total={stats.totalStudents}
+                                label="Registered"
+                                colorClass="text-blue-500"
+                            />
                         </div>
                     </div>
                 </div>
