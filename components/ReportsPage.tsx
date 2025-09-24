@@ -1,3 +1,5 @@
+
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { Student, SubjectData, Test, MistakeTypeDefinition } from '../types';
 import TestForm from './TestForm';
@@ -14,6 +16,7 @@ import StarIcon from './icons/StarIcon';
 import CheckCircleIcon from './icons/CheckCircleIcon';
 import CalendarIcon from './icons/CalendarIcon';
 import XCircleIcon from './icons/XCircleIcon';
+import OverallStrengthsWeaknesses from './OverallStrengthsWeaknesses';
 
 
 interface ReportsPageProps {
@@ -23,6 +26,7 @@ interface ReportsPageProps {
     onSaveTest: (test: Test) => void;
     onDeleteTest: (testId: string) => void;
     allMistakeTypes: MistakeTypeDefinition[];
+    subjectAreas: { [key: string]: string[] };
 }
 
 const getScoreColor = (score: number) => {
@@ -44,7 +48,7 @@ const StatCard: React.FC<{icon: React.ElementType, iconColor: string, bgColor: s
 );
 
 
-const ReportsPage: React.FC<ReportsPageProps> = ({ students, allStudentSubjects, tests, onSaveTest, onDeleteTest, allMistakeTypes }) => {
+const ReportsPage: React.FC<ReportsPageProps> = ({ students, allStudentSubjects, tests, onSaveTest, onDeleteTest, allMistakeTypes, subjectAreas }) => {
     const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
     const [isTestFormOpen, setIsTestFormOpen] = useState(false);
     const [editingTest, setEditingTest] = useState<Test | null>(null);
@@ -288,6 +292,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ students, allStudentSubjects,
                             </div>
                         </div>
                         
+                        <OverallStrengthsWeaknesses tests={completedAndAbsentTests.filter(t => t.status === 'Completed')} />
                         <TestSchedule tests={testsForSelectedStudent} onTestSelect={setViewingTest} />
                         <ScoreTrendChart completedTests={completedAndAbsentTests.filter(t => t.status === 'Completed')} />
                         <MistakeAnalytics tests={completedAndAbsentTests.filter(t => t.status === 'Completed')} />
@@ -304,6 +309,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ students, allStudentSubjects,
                     onSave={onSaveTest}
                     onCancel={handleCloseForm}
                     allMistakeTypes={allMistakeTypes}
+                    subjectAreas={subjectAreas}
                 />
             )}
             

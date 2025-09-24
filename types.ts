@@ -127,9 +127,8 @@ export interface Test {
   marksObtained?: number;
   totalMarks?: number;
   mistakeTypes?: string[];
-  remarks?: string;
-  strongArea?: string;
-  weakArea?: string;
+  strongArea?: string[];
+  weakArea?: string[];
   retestRequired?: 'Yes' | 'No';
 }
 

@@ -1,11 +1,9 @@
 
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Student, SubjectData, Test, TestStatus, TestPriority, TestType, Chapter, MistakeTypeDefinition } from '../types';
 import { TEST_PRIORITIES, TEST_TYPES } from '../constants';
 import InputField from './form/InputField';
 import SelectField from './form/SelectField';
-import TextareaField from './form/TextareaField';
 
 interface TestFormProps {
     student: Student;
@@ -14,9 +12,10 @@ interface TestFormProps {
     onSave: (test: Test) => void;
     onCancel: () => void;
     allMistakeTypes: MistakeTypeDefinition[];
+    subjectAreas: { [key: string]: string[] };
 }
 
-const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onSave, onCancel, allMistakeTypes }) => {
+const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onSave, onCancel, allMistakeTypes, subjectAreas }) => {
     const isEditMode = !!test;
     const [status, setStatus] = useState<TestStatus>(test?.status === 'Upcoming' ? 'Completed' : (test?.status || 'Upcoming'));
     const [isAbsent, setIsAbsent] = useState(test?.status === 'Absent');
@@ -29,20 +28,31 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
         testType: test?.testType || '',
         marksObtained: test?.marksObtained?.toString() || '',
         totalMarks: test?.totalMarks?.toString() || '',
-        remarks: test?.remarks || '',
-        strongArea: test?.strongArea || '',
-        weakArea: test?.weakArea || '',
         retestRequired: test?.retestRequired || 'No',
     });
     
+    // Helper to safely convert legacy string data to an array for state initialization
+    const getAreasForState = (areas: string | string[] | undefined): string[] => {
+        if (!areas) return [];
+        if (Array.isArray(areas)) return areas;
+        return [String(areas)];
+    };
+    
     const [selectedChapters, setSelectedChapters] = useState<Chapter[]>(test?.chapters || []);
     const [mistakeTypes, setMistakeTypes] = useState<Set<string>>(new Set(test?.mistakeTypes || []));
+    const [strongAreas, setStrongAreas] = useState<Set<string>>(new Set(getAreasForState(test?.strongArea)));
+    const [weakAreas, setWeakAreas] = useState<Set<string>>(new Set(getAreasForState(test?.weakArea)));
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
     const availableChapters = useMemo(() => {
         if (!formData.subject) return [];
         return studentSubjects.find(s => s.subject === formData.subject)?.chapters || [];
     }, [formData.subject, studentSubjects]);
+
+    const availableAreas = useMemo(() => {
+        if (!formData.subject) return [];
+        return subjectAreas[formData.subject] || [];
+    }, [formData.subject, subjectAreas]);
 
     useEffect(() => {
         if (!isEditMode) {
@@ -86,6 +96,25 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
             return newSet;
         });
     };
+    
+    const handleAreaToggle = (area: string, type: 'strong' | 'weak') => {
+        if (type === 'strong') {
+            setStrongAreas(prev => {
+                const newSet = new Set(prev);
+                if (newSet.has(area)) newSet.delete(area);
+                else newSet.add(area);
+                return newSet;
+            });
+        } else {
+            setWeakAreas(prev => {
+                const newSet = new Set(prev);
+                if (newSet.has(area)) newSet.delete(area);
+                else newSet.add(area);
+                return newSet;
+            });
+        }
+    };
+
 
     const validate = (): boolean => {
         const newErrors: { [key: string]: string } = {};
@@ -131,9 +160,8 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
             marksObtained: finalStatus === 'Completed' && formData.marksObtained !== '' ? parseFloat(formData.marksObtained) : undefined,
             totalMarks: finalStatus === 'Completed' && formData.totalMarks !== '' ? parseFloat(formData.totalMarks) : undefined,
             mistakeTypes: finalStatus === 'Completed' ? Array.from(mistakeTypes) : undefined,
-            remarks: finalStatus === 'Completed' ? formData.remarks.trim() : undefined,
-            strongArea: finalStatus === 'Completed' ? formData.strongArea.trim() : undefined,
-            weakArea: finalStatus === 'Completed' ? formData.weakArea.trim() : undefined,
+            strongArea: finalStatus === 'Completed' ? Array.from(strongAreas) : undefined,
+            weakArea: finalStatus === 'Completed' ? Array.from(weakAreas) : undefined,
             retestRequired: finalStatus === 'Completed' ? (formData.retestRequired as 'Yes' | 'No') : undefined,
         };
         
@@ -207,27 +235,45 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Mistake Types</label>
-                                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="mt-2 max-h-40 overflow-y-auto thin-scrollbar border border-gray-300 dark:border-gray-600 rounded-lg p-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                                         {allMistakeTypes.map(type => (
-                                            <label key={type.title} className="flex items-start gap-2 p-3 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/50 has-[:checked]:border-blue-500">
+                                            <label key={type.title} className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/50 cursor-pointer has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/50">
                                                 <input
                                                     type="checkbox"
                                                     checked={mistakeTypes.has(type.title)}
                                                     onChange={() => handleMistakeTypeToggle(type.title)}
-                                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mt-1 flex-shrink-0"
+                                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                                                 />
-                                                <div>
-                                                    <span className="font-semibold">{type.title}</span>
-                                                    <p className="text-xs text-gray-500 dark:text-gray-400">{type.description}</p>
-                                                </div>
+                                                <span className="font-semibold text-sm">{type.title}</span>
                                             </label>
                                         ))}
                                     </div>
-                                     <p className="text-xs text-gray-500 mt-2">To add or remove mistake types, go to the Settings page.</p>
+                                    <p className="text-xs text-gray-500 mt-2">To add or remove mistake types, go to the Settings page.</p>
                                 </div>
-                                <TextareaField label="Remarks" name="remarks" value={formData.remarks} onChange={handleChange} />
-                                <TextareaField label="Strong Area" name="strongArea" value={formData.strongArea} onChange={handleChange} />
-                                <TextareaField label="Weak Area" name="weakArea" value={formData.weakArea} onChange={handleChange} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Strong Areas</label>
+                                        <div className="mt-2 max-h-40 overflow-y-auto thin-scrollbar border border-gray-300 dark:border-gray-600 rounded-lg p-2 space-y-2">
+                                            {availableAreas.length > 0 ? availableAreas.map(area => (
+                                                <label key={`strong-${area}`} className={`flex items-center gap-2 p-2 rounded-md transition-colors ${weakAreas.has(area) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 has-[:checked]:bg-green-50 dark:has-[:checked]:bg-green-900/50'}`}>
+                                                    <input type="checkbox" checked={strongAreas.has(area)} onChange={() => handleAreaToggle(area, 'strong')} disabled={weakAreas.has(area)} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"/>
+                                                    <span>{area}</span>
+                                                </label>
+                                            )) : <p className="text-sm text-gray-500 italic p-2">No areas defined for this subject. Add them in Settings.</p>}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Weak Areas</label>
+                                        <div className="mt-2 max-h-40 overflow-y-auto thin-scrollbar border border-gray-300 dark:border-gray-600 rounded-lg p-2 space-y-2">
+                                             {availableAreas.length > 0 ? availableAreas.map(area => (
+                                                <label key={`weak-${area}`} className={`flex items-center gap-2 p-2 rounded-md transition-colors ${strongAreas.has(area) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 has-[:checked]:bg-red-50 dark:has-[:checked]:bg-red-900/50'}`}>
+                                                    <input type="checkbox" checked={weakAreas.has(area)} onChange={() => handleAreaToggle(area, 'weak')} disabled={strongAreas.has(area)} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"/>
+                                                    <span>{area}</span>
+                                                </label>
+                                            )) : <p className="text-sm text-gray-500 italic p-2">No areas defined for this subject. Add them in Settings.</p>}
+                                        </div>
+                                    </div>
+                                </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Retest Required?</label>
                                     <div className="mt-2 flex gap-4">

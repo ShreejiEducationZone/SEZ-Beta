@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Test, Student, TestPriority, TestStatus } from '../types';
 
@@ -35,6 +36,16 @@ const TestDetailModal: React.FC<TestDetailModalProps> = ({ test, student, onClos
     const scorePercentage = (test.marksObtained != null && test.totalMarks != null && test.totalMarks > 0)
         ? Math.round((test.marksObtained / test.totalMarks) * 100)
         : null;
+
+    // Helper to safely convert legacy string data to an array for rendering
+    const getAreasAsArray = (areas: string | string[] | undefined): string[] => {
+        if (!areas) return [];
+        if (Array.isArray(areas)) return areas;
+        return [String(areas)];
+    };
+    
+    const strongAreas = getAreasAsArray(test.strongArea);
+    const weakAreas = getAreasAsArray(test.weakArea);
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={onClose}>
@@ -86,10 +97,21 @@ const TestDetailModal: React.FC<TestDetailModalProps> = ({ test, student, onClos
                             ) : <p className="text-sm italic text-gray-500">No mistake types logged.</p>}
                         </DetailRow>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <DetailRow label="Strong Area"><p className="whitespace-pre-wrap">{test.strongArea || 'N/A'}</p></DetailRow>
-                            <DetailRow label="Weak Area"><p className="whitespace-pre-wrap">{test.weakArea || 'N/A'}</p></DetailRow>
+                             <DetailRow label="Strong Areas">
+                                {strongAreas.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {strongAreas.map(area => <span key={area} className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">{area}</span>)}
+                                    </div>
+                                ) : <p className="text-sm italic text-gray-500">No strong areas logged.</p>}
+                            </DetailRow>
+                             <DetailRow label="Weak Areas">
+                                {weakAreas.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {weakAreas.map(area => <span key={area} className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">{area}</span>)}
+                                    </div>
+                                ) : <p className="text-sm italic text-gray-500">No weak areas logged.</p>}
+                            </DetailRow>
                         </div>
-                        <DetailRow label="Remarks"><p className="whitespace-pre-wrap">{test.remarks || 'N/A'}</p></DetailRow>
                     </div>
                 )}
                 

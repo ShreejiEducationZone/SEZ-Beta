@@ -33,7 +33,7 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, onClick, attendanceS
     return (
         <div
             onClick={() => onClick(student)}
-            className="relative h-80 bg-white/70 dark:bg-gray-800/70 backdrop-blur-md rounded-2xl shadow-lg border border-white/30 dark:border-gray-700/50 p-5 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-[1.03] group"
+            className="relative h-80 bg-white/30 dark:bg-gray-800/30 backdrop-blur-lg rounded-2xl shadow-lg border border-gray-200/80 dark:border-white/30 p-5 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-[1.03] group"
         >
             {/* Attendance Status Badge */}
             <div className={`absolute top-4 right-4 px-2 py-0.5 text-xs font-semibold rounded-full ${

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Student, FaceDescriptorData, AttendanceRecord } from '../types';
 import AttendanceStudentCard from './AttendanceStudentCard';
@@ -7,6 +8,8 @@ import XCircleIcon from './icons/XCircleIcon';
 import FaceIdIcon from './icons/FaceIdIcon';
 import AttendanceIcon from './icons/AttendanceIcon';
 import PlaceholderAvatar from './PlaceholderAvatar';
+import { speak } from '../utils/voiceService';
+import { Toast } from './Toast';
 
 
 declare const faceapi: any;
@@ -24,6 +27,7 @@ interface AttendancePageProps {
     attendanceRecords: AttendanceRecord[];
     onSaveFaceDescriptor: (descriptor: FaceDescriptorData) => Promise<void>;
     onSaveAttendanceRecord: (record: AttendanceRecord) => Promise<void>;
+    showToast: (message: string, type: Toast['type']) => void;
 }
 
 const StatCard: React.FC<{ title: string, value: string | number, icon: React.ReactNode, className?: string }> = ({ title, value, icon, className }) => (
@@ -38,16 +42,17 @@ const StatCard: React.FC<{ title: string, value: string | number, icon: React.Re
     </div>
 );
 
-const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescriptors, attendanceRecords, onSaveFaceDescriptor, onSaveAttendanceRecord }) => {
+const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescriptors, attendanceRecords, onSaveFaceDescriptor, onSaveAttendanceRecord, showToast }) => {
     const [modelsLoaded, setModelsLoaded] = useState(false);
     const [isCameraOn, setIsCameraOn] = useState(false);
     const [studentRoster, setStudentRoster] = useState<StudentAttendanceData[]>([]);
     const [viewingStudentId, setViewingStudentId] = useState<string | null>(null);
+    const [welcomedStudentIds, setWelcomedStudentIds] = useState<Set<string>>(new Set());
     
     const [registrationCandidateId, setRegistrationCandidateId] = useState<string | null>(null);
     const [registrationMessage, setRegistrationMessage] = useState<string>('');
-    const [registrationStatus, setRegistrationStatus] = useState<'scanning' | 'success' | 'error'>('scanning');
-    const [registrationProgress, setRegistrationProgress] = useState(0);
+    const [registrationStatus, setRegistrationStatus] = useState<'idle' | 'scanning' | 'scanned' | 'saving' | 'success'>('idle');
+    const [capturedDescriptor, setCapturedDescriptor] = useState<Float32Array | null>(null);
 
     const [faceMatcher, setFaceMatcher] = useState<any>(null);
     const [message, setMessage] = useState<string>('Turn on camera to begin.');
@@ -81,11 +86,7 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescripto
     // Load face-api.js models on component mount
     useEffect(() => {
         const loadModels = async () => {
-            // Use Vite's BASE_URL so the models path works both locally and when
-            // the app is deployed under a subpath (Vercel, GitHub Pages, etc.).
-            // import.meta.env.BASE_URL ends with '/' by Vite, so joining with
-            // 'models' yields the correct path.
-            const MODEL_URL = `${(import.meta as any).env.BASE_URL}models`;
+            const MODEL_URL = '/models';
             try {
                 await Promise.all([
                     faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -114,9 +115,12 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescripto
         const roster = students
             .filter(s => !s.isArchived)
             .map(student => {
-                const descriptorArray = descriptorMap.get(student.id) as unknown as number[] | undefined;
-                const descriptor = descriptorArray ? new Float32Array(descriptorArray as number[]) : null;
-                const todaysRecord = todaysRecords.get(student.id) as AttendanceRecord | undefined;
+                const descriptorValue = descriptorMap.get(student.id);
+                const descriptorArray: number[] | undefined = Array.isArray(descriptorValue) ? descriptorValue : undefined;
+                const descriptor = descriptorArray ? new Float32Array(descriptorArray) : null;
+                
+                const recordValue = todaysRecords.get(student.id);
+                const todaysRecord: AttendanceRecord | undefined = (recordValue && typeof recordValue === 'object' && 'status' in recordValue) ? recordValue as AttendanceRecord : undefined;
 
                 return {
                     ...student,
@@ -146,6 +150,7 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescripto
     useEffect(() => () => stopAllCameras(), []);
 
     const startCamera = async () => {
+        setWelcomedStudentIds(new Set()); // Reset for new session
         if (isCameraOn || !videoRef.current) return;
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
@@ -166,6 +171,7 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescripto
             videoRef.current.srcObject = null;
         }
         setIsCameraOn(false);
+        setWelcomedStudentIds(new Set());
         setRegistrationCandidateId(null);
         setMessage('Turn on camera to begin.');
         if (canvasRef.current) {
@@ -203,16 +209,25 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescripto
                         drawBox.draw(canvas);
 
                         const now = new Date();
-                        const todayStr = now.toISOString().split('T')[0];
                         const currentTimeStr = now.toLocaleTimeString('en-US', { hour12: false });
-                        const recordId = `${studentId}_${todayStr}`;
                         
                         if (student.status === 'Absent') {
+                            if (!welcomedStudentIds.has(studentId)) {
+                                const welcomeMessage = `Welcome, ${student.name}! Attendance marked.`;
+                                const voiceMessage = `Welcome, ${student.name}.`;
+                                showToast(welcomeMessage, 'info');
+                                speak(voiceMessage);
+                                setWelcomedStudentIds(prev => new Set(prev).add(studentId));
+                            }
+                            const todayStr = now.toISOString().split('T')[0];
+                            const recordId = `${studentId}_${todayStr}`;
                             setStudentRoster(prev => prev.map(s => s.id === studentId ? { ...s, status: 'Present', lastSeen: currentTimeStr } : s));
                             const newRecord: AttendanceRecord = { id: recordId, studentId, date: todayStr, status: 'Present', inTime: currentTimeStr, lastSeen: currentTimeStr };
                             onSaveAttendanceRecord(newRecord);
                         } else {
                              setStudentRoster(prev => prev.map(s => s.id === studentId ? { ...s, lastSeen: currentTimeStr } : s));
+                             const todayStr = now.toISOString().split('T')[0];
+                             const recordId = `${studentId}_${todayStr}`;
                              const existingRecord = attendanceRecords.find(r => r.id === recordId);
                              if (existingRecord) {
                                 onSaveAttendanceRecord({ ...existingRecord, lastSeen: currentTimeStr });
@@ -228,15 +243,52 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescripto
         } else {
             setMessage(faceMatcher ? 'Searching for faces...' : 'No students registered. Please register a student first.');
         }
-    }, [faceMatcher, studentRoster, registrationCandidateId, onSaveAttendanceRecord, attendanceRecords]);
+    }, [faceMatcher, studentRoster, registrationCandidateId, onSaveAttendanceRecord, attendanceRecords, showToast, welcomedStudentIds]);
 
-    // This effect manages the dedicated registration process
+    const handleSaveRegistration = async () => {
+        if (!capturedDescriptor || !registrationCandidateId || !registrationCandidate) return;
+
+        setRegistrationStatus('saving');
+        setRegistrationMessage('Saving...');
+
+        const descriptorData: FaceDescriptorData = {
+            id: registrationCandidateId,
+            descriptor: Array.from(capturedDescriptor)
+        };
+
+        try {
+            await onSaveFaceDescriptor(descriptorData);
+
+            const studentName = registrationCandidate.name;
+            const successMessage = `Registration complete for ${studentName}!`;
+            const voiceMessage = `Thank you, ${studentName}, your face is registered.`;
+            showToast(successMessage, 'success');
+            speak(voiceMessage);
+
+            setRegistrationStatus('success');
+            setRegistrationMessage('Saved successfully!');
+
+            setTimeout(() => {
+                setRegistrationCandidateId(null);
+                setRegistrationStatus('idle');
+            }, 2000);
+        } catch (error) {
+            console.error("Failed to save face descriptor:", error);
+            setRegistrationStatus('scanned'); // Revert to scanned state to allow retry
+            setRegistrationMessage('Save failed. Please try again.');
+            showToast('Could not save registration data.', 'error');
+        }
+    };
+    
+    const cancelRegistration = useCallback(() => {
+        setRegistrationCandidateId(null);
+        setRegistrationStatus('idle');
+    }, []);
+
     useEffect(() => {
-        if (!registrationCandidateId || !regVideoRef.current || !regCanvasRef.current) return;
+        if (registrationStatus !== 'scanning' || !regVideoRef.current || !regCanvasRef.current) return;
 
         let stream: MediaStream | null = null;
-        let captureCount = 0;
-        const CAPTURES_NEEDED = 10;
         let isMounted = true;
 
         const startRegistrationCamera = async () => {
@@ -245,8 +297,10 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescripto
                 if (regVideoRef.current) {
                     regVideoRef.current.srcObject = stream;
                     regVideoRef.current.onplay = () => {
-                        if (regIntervalRef.current) clearInterval(regIntervalRef.current);
-                        regIntervalRef.current = window.setInterval(handleRegistrationCapture, 200);
+                        if (isMounted) {
+                            if (regIntervalRef.current) clearInterval(regIntervalRef.current);
+                            regIntervalRef.current = window.setInterval(handleRegistrationCapture, 200);
+                        }
                     };
                 }
             } catch (err) {
@@ -255,51 +309,56 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescripto
         };
 
         const handleRegistrationCapture = async () => {
-            if (!regVideoRef.current || !regCanvasRef.current) return;
+            if (!regVideoRef.current || !regCanvasRef.current || !isMounted) return;
 
             const video = regVideoRef.current;
             const canvas = regCanvasRef.current;
             const displaySize = { width: 300, height: video.videoHeight * (300 / video.videoWidth) };
             faceapi.matchDimensions(canvas, displaySize);
 
-            const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptors();
-            const resizedDetections = faceapi.resizeResults(detections, displaySize);
-
+            const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+            
             const context = canvas.getContext('2d');
             context?.clearRect(0, 0, canvas.width, canvas.height);
-            
-            if (detections.length === 1) {
+
+            if (detection) {
+                if (faceMatcher) {
+                    const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+                    const matchedStudentId = bestMatch.label;
+                    
+                    if (matchedStudentId !== 'unknown' && matchedStudentId !== registrationCandidateId) {
+                        const matchedStudent = studentRoster.find(s => s.id === matchedStudentId);
+                        const errorMessage = `This face is already registered to ${matchedStudent?.name || 'another student'}. Please try with a different student.`;
+                        
+                        if (isMounted) {
+                            showToast(errorMessage, 'error');
+                            speak('This face is already registered to another student.');
+                            
+                            if (regIntervalRef.current) clearInterval(regIntervalRef.current);
+                            regIntervalRef.current = null;
+                            cancelRegistration();
+                        }
+                        return;
+                    }
+                }
+
+                const resizedDetections = faceapi.resizeResults(detection, displaySize);
                 if (context) {
                     context.strokeStyle = 'lime';
                     context.lineWidth = 4;
-                    context.strokeRect(resizedDetections[0].detection.box.x, resizedDetections[0].detection.box.y, resizedDetections[0].detection.box.width, resizedDetections[0].detection.box.height);
+                    context.strokeRect(resizedDetections.detection.box.x, resizedDetections.detection.box.y, resizedDetections.detection.box.width, resizedDetections.detection.box.height);
                 }
 
-                captureCount++;
-                if (!isMounted) return;
-                setRegistrationProgress((captureCount / CAPTURES_NEEDED) * 100);
-                setRegistrationMessage("Hold still...");
-
-                if (captureCount >= CAPTURES_NEEDED) {
-                    if (regIntervalRef.current) clearInterval(regIntervalRef.current);
-                    setRegistrationStatus('success');
-                    setRegistrationMessage('Registration Complete!');
-                    
-                    const descriptorToSave = detections[0].descriptor;
-                    const descriptorData: FaceDescriptorData = { id: registrationCandidateId!, descriptor: Array.from(descriptorToSave as Float32Array) };
-                    
-                    await onSaveFaceDescriptor(descriptorData);
-
-                    setTimeout(() => {
-                        if (isMounted) setRegistrationCandidateId(null);
-                    }, 2000);
+                if (regIntervalRef.current) clearInterval(regIntervalRef.current);
+                regIntervalRef.current = null;
+                
+                if (isMounted) {
+                    setCapturedDescriptor(detection.descriptor);
+                    setRegistrationStatus('scanned');
+                    setRegistrationMessage('Scan complete! Press save to confirm.');
                 }
             } else {
-                captureCount = 0;
-                if (!isMounted) return;
-                setRegistrationProgress(0);
-                setRegistrationStatus('scanning');
-                setRegistrationMessage(detections.length > 1 ? 'Multiple faces detected.' : 'Position face in frame.');
+                 if (isMounted) setRegistrationMessage('Position face in the frame...');
             }
         };
         
@@ -308,28 +367,38 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescripto
         return () => {
             isMounted = false;
             if (regIntervalRef.current) clearInterval(regIntervalRef.current);
+            regIntervalRef.current = null;
             if (stream) stream.getTracks().forEach(track => track.stop());
-            setRegistrationProgress(0);
-            setRegistrationStatus('scanning');
         };
-    }, [registrationCandidateId, onSaveFaceDescriptor]);
+    }, [registrationStatus, faceMatcher, registrationCandidateId, studentRoster, showToast, cancelRegistration]);
 
-    const handlePlay = () => {
-        if (mainIntervalRef.current) clearInterval(mainIntervalRef.current);
-        mainIntervalRef.current = window.setInterval(handleAttendanceDetection, 500);
-    };
+    // Manages the detection interval, preventing stale closures.
+    useEffect(() => {
+        if (isCameraOn && videoRef.current) {
+            mainIntervalRef.current = window.setInterval(handleAttendanceDetection, 500);
+        } else {
+            if (mainIntervalRef.current) {
+                clearInterval(mainIntervalRef.current);
+                mainIntervalRef.current = null;
+            }
+        }
+        return () => {
+            if (mainIntervalRef.current) {
+                clearInterval(mainIntervalRef.current);
+            }
+        };
+    }, [isCameraOn, handleAttendanceDetection]);
 
     const handleRegisterClick = (studentId: string) => {
         if (!isCameraOn) {
-            alert("Please start the main camera before registering a student.");
+            showToast("Please start the main camera before registering a student.", "error");
             return;
         }
-        setRegistrationStatus('scanning');
+        setCapturedDescriptor(null);
         setRegistrationMessage('Loading registration camera...');
         setRegistrationCandidateId(studentId);
+        setRegistrationStatus('scanning');
     };
-
-    const cancelRegistration = () => setRegistrationCandidateId(null);
     
     const stats = useMemo(() => {
         const totalRegistered = studentRoster.filter(s => s.isRegistered).length;
@@ -357,45 +426,75 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ students, faceDescripto
     if (viewingStudent) {
         return <StudentAttendanceDetailView student={viewingStudent} records={recordsForViewingStudent} onBack={() => setViewingStudentId(null)} />;
     }
+    
+    const renderRegistrationModal = () => {
+        if (!registrationCandidate) return null;
+        
+        const isProcessing = registrationStatus === 'scanning' || registrationStatus === 'saving';
+
+        return (
+             <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center p-4 text-white">
+                <div className="bg-dark-card p-8 rounded-2xl shadow-lg w-full max-w-md text-center relative" onClick={e => e.stopPropagation()}>
+                    <h2 className="text-2xl font-bold">Registering {registrationCandidate.name}</h2>
+                    
+                    <div className="relative w-full max-w-xs aspect-square mx-auto my-4 rounded-full overflow-hidden border-4 border-gray-600">
+                        <video ref={regVideoRef} autoPlay muted playsInline className="w-full h-full object-cover scale-x-[-1]"></video>
+                        <canvas ref={regCanvasRef} className="absolute top-0 left-0 w-full h-full"></canvas>
+                        {registrationStatus !== 'scanning' && registrationStatus !== 'scanned' && (
+                             <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                                <PlaceholderAvatar />
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div className="h-8 flex items-center justify-center">
+                        {registrationStatus === 'success' ? (
+                            <div className="flex items-center gap-3 text-green-400">
+                                <CheckCircleIcon className="h-8 w-8" />
+                                <p className="text-xl font-bold">{registrationMessage}</p>
+                            </div>
+                        ) : isProcessing ? (
+                             <div className="flex items-center gap-2">
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                <p className="text-lg text-gray-300">{registrationMessage}</p>
+                             </div>
+                        ) : (
+                            <p className="text-lg text-gray-300">{registrationMessage}</p>
+                        )}
+                    </div>
+                    
+                    <div className="mt-6 space-y-2">
+                        {registrationStatus === 'scanned' && (
+                            <button
+                                onClick={handleSaveRegistration}
+                                className="w-full h-12 px-4 rounded-md bg-brand-blue text-white font-semibold hover:bg-blue-600"
+                            >
+                                Save Registration
+                            </button>
+                        )}
+                        <button
+                            onClick={cancelRegistration}
+                            disabled={isProcessing}
+                            className="w-full h-12 px-4 rounded-md bg-gray-600 text-white font-semibold hover:bg-gray-500 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed"
+                        >
+                            {registrationStatus === 'scanned' ? 'Cancel' : 'Close'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     return (
         <>
-            {registrationCandidate && (
-                <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center p-4 text-white">
-                    <div className="bg-dark-card p-8 rounded-2xl shadow-lg w-full max-w-md text-center relative" onClick={e => e.stopPropagation()}>
-                        <h2 className="text-2xl font-bold">Registering {registrationCandidate.name}</h2>
-                        
-                        <div className="relative w-full max-w-xs aspect-square mx-auto my-4 rounded-full overflow-hidden border-4 border-gray-600">
-                             <video ref={regVideoRef} autoPlay muted playsInline className="w-full h-full object-cover scale-x-[-1]"></video>
-                             <canvas ref={regCanvasRef} className="absolute top-0 left-0 w-full h-full"></canvas>
-                        </div>
-                        
-                        <div className="w-full bg-gray-700 rounded-full h-2.5 mb-4">
-                            <div className="bg-brand-blue h-2.5 rounded-full" style={{ width: `${registrationProgress}%`, transition: 'width 0.2s' }}></div>
-                        </div>
-
-                        <div className="h-6 flex items-center justify-center">
-                            {registrationStatus === 'success' ? (
-                                <div className="flex items-center gap-3 text-green-400">
-                                    <CheckCircleIcon className="h-8 w-8" />
-                                    <p className="text-xl font-bold">{registrationMessage}</p>
-                                </div>
-                            ) : (
-                                <p className="text-lg text-gray-300">{registrationMessage}</p>
-                            )}
-                        </div>
-
-                        <button onClick={cancelRegistration} className="mt-6 w-full h-12 px-4 rounded-md bg-gray-600 text-white font-semibold hover:bg-gray-500">Cancel</button>
-                    </div>
-                </div>
-            )}
+            {renderRegistrationModal()}
             <div className="flex flex-col lg:flex-row gap-8">
                 {/* Sidebar (LEFT) */}
                 <div className="lg:w-96 xl:w-[420px] flex-shrink-0 w-full lg:sticky lg:top-8 space-y-8">
                     <div>
                         <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">Live Preview</h3>
                         <div className="relative w-full aspect-video bg-gray-900 rounded-lg overflow-hidden shadow-lg mb-4">
-                            <video ref={videoRef} autoPlay muted playsInline onPlay={handlePlay} className="w-full h-full object-cover scale-x-[-1]"></video>
+                            <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover scale-x-[-1]"></video>
                             <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full"></canvas>
                             {!isCameraOn && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">

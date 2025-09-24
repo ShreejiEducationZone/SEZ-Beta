@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getCollection, setDocument, deleteDocument, runBatch, getDocument } from './firebase';
 import { Student, SubjectData, ChapterProgress, WorkItem, Doubt, Test, FaceDescriptorData, AttendanceRecord, MistakeTypeDefinition } from './types';
@@ -17,6 +16,7 @@ import SettingsPage from './components/SettingsPage';
 import Sidebar from './components/layout/Sidebar';
 import { updateDoubtStatusFromWorkItems } from './utils/workPoolService';
 import { MISTAKE_TYPES } from './constants';
+import { Toast, ToastContainer } from './components/Toast';
 
 type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'attendance' | 'settings';
 
@@ -28,6 +28,7 @@ const App: React.FC = () => {
     const [doubts, setDoubts] = useState<Doubt[]>([]);
     const [tests, setTests] = useState<Test[]>([]);
     const [customMistakeTypes, setCustomMistakeTypes] = useState<MistakeTypeDefinition[]>([]);
+    const [subjectAreas, setSubjectAreas] = useState<{ [key: string]: string[] }>({});
     const [faceDescriptors, setFaceDescriptors] = useState<FaceDescriptorData[]>([]);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
 
@@ -40,8 +41,22 @@ const App: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState<Page>('students');
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+    const [toasts, setToasts] = useState<Toast[]>([]);
 
     const toggleSidebar = () => setIsSidebarExpanded(prev => !prev);
+    
+    const showToast = useCallback((message: string, type: Toast['type'] = 'info') => {
+        const newToast: Toast = {
+            id: Date.now(),
+            message,
+            type,
+        };
+        setToasts(prev => [...prev, newToast]);
+    }, []);
+
+    const removeToast = useCallback((id: number) => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+    }, []);
 
     // Fetch all data from Firestore REST API on initial load
     useEffect(() => {
@@ -55,6 +70,7 @@ const App: React.FC = () => {
                     doubtsData,
                     testsData,
                     mistakeTypesDoc,
+                    subjectAreasDoc,
                     descriptorsData,
                     attendanceData,
                 ] = await Promise.all([
@@ -65,6 +81,7 @@ const App: React.FC = () => {
                     getCollection("doubts"),
                     getCollection("tests"),
                     getDocument("configuration", "mistakeTypes"),
+                    getDocument("configuration", "subjectAreas"),
                     getCollection("faceDescriptors"),
                     getCollection("attendance"),
                 ]);
@@ -102,6 +119,13 @@ const App: React.FC = () => {
                 } else {
                     setCustomMistakeTypes([]);
                 }
+                
+                if (subjectAreasDoc && (subjectAreasDoc as any).areasBySubject) {
+                    setSubjectAreas((subjectAreasDoc as any).areasBySubject);
+                } else {
+                    setSubjectAreas({});
+                }
+
 
             } catch (error) {
                 console.error("Failed to fetch initial data from Firestore:", error);
@@ -377,6 +401,16 @@ const App: React.FC = () => {
             alert(`Failed to save custom mistake types. Please check your internet connection. Error: ${error.message}`);
         }
     }, []);
+    
+    const handleSaveSubjectAreas = useCallback(async (areas: { [key: string]: string[] }) => {
+        try {
+            await setDocument("configuration", "subjectAreas", { areasBySubject: areas });
+            setSubjectAreas(areas);
+        } catch (error: any) {
+            console.error("Error saving subject areas:", error);
+            alert(`Failed to save subject areas. Error: ${error.message}`);
+        }
+    }, []);
 
     const handleArchive = useCallback(async (id: string) => {
         try {
@@ -504,6 +538,7 @@ const App: React.FC = () => {
                         onSaveTest={handleSaveTest}
                         onDeleteTest={handleDeleteTest}
                         allMistakeTypes={allMistakeTypes}
+                        subjectAreas={subjectAreas}
                     />
                 );
             case 'attendance':
@@ -513,6 +548,7 @@ const App: React.FC = () => {
                             onSaveFaceDescriptor={handleSaveFaceDescriptor}
                             attendanceRecords={attendanceRecords}
                             onSaveAttendanceRecord={handleSaveAttendanceRecord}
+                            showToast={showToast}
                         />;
              case 'settings':
                 return (
@@ -523,6 +559,9 @@ const App: React.FC = () => {
                         onSaveMistakeTypes={handleSaveCustomMistakeTypes}
                         students={students.filter(s => !s.isArchived)}
                         onSaveStudent={handleSaveStudent}
+                        subjectAreas={subjectAreas}
+                        onSaveSubjectAreas={handleSaveSubjectAreas}
+                        allStudentSubjects={allStudentSubjects}
                     />
                 );
             case 'students':
@@ -590,6 +629,7 @@ const App: React.FC = () => {
 
     return (
         <div className="relative min-h-screen">
+            <ToastContainer toasts={toasts} onClose={removeToast} />
             <Sidebar
                 isExpanded={isSidebarExpanded}
                 onToggle={toggleSidebar}

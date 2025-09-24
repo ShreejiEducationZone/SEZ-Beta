@@ -1,15 +1,10 @@
 import React from 'react';
-import BookIcon from '../icons/BookIcon';
-import DirectoryIcon from '../icons/DirectoryIcon';
-import SubjectsIcon from '../icons/SubjectsIcon';
-import ProgressIcon from '../icons/ProgressIcon';
-import WorkPoolIcon from '../icons/WorkPoolIcon';
-import DoubtIcon from '../icons/DoubtIcon';
-import ChevronLeftIcon from '../icons/ChevronLeftIcon';
-import ChevronRightIcon from '../icons/ChevronRightIcon';
-import ReportsIcon from '../icons/ReportsIcon';
-import AttendanceIcon from '../icons/AttendanceIcon';
-import SettingsIcon from '../icons/SettingsIcon';
+import { FaBookOpen, FaQuestionCircle, FaChartBar, FaCog, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { HiUsers, HiOutlineCollection } from 'react-icons/hi';
+import { MdSubject } from 'react-icons/md';
+import { VscChecklist } from 'react-icons/vsc';
+import { BsCalendar2Check } from 'react-icons/bs';
+
 
 type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'attendance' | 'settings';
 
@@ -59,18 +54,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle, currentPage, on
         >
             <div className="flex flex-col h-full">
                 <div className="flex items-center justify-center h-20 flex-shrink-0">
-                    <BookIcon className="h-8 w-8 text-brand-blue" />
+                    <FaBookOpen className="h-8 w-8 text-brand-blue" />
                 </div>
                 <nav className="flex-grow flex flex-col space-y-2 p-2">
-                    <NavLink to="students" icon={DirectoryIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Student Directory</NavLink>
-                    <NavLink to="subjects" icon={SubjectsIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Subject Manager</NavLink>
-                    <NavLink to="syllabus" icon={ProgressIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Syllabus Progress</NavLink>
-                    <NavLink to="work-pool" icon={WorkPoolIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Work Pool</NavLink>
-                    <NavLink to="doubts" icon={DoubtIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Doubt Box</NavLink>
-                    <NavLink to="reports" icon={ReportsIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Reports & Tests</NavLink>
-                    <NavLink to="attendance" icon={AttendanceIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Attendance</NavLink>
+                    <NavLink to="students" icon={HiUsers} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Student Directory</NavLink>
+                    <NavLink to="subjects" icon={MdSubject} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Subject Manager</NavLink>
+                    <NavLink to="syllabus" icon={VscChecklist} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Syllabus Progress</NavLink>
+                    <NavLink to="work-pool" icon={HiOutlineCollection} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Work Pool</NavLink>
+                    <NavLink to="doubts" icon={FaQuestionCircle} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Doubt Box</NavLink>
+                    <NavLink to="reports" icon={FaChartBar} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Reports & Tests</NavLink>
+                    <NavLink to="attendance" icon={BsCalendar2Check} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Attendance</NavLink>
                     <div className="flex-grow" />
-                    <NavLink to="settings" icon={SettingsIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Settings</NavLink>
+                    <NavLink to="settings" icon={FaCog} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Settings</NavLink>
                 </nav>
                 <div className="p-2 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
                     <button
@@ -79,7 +74,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle, currentPage, on
                         aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
                         title={isExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
                     >
-                        {isExpanded ? <ChevronLeftIcon className="h-6 w-6" /> : <ChevronRightIcon className="h-6 w-6" />}
+                        {isExpanded ? <FaChevronLeft className="h-6 w-6" /> : <FaChevronRight className="h-6 w-6" />}
                     </button>
                 </div>
             </div>
