@@ -25,7 +25,8 @@ const AiAssistantChat: React.FC<AiAssistantChatProps> = ({ student, onApply, onC
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // TEMPORARY: Hardcoded API key for local development
+    const ai = new GoogleGenAI({ apiKey: "AIzaSyB_PcFeNPA45rdqIN3GL0JQagLnRo1QnBs" });
         
         const systemInstruction = `You are the “AI Subject Builder,” an expert curriculum designer inside an education dashboard. Your role is to help a mentor create subject and chapter lists for a specific student.
 
