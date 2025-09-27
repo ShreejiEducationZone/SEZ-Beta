@@ -1,4 +1,6 @@
 
+
+
 import React, { useMemo } from 'react';
 import { Student, WorkItem } from '../types';
 import PlaceholderAvatar from './PlaceholderAvatar';
@@ -9,9 +11,10 @@ interface StudentWorkCardProps {
     student: Student;
     workItems: WorkItem[];
     onAddWork: () => void;
+    onViewWork: () => void;
 }
 
-const StudentWorkCard: React.FC<StudentWorkCardProps> = ({ student, workItems, onAddWork }) => {
+const StudentWorkCard: React.FC<StudentWorkCardProps> = ({ student, workItems, onAddWork, onViewWork }) => {
     const boardStyle = SUBJECT_CARD_STYLES[student.board] || SUBJECT_CARD_STYLES['GSEB'];
 
     const workInsights = useMemo(() => {
@@ -29,14 +32,17 @@ const StudentWorkCard: React.FC<StudentWorkCardProps> = ({ student, workItems, o
     }, [workItems]);
 
     return (
-        <div className={`
-            relative group
-            rounded-2xl shadow-md p-4 transition-all duration-300 flex flex-col
-            border-l-4 ${boardStyle.border}
-            ${student.isArchived 
-                ? 'bg-gray-50 dark:bg-gray-800/50 opacity-70' 
-                : 'bg-white dark:bg-dark-card'}
-        `}>
+        <div
+            onClick={onViewWork}
+            className={`
+                relative group cursor-pointer
+                rounded-2xl shadow-md p-4 transition-all duration-300 flex flex-col
+                border-l-4 ${boardStyle.border}
+                ${student.isArchived 
+                    ? 'bg-gray-50 dark:bg-gray-800/50 opacity-70' 
+                    : 'bg-white dark:bg-dark-card'}
+            `}
+        >
             <div className="flex items-start space-x-4">
                  <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex-shrink-0">
                     {student.avatarUrl ? <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" /> : <PlaceholderAvatar />}
@@ -78,7 +84,10 @@ const StudentWorkCard: React.FC<StudentWorkCardProps> = ({ student, workItems, o
 
             <div className="mt-4">
                 <button
-                    onClick={onAddWork}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onAddWork();
+                    }}
                     disabled={student.isArchived}
                     className="w-full h-10 px-4 rounded-md bg-brand-blue text-white hover:bg-blue-600 text-sm font-semibold transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >

@@ -22,12 +22,11 @@ const StudentAttendanceDetailView: React.FC<StudentAttendanceDetailViewProps> = 
     }, [records]);
 
     const stats = useMemo(() => {
-        const present = records.length;
-        // This is a simplification; a full absent count would require knowing all school days.
-        // For this view, we'll just show the total logged (present) days.
-        const total = present;
-        const percentage = total > 0 ? 100 : 0; // Since we only log present days.
-        return { present, absent: 'N/A', percentage };
+        const presentCount = records.filter(r => r.status === 'Present').length;
+        const absentCount = records.filter(r => r.status === 'Absent').length;
+        const totalDaysLogged = presentCount + absentCount;
+        const percentage = totalDaysLogged > 0 ? Math.round((presentCount / totalDaysLogged) * 100) : 0;
+        return { present: presentCount, absent: absentCount, percentage };
     }, [records]);
 
 
@@ -69,10 +68,14 @@ const StudentAttendanceDetailView: React.FC<StudentAttendanceDetailViewProps> = 
                                     <tr key={record.id} className="border-b dark:border-gray-700">
                                         <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{record.date}</td>
                                         <td className="px-4 py-3">{dayOfWeek}</td>
-                                        <td className="px-4 py-3">{record.inTime}</td>
-                                        <td className="px-4 py-3">{record.lastSeen}</td>
+                                        <td className="px-4 py-3">{record.inTime || '—'}</td>
+                                        <td className="px-4 py-3">{record.lastSeen || '—'}</td>
                                         <td className="px-4 py-3">
-                                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                                record.status === 'Present' 
+                                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                                                : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                            }`}>
                                                 {record.status}
                                             </span>
                                         </td>

@@ -94,7 +94,7 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, onClick, attendanceS
 
             {/* Student Info */}
             <div className="flex-grow flex flex-col items-center min-w-0 w-full">
-                <h3 className="text-xl font-semibold text-gray-800 dark:text-white truncate" title={student.name}>
+                <h3 className="w-full text-xl font-semibold text-gray-800 dark:text-white truncate" title={student.name}>
                     {student.name}
                 </h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 truncate">

@@ -4,6 +4,7 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tool
 
 interface ScoreTrendChartProps {
     completedTests: Test[];
+    onTestSelect: (test: Test) => void;
 }
 
 // Consistent colors for subjects
@@ -12,7 +13,7 @@ const subjectColors = [
   '#EC4899', '#6366F1', '#14B8A6', '#D97706'
 ];
 
-const ScoreTrendChart: React.FC<ScoreTrendChartProps> = ({ completedTests }) => {
+const ScoreTrendChart: React.FC<ScoreTrendChartProps> = ({ completedTests, onTestSelect }) => {
     const { chartData, subjects } = useMemo(() => {
         if (completedTests.length === 0) return { chartData: [], subjects: [] };
 
@@ -34,7 +35,7 @@ const ScoreTrendChart: React.FC<ScoreTrendChartProps> = ({ completedTests }) => 
                         formattedDate: new Date(test.testDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) 
                     };
                 }
-                dataByDate[date][test.subject] = percentage;
+                dataByDate[date][test.subject] = { score: percentage, test: test };
             }
         });
 
@@ -42,6 +43,19 @@ const ScoreTrendChart: React.FC<ScoreTrendChartProps> = ({ completedTests }) => 
         
         return { chartData, subjects: Array.from(subjectsSet) };
     }, [completedTests]);
+
+    const handleDotClick = (props: any) => {
+        const { payload, dataKey } = props;
+        if (!payload || !dataKey) return;
+        
+        // dataKey is "SubjectName.score", so we extract "SubjectName"
+        const subject = dataKey.split('.')[0];
+        const testData = payload[subject];
+
+        if (testData && testData.test) {
+            onTestSelect(testData.test);
+        }
+    };
 
     return (
         <div className="bg-light-card dark:bg-dark-card p-6 rounded-2xl shadow-sm">
@@ -75,12 +89,13 @@ const ScoreTrendChart: React.FC<ScoreTrendChartProps> = ({ completedTests }) => 
                                 <Line
                                     key={subject}
                                     type="monotone"
-                                    dataKey={subject}
+                                    dataKey={`${subject}.score`}
+                                    name={subject}
                                     stroke={subjectColors[index % subjectColors.length]}
                                     strokeWidth={2}
                                     connectNulls
                                     dot={{ r: 4 }}
-                                    activeDot={{ r: 6 }}
+                                    activeDot={{ r: 6, onClick: (e, props) => handleDotClick(props) }}
                                 />
                             ))}
                         </LineChart>

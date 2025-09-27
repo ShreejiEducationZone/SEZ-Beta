@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo, useCallback } from 'react';
 import { Student, SubjectData, WorkItem, WorkHealthStatus } from '../types';
 import StudentWorkCard from './StudentWorkCard';
@@ -10,6 +9,7 @@ import WorkCalendarView from './WorkCalendarView';
 import WorkItemDetailModal from './WorkItemDetailModal';
 import CalendarIcon from './icons/CalendarIcon';
 import TableIcon from './icons/TableIcon';
+import WorkPoolDrawer from './WorkPoolDrawer';
 
 interface WorkPoolPageProps {
     students: Student[];
@@ -23,6 +23,7 @@ const WorkPoolPage: React.FC<WorkPoolPageProps> = ({ students, allStudentSubject
     const [showArchived, setShowArchived] = useState(false);
     const [studentForNewWork, setStudentForNewWork] = useState<Student | null>(null);
     const [editingWorkItem, setEditingWorkItem] = useState<WorkItem | null>(null);
+    const [viewingStudentWork, setViewingStudentWork] = useState<Student | null>(null);
     const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table');
     const [selectedWorkItem, setSelectedWorkItem] = useState<WorkItem | null>(null);
 
@@ -62,10 +63,6 @@ const WorkPoolPage: React.FC<WorkPoolPageProps> = ({ students, allStudentSubject
         return Array.from(subjectsSet).sort();
     }, [allStudentSubjects]);
 
-    const displayedStudents = useMemo(() => {
-        return students.filter(student => student.isArchived === showArchived);
-    }, [students, showArchived]);
-
     const workItemsByStudent = useMemo(() => {
         return workItems.reduce((acc, item) => {
             if (!acc[item.studentId]) {
@@ -95,6 +92,20 @@ const WorkPoolPage: React.FC<WorkPoolPageProps> = ({ students, allStudentSubject
             return true;
         });
     }, [workItems, students, filters, showArchived]);
+
+    const displayedStudents = useMemo(() => {
+        const baseStudents = students.filter(student => student.isArchived === showArchived);
+        const areAnyFiltersActive = filters.searchQuery || filters.batch || filters.subject || filters.status || filters.priority;
+    
+        if (!areAnyFiltersActive) {
+            return baseStudents;
+        }
+    
+        const studentIdsInFilteredWork = new Set(filteredWorkItems.map(item => item.studentId));
+        
+        return baseStudents.filter(student => studentIdsInFilteredWork.has(student.id));
+    
+    }, [students, showArchived, filters, filteredWorkItems]);
 
     const workHealthByStudent = useMemo(() => {
         const statsByStudent: Record<string, { pending: number; overdue: number }> = {};
@@ -132,6 +143,7 @@ const WorkPoolPage: React.FC<WorkPoolPageProps> = ({ students, allStudentSubject
     }, [workItems]);
 
     const handleEditWork = (item: WorkItem) => {
+        setViewingStudentWork(null); // Close drawer if open
         setEditingWorkItem(item);
     };
     
@@ -156,8 +168,16 @@ const WorkPoolPage: React.FC<WorkPoolPageProps> = ({ students, allStudentSubject
     return (
         <div>
             <p className="mt-2 mb-6 text-gray-600 dark:text-gray-400 max-w-3xl">
-                Assign and manage student tasks like tuition work, homework, and other assignments. Click "+ Add Work" on a student to get started.
+                Assign and manage student tasks like tuition work, homework, and other assignments. Click on a student to view their work or "+ Add Work" to get started.
             </p>
+
+            <WorkPoolFilterBar
+                filters={filters}
+                onFilterChange={handleFilterChange}
+                onSearchChange={handleSearchChange}
+                onClearFilters={clearFilters}
+                allSubjects={allSubjects}
+            />
 
             <div className="flex items-center mb-6">
                 <input
@@ -180,26 +200,19 @@ const WorkPoolPage: React.FC<WorkPoolPageProps> = ({ students, allStudentSubject
                             student={student}
                             workItems={workItemsByStudent[student.id] || []}
                             onAddWork={() => setStudentForNewWork(student)}
+                            onViewWork={() => setViewingStudentWork(student)}
                         />
                     ))}
                 </div>
             ) : (
                  <div className="text-center py-16 text-gray-500 dark:text-gray-400">
                     <h3 className="text-xl font-semibold">No {showArchived ? 'archived' : 'active'} students found.</h3>
-                    <p>Try viewing {showArchived ? 'active' : 'archived'} students.</p>
+                    <p>Try viewing {showArchived ? 'active' : 'archived'} students or clearing your filters.</p>
                 </div>
             )}
 
 
             <div className="mt-12">
-                 <WorkPoolFilterBar
-                    filters={filters}
-                    onFilterChange={handleFilterChange}
-                    onSearchChange={handleSearchChange}
-                    onClearFilters={clearFilters}
-                    allSubjects={allSubjects}
-                 />
-
                 <div className="flex justify-end my-4">
                     <button
                         onClick={() => setViewMode(viewMode === 'table' ? 'calendar' : 'table')}
@@ -234,6 +247,20 @@ const WorkPoolPage: React.FC<WorkPoolPageProps> = ({ students, allStudentSubject
                     />
                  )}
             </div>
+
+            {viewingStudentWork && (
+                <WorkPoolDrawer
+                    student={viewingStudentWork}
+                    workItems={workItemsByStudent[viewingStudentWork.id] || []}
+                    onClose={() => setViewingStudentWork(null)}
+                    onEditWorkItem={handleEditWork}
+                    onDeleteWorkItem={onDeleteWorkItem}
+                    onAddWork={() => {
+                        setViewingStudentWork(null); // Close drawer
+                        setStudentForNewWork(viewingStudentWork); // Open form
+                    }}
+                />
+            )}
 
             {(studentForNewWork || editingWorkItem) && studentForForm && (
                 <WorkForm

@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { Test } from '../types';
 import StarIcon from './icons/StarIcon';
@@ -107,7 +106,8 @@ const OverallStrengthsWeaknesses: React.FC<OverallStrengthsWeaknessesProps> = ({
                     <h4 className="text-lg font-semibold text-green-600 dark:text-green-400 mb-3 pb-2 border-b-2 border-green-200 dark:border-green-800">Strong Areas</h4>
                     <div className="space-y-4 max-h-96 overflow-y-auto thin-scrollbar pr-2">
                         {hasStrongData ? (
-                            Object.entries(analysis.strong).map(([subject, areas]) => (
+                            // Fixed: Added explicit types to [subject, areas] to resolve `unknown` type error on `areas`.
+                            Object.entries(analysis.strong).map(([subject, areas]: [string, { area: string; count: number }[]]) => (
                                 <div key={subject}>
                                     <h5 className="font-semibold text-gray-700 dark:text-gray-300">{subject}</h5>
                                     <div className="mt-2 space-y-2">
@@ -134,7 +134,8 @@ const OverallStrengthsWeaknesses: React.FC<OverallStrengthsWeaknessesProps> = ({
                     <h4 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-3 pb-2 border-b-2 border-red-200 dark:border-red-800">Weak Areas</h4>
                     <div className="space-y-4 max-h-96 overflow-y-auto thin-scrollbar pr-2">
                         {hasWeakData ? (
-                            Object.entries(analysis.weak).map(([subject, areas]) => (
+                            // Fixed: Added explicit types to [subject, areas] to resolve `unknown` type error on `areas`.
+                            Object.entries(analysis.weak).map(([subject, areas]: [string, { area: string; count: number }[]]) => (
                                 <div key={subject}>
                                     <h5 className="font-semibold text-gray-700 dark:text-gray-300">{subject}</h5>
                                     <div className="mt-2 space-y-2">

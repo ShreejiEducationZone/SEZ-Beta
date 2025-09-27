@@ -25,10 +25,18 @@ const AiAssistantChat: React.FC<AiAssistantChatProps> = ({ student, onApply, onC
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-    // TEMPORARY: Hardcoded API key for local development
-    const ai = new GoogleGenAI({ apiKey: "AIzaSyC2ZOK0jGIUrSpEW55D5rQnDTDQvdoQASM" });
-        
-        const systemInstruction = `You are the “AI Subject Builder,” an expert curriculum designer inside an education dashboard. Your role is to help a mentor create subject and chapter lists for a specific student.
+        if (!process.env.API_KEY) {
+            console.error("API_KEY environment variable not set for AI Subject Builder.");
+            setMessages([
+                { role: 'model', text: "I'm sorry, but the AI Assistant is not configured correctly (missing API key). Please contact support." }
+            ]);
+            return;
+        }
+
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            
+            const systemInstruction = `You are the “AI Subject Builder,” an expert curriculum designer inside an education dashboard. Your role is to help a mentor create subject and chapter lists for a specific student.
 
 **Student Context (Do not ask for this, you already know it):**
 - Grade: ${student.grade}
@@ -74,18 +82,24 @@ If the user asks to modify a list (e.g., "add two more chapters to Science"), ge
 **Supported Languages:**
 You must be able to understand and respond in English, Hindi, and Gujarati.`;
 
-        const newChat = ai.chats.create({
-            model: 'gemini-2.5-flash',
-            config: {
-                systemInstruction: systemInstruction,
-            },
-        });
-        setChat(newChat);
+            const newChat = ai.chats.create({
+                model: 'gemini-2.5-flash',
+                config: {
+                    systemInstruction: systemInstruction,
+                },
+            });
+            setChat(newChat);
 
-        // Reset messages when student changes, keeping the intro
-        setMessages([
-            { role: 'model', text: `Hi! I'm the AI Subject Builder. How can I help you plan the curriculum for ${student.name}? You can ask for subjects for their grade and board, even in Hindi or Gujarati.` }
-        ]);
+            // Reset messages when student changes, keeping the intro
+            setMessages([
+                { role: 'model', text: `Hi! I'm the AI Subject Builder. How can I help you plan the curriculum for ${student.name}? You can ask for subjects for their grade and board, even in Hindi or Gujarati.` }
+            ]);
+        } catch (error) {
+            console.error("Error initializing GoogleGenAI in Subject Builder:", error);
+            setMessages([
+                { role: 'model', text: "An error occurred while setting up the AI Assistant. Please try again later." }
+            ]);
+        }
 
     }, [student]);
 

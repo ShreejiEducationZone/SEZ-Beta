@@ -1,6 +1,7 @@
 
+
 import React, { useState } from 'react';
-import { MistakeTypeDefinition, Student, SubjectData } from '../types';
+import { MistakeTypeDefinition, Student, SubjectData, AreaDefinition } from '../types';
 import AdministratorSettings from './settings/AdministratorSettings';
 import StudentPasswordSettings from './settings/StudentPasswordSettings';
 import MistakeTypeSettings from './settings/MistakeTypeSettings';
@@ -21,8 +22,8 @@ interface SettingsPageProps {
     onSaveMistakeTypes: (types: MistakeTypeDefinition[]) => void;
     students: Student[];
     onSaveStudent: (student: Student) => void;
-    subjectAreas: { [key: string]: string[] };
-    onSaveSubjectAreas: (areas: { [key: string]: string[] }) => void;
+    subjectAreas: { [key: string]: AreaDefinition[] };
+    onSaveSubjectAreas: (areas: { [key: string]: AreaDefinition[] }) => void;
     allStudentSubjects: { [key: string]: { studentId: string; subjects: SubjectData[] } };
 }
 

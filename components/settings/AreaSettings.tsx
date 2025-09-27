@@ -1,23 +1,28 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { SubjectData } from '../../types';
+import { SubjectData, AreaDefinition } from '../../types';
 import SelectField from '../form/SelectField';
 import DeleteIcon from '../icons/DeleteIcon';
 
 interface AreaSettingsProps {
-    subjectAreas: { [key: string]: string[] };
-    onSaveSubjectAreas: (areas: { [key: string]: string[] }) => void;
+    subjectAreas: { [key: string]: AreaDefinition[] };
+    onSaveSubjectAreas: (areas: { [key: string]: AreaDefinition[] }) => void;
     allStudentSubjects: { [key: string]: { studentId: string; subjects: SubjectData[] } };
 }
 
 const AreaSettings: React.FC<AreaSettingsProps> = ({ subjectAreas, onSaveSubjectAreas, allStudentSubjects }) => {
     const [areas, setAreas] = useState(subjectAreas);
     const [selectedSubject, setSelectedSubject] = useState('');
-    const [newArea, setNewArea] = useState('');
+    const [newArea, setNewArea] = useState({ title: '', description: '' });
+
+    useEffect(() => {
+        setAreas(subjectAreas);
+    }, [subjectAreas]);
 
     const allSubjects = useMemo(() => {
         const subjectsSet = new Set<string>();
-        Object.values(allStudentSubjects).forEach(data => {
+        // Fixed: Explicitly typed `data` to resolve error when accessing `data.subjects`.
+        Object.values(allStudentSubjects).forEach((data: { subjects: SubjectData[] }) => {
             if (data && data.subjects) {
               data.subjects.forEach(s => subjectsSet.add(s.subject));
             }
@@ -32,25 +37,25 @@ const AreaSettings: React.FC<AreaSettingsProps> = ({ subjectAreas, onSaveSubject
     }, [allSubjects, selectedSubject]);
 
     const handleAddArea = () => {
-        if (!selectedSubject || !newArea.trim()) {
-            alert("Please select a subject and enter an area name.");
+        if (!selectedSubject || !newArea.title.trim() || !newArea.description.trim()) {
+            alert("Please select a subject and provide both an area title and description.");
             return;
         }
         const currentAreas = areas[selectedSubject] || [];
-        if (currentAreas.map(a => a.toLowerCase()).includes(newArea.trim().toLowerCase())) {
-            alert("This area already exists for the selected subject.");
+        if (currentAreas.some(a => a.title.toLowerCase() === newArea.title.trim().toLowerCase())) {
+            alert("This area title already exists for the selected subject.");
             return;
         }
         const updatedAreas = {
             ...areas,
-            [selectedSubject]: [...currentAreas, newArea.trim()].sort()
+            [selectedSubject]: [...currentAreas, { title: newArea.title.trim(), description: newArea.description.trim() }].sort((a, b) => a.title.localeCompare(b.title))
         };
         setAreas(updatedAreas);
-        setNewArea('');
+        setNewArea({ title: '', description: '' });
     };
 
-    const handleDeleteArea = (areaToDelete: string) => {
-        const updatedSubjectAreas = (areas[selectedSubject] || []).filter(a => a !== areaToDelete);
+    const handleDeleteArea = (titleToDelete: string) => {
+        const updatedSubjectAreas = (areas[selectedSubject] || []).filter(a => a.title !== titleToDelete);
         const updatedAreas = { ...areas };
         if (updatedSubjectAreas.length > 0) {
             updatedAreas[selectedSubject] = updatedSubjectAreas;
@@ -88,9 +93,12 @@ const AreaSettings: React.FC<AreaSettingsProps> = ({ subjectAreas, onSaveSubject
                             <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Areas for {selectedSubject}</h3>
                             <div className="space-y-2 max-h-60 overflow-y-auto thin-scrollbar pr-2">
                                 {(areas[selectedSubject] || []).map(area => (
-                                    <div key={area} className="flex justify-between items-center bg-gray-100 dark:bg-gray-700/50 p-3 rounded-md">
-                                        <p className="font-medium">{area}</p>
-                                        <button onClick={() => handleDeleteArea(area)} className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full">
+                                    <div key={area.title} className="flex justify-between items-center bg-gray-100 dark:bg-gray-700/50 p-3 rounded-md">
+                                        <div>
+                                            <p className="font-semibold">{area.title}</p>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">{area.description}</p>
+                                        </div>
+                                        <button onClick={() => handleDeleteArea(area.title)} className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full flex-shrink-0 ml-2">
                                             <DeleteIcon />
                                         </button>
                                     </div>
@@ -101,15 +109,22 @@ const AreaSettings: React.FC<AreaSettingsProps> = ({ subjectAreas, onSaveSubject
 
                         <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                              <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Add New Area to {selectedSubject}</h3>
-                             <div className="flex gap-2">
+                             <div className="space-y-2">
                                 <input
                                     type="text"
-                                    value={newArea}
-                                    onChange={(e) => setNewArea(e.target.value)}
-                                    placeholder="e.g. Calculation, Grammar"
-                                    className="flex-grow h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50"
+                                    value={newArea.title}
+                                    onChange={(e) => setNewArea(prev => ({...prev, title: e.target.value}))}
+                                    placeholder="New Area Title"
+                                    className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50"
                                 />
-                                <button onClick={handleAddArea} className="h-10 px-4 rounded-md bg-brand-blue/80 text-white hover:bg-brand-blue text-sm font-semibold">Add</button>
+                                <textarea
+                                    value={newArea.description}
+                                    onChange={(e) => setNewArea(prev => ({...prev, description: e.target.value}))}
+                                    placeholder="Description for the new area..."
+                                    rows={2}
+                                    className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50"
+                                />
+                                <button onClick={handleAddArea} className="w-full h-10 px-4 rounded-md bg-brand-blue/80 text-white hover:bg-brand-blue text-sm font-semibold">Add Area</button>
                              </div>
                         </div>
                     </>

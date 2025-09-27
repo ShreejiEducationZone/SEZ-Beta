@@ -50,7 +50,7 @@ const ToastNotification: React.FC<ToastNotificationProps> = ({ toast, onClose })
             className={`
                 flex items-center w-full max-w-sm p-4 text-gray-500 bg-white rounded-lg shadow-lg dark:text-gray-400 dark:bg-gray-800 ring-1 ring-black ring-opacity-5
                 transform-gpu transition-all duration-500 ease-in-out
-                ${isExiting ? 'opacity-0 translate-x-full' : 'opacity-100 translate-x-0'}
+                ${isExiting ? 'opacity-0 translate-y-8' : 'opacity-100 translate-y-0'}
             `}
             role="alert"
         >
@@ -78,8 +78,8 @@ interface ToastContainerProps {
 
 export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onClose }) => {
     return (
-        <div aria-live="assertive" className="fixed inset-0 flex items-end px-4 py-6 pointer-events-none sm:p-6 sm:items-start z-[100]">
-            <div className="w-full flex flex-col items-center space-y-3 sm:items-end">
+        <div aria-live="assertive" className="fixed inset-0 flex items-end px-4 py-6 pointer-events-none sm:p-6 z-[100]">
+            <div className="w-full flex flex-col items-end space-y-3">
                 {toasts.map(toast => (
                     <ToastNotification key={toast.id} toast={toast} onClose={onClose} />
                 ))}

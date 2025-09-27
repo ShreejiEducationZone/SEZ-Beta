@@ -1,6 +1,7 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { Student, SubjectData, Test, TestStatus, TestPriority, TestType, Chapter, MistakeTypeDefinition } from '../types';
+import { Student, SubjectData, Test, TestStatus, TestPriority, TestType, Chapter, MistakeTypeDefinition, AreaDefinition } from '../types';
 import { TEST_PRIORITIES, TEST_TYPES } from '../constants';
 import InputField from './form/InputField';
 import SelectField from './form/SelectField';
@@ -12,7 +13,7 @@ interface TestFormProps {
     onSave: (test: Test) => void;
     onCancel: () => void;
     allMistakeTypes: MistakeTypeDefinition[];
-    subjectAreas: { [key: string]: string[] };
+    subjectAreas: { [key: string]: AreaDefinition[] };
 }
 
 const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onSave, onCancel, allMistakeTypes, subjectAreas }) => {
@@ -51,7 +52,8 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
 
     const availableAreas = useMemo(() => {
         if (!formData.subject) return [];
-        return subjectAreas[formData.subject] || [];
+        const areasForSubject = subjectAreas[formData.subject] || [];
+        return areasForSubject.map(areaDef => areaDef.title);
     }, [formData.subject, subjectAreas]);
 
     useEffect(() => {
@@ -237,7 +239,7 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Mistake Types</label>
                                     <div className="mt-2 max-h-40 overflow-y-auto thin-scrollbar border border-gray-300 dark:border-gray-600 rounded-lg p-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                                         {allMistakeTypes.map(type => (
-                                            <label key={type.title} className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/50 cursor-pointer has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/50">
+                                            <label key={type.title} className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/50 cursor-pointer has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/50" title={type.description}>
                                                 <input
                                                     type="checkbox"
                                                     checked={mistakeTypes.has(type.title)}
@@ -253,9 +255,9 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Strong Areas</label>
-                                        <div className="mt-2 max-h-40 overflow-y-auto thin-scrollbar border border-gray-300 dark:border-gray-600 rounded-lg p-2 space-y-2">
+                                        <div className="mt-2 max-h-52 overflow-y-auto thin-scrollbar border border-gray-300 dark:border-gray-600 rounded-lg p-2 space-y-2">
                                             {availableAreas.length > 0 ? availableAreas.map(area => (
-                                                <label key={`strong-${area}`} className={`flex items-center gap-2 p-2 rounded-md transition-colors ${weakAreas.has(area) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 has-[:checked]:bg-green-50 dark:has-[:checked]:bg-green-900/50'}`}>
+                                                <label key={`strong-${area}`} className={`flex items-center gap-2 p-2 rounded-md transition-colors ${weakAreas.has(area) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 has-[:checked]:bg-green-50 dark:has-[:checked]:bg-green-900/50'}`} title={subjectAreas[formData.subject]?.find(def => def.title === area)?.description || ''}>
                                                     <input type="checkbox" checked={strongAreas.has(area)} onChange={() => handleAreaToggle(area, 'strong')} disabled={weakAreas.has(area)} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"/>
                                                     <span>{area}</span>
                                                 </label>
@@ -264,9 +266,9 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Weak Areas</label>
-                                        <div className="mt-2 max-h-40 overflow-y-auto thin-scrollbar border border-gray-300 dark:border-gray-600 rounded-lg p-2 space-y-2">
+                                        <div className="mt-2 max-h-52 overflow-y-auto thin-scrollbar border border-gray-300 dark:border-gray-600 rounded-lg p-2 space-y-2">
                                              {availableAreas.length > 0 ? availableAreas.map(area => (
-                                                <label key={`weak-${area}`} className={`flex items-center gap-2 p-2 rounded-md transition-colors ${strongAreas.has(area) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 has-[:checked]:bg-red-50 dark:has-[:checked]:bg-red-900/50'}`}>
+                                                <label key={`weak-${area}`} className={`flex items-center gap-2 p-2 rounded-md transition-colors ${strongAreas.has(area) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 has-[:checked]:bg-red-50 dark:has-[:checked]:bg-red-900/50'}`} title={subjectAreas[formData.subject]?.find(def => def.title === area)?.description || ''}>
                                                     <input type="checkbox" checked={weakAreas.has(area)} onChange={() => handleAreaToggle(area, 'weak')} disabled={strongAreas.has(area)} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"/>
                                                     <span>{area}</span>
                                                 </label>

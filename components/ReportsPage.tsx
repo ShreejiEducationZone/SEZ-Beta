@@ -1,7 +1,7 @@
 
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { Student, SubjectData, Test, MistakeTypeDefinition } from '../types';
+import { Student, SubjectData, Test, MistakeTypeDefinition, AreaDefinition } from '../types';
 import TestForm from './TestForm';
 import TestDetailModal from './TestDetailModal';
 import ScoreTrendChart from './ScoreTrendChart';
@@ -26,7 +26,7 @@ interface ReportsPageProps {
     onSaveTest: (test: Test) => void;
     onDeleteTest: (testId: string) => void;
     allMistakeTypes: MistakeTypeDefinition[];
-    subjectAreas: { [key: string]: string[] };
+    subjectAreas: { [key: string]: AreaDefinition[] };
 }
 
 const getScoreColor = (score: number) => {
@@ -294,7 +294,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ students, allStudentSubjects,
                         
                         <OverallStrengthsWeaknesses tests={completedAndAbsentTests.filter(t => t.status === 'Completed')} />
                         <TestSchedule tests={testsForSelectedStudent} onTestSelect={setViewingTest} />
-                        <ScoreTrendChart completedTests={completedAndAbsentTests.filter(t => t.status === 'Completed')} />
+                        <ScoreTrendChart completedTests={completedAndAbsentTests.filter(t => t.status === 'Completed')} onTestSelect={setViewingTest} />
                         <MistakeAnalytics tests={completedAndAbsentTests.filter(t => t.status === 'Completed')} />
                         <CompletedTestsTable tests={completedAndAbsentTests} onTestSelect={setViewingTest} onEditTest={handleEditTest} onDeleteTest={onDeleteTest} />
                     </div>

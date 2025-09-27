@@ -11,9 +11,81 @@ import PlaceholderAvatar from './PlaceholderAvatar';
 
 interface StudentFormProps {
     student: Partial<Student> | null;
-    onSave: (student: Student) => void;
+    onSave: (student: Student) => Promise<void>;
     onCancel: () => void;
 }
+
+const resizeImage = (file: File, options: { maxSize: number; targetByteSize: number }): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            if (!event.target?.result) {
+                return reject(new Error('Could not read file.'));
+            }
+            const img = new Image();
+            img.src = event.target.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let { width, height } = img;
+                const { maxSize, targetByteSize } = options;
+
+                // --- 1. Initial resize based on maxSize ---
+                if (width > height) {
+                    if (width > maxSize) {
+                        height = Math.round(height * (maxSize / width));
+                        width = maxSize;
+                    }
+                } else {
+                    if (height > maxSize) {
+                        width = Math.round(width * (maxSize / height));
+                        height = maxSize;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    return reject(new Error('Could not get canvas context'));
+                }
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // --- 2. Iteratively compress to meet targetByteSize ---
+                let quality = 0.9;
+                let dataUrl = canvas.toDataURL('image/jpeg', quality);
+
+                // Reduce quality first
+                while (dataUrl.length > targetByteSize && quality > 0.1) {
+                    quality -= 0.1;
+                    dataUrl = canvas.toDataURL('image/jpeg', quality);
+                }
+
+                // If still too large, reduce dimensions
+                while (dataUrl.length > targetByteSize && canvas.width > 200) {
+                    width *= 0.9;
+                    height *= 0.9;
+                    canvas.width = Math.round(width);
+                    canvas.height = Math.round(height);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    dataUrl = canvas.toDataURL('image/jpeg', quality);
+                }
+
+                if (dataUrl.length > targetByteSize) {
+                    // Final attempt with very low quality if needed
+                    dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                     if (dataUrl.length > targetByteSize) {
+                        return reject(new Error('Image could not be compressed enough. Please use a smaller file.'));
+                    }
+                }
+                
+                resolve(dataUrl);
+            };
+            img.onerror = error => reject(error);
+        };
+        reader.onerror = error => reject(error);
+    });
+};
+
 
 const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onCancel }) => {
     const isEditMode = !!student?.id;
@@ -42,6 +114,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onCancel }) 
     });
     const [age, setAge] = useState<string>('');
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
+    const [isSaving, setIsSaving] = useState(false);
 
     const calculateAge = (dob: string): string => {
         if (!dob) return '';
@@ -67,14 +140,27 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onCancel }) 
         setAge(calculatedAge);
     }, [formData.board, formData.grade, formData.timeSlot, formData.dob]);
     
-    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({ ...prev, avatarUrl: reader.result as string }));
-            };
-            reader.readAsDataURL(file);
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file.');
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                alert('File is too large. Please select an image under 10MB.');
+                return;
+            }
+            try {
+                const resizedDataUrl = await resizeImage(file, {
+                    maxSize: 1024,
+                    targetByteSize: 1000000 // Target < 1MB
+                });
+                setFormData(prev => ({ ...prev, avatarUrl: resizedDataUrl }));
+            } catch (error: any) {
+                console.error("Error resizing image:", error);
+                alert(`Could not process the image: ${error.message}`);
+            }
         }
     };
     
@@ -99,14 +185,21 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onCancel }) 
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (validate()) {
-            onSave({
+        if (isSaving || !validate()) return;
+
+        setIsSaving(true);
+        try {
+            await onSave({
                 ...formData,
                 id: formData.id || `s_${Date.now()}`,
                 gender: formData.gender as Gender,
             } as Student);
+        } catch (error) {
+            console.error("Save failed, re-enabling form.");
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -190,7 +283,23 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onCancel }) 
 
                     <div className="flex justify-end space-x-4 pt-6">
                        <button type="button" onClick={onCancel} className="py-2 px-5 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500 font-semibold">Cancel</button>
-                       <button type="submit" className="h-10 px-4 rounded-md bg-brand-blue text-white hover:bg-blue-600 text-sm font-semibold">Save</button>
+                       <button 
+                            type="submit"
+                            disabled={isSaving}
+                            className="h-10 px-4 rounded-md bg-brand-blue text-white hover:bg-blue-600 text-sm font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center min-w-[110px]"
+                        >
+                            {isSaving ? (
+                                <>
+                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Saving...
+                                </>
+                            ) : (
+                                'Save Student'
+                            )}
+                        </button>
                    </div>
                </form>
            </div>

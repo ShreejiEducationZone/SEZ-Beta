@@ -1,5 +1,6 @@
 
 
+
 export type Board = 'CBSE' | 'ICSE' | 'GSEB' | 'Cambridge' | 'IB';
 export type Gender = 'Male' | 'Female' | 'Other';
 
@@ -111,6 +112,10 @@ export interface MistakeTypeDefinition {
   description: string;
 }
 
+export interface AreaDefinition {
+  title: string;
+  description: string;
+}
 
 export interface Test {
   id: string; 
@@ -141,7 +146,7 @@ export interface AttendanceRecord {
   id: string; // Composite key: studentId_YYYY-MM-DD
   studentId: string;
   date: string; // YYYY-MM-DD
-  status: 'Present';
-  inTime: string; // HH:MM:SS
-  lastSeen: string; // HH:MM:SS
+  status: 'Present' | 'Absent';
+  inTime?: string; // HH:MM:SS
+  lastSeen?: string; // HH:MM:SS
 }

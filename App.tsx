@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getCollection, setDocument, deleteDocument, runBatch, getDocument } from './firebase';
-import { Student, SubjectData, ChapterProgress, WorkItem, Doubt, Test, FaceDescriptorData, AttendanceRecord, MistakeTypeDefinition } from './types';
+import { Student, SubjectData, ChapterProgress, WorkItem, Doubt, Test, FaceDescriptorData, AttendanceRecord, MistakeTypeDefinition, AreaDefinition } from './types';
 import StudentCard from './components/StudentCard';
 import StudentDrawer from './components/StudentDrawer';
 import StudentForm from './components/StudentForm';
@@ -17,8 +17,12 @@ import Sidebar from './components/layout/Sidebar';
 import { updateDoubtStatusFromWorkItems } from './utils/workPoolService';
 import { MISTAKE_TYPES } from './constants';
 import { Toast, ToastContainer } from './components/Toast';
+import AiAssistantPage from './components/AiAssistantPage';
+import { FaBars } from 'react-icons/fa';
+import SkeletonCard from './components/loading/SkeletonCard';
+import SkeletonFilterBar from './components/loading/SkeletonFilterBar';
 
-type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'attendance' | 'settings';
+type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'attendance' | 'settings' | 'ai-assistant';
 
 const App: React.FC = () => {
     const [students, setStudents] = useState<Student[]>([]);
@@ -28,11 +32,11 @@ const App: React.FC = () => {
     const [doubts, setDoubts] = useState<Doubt[]>([]);
     const [tests, setTests] = useState<Test[]>([]);
     const [customMistakeTypes, setCustomMistakeTypes] = useState<MistakeTypeDefinition[]>([]);
-    const [subjectAreas, setSubjectAreas] = useState<{ [key: string]: string[] }>({});
+    const [subjectAreas, setSubjectAreas] = useState<{ [key: string]: AreaDefinition[] }>({});
     const [faceDescriptors, setFaceDescriptors] = useState<FaceDescriptorData[]>([]);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
 
-
+    const [isLoading, setIsLoading] = useState(true);
     const [darkMode, setDarkMode] = useState<boolean>(false);
     const [editingStudent, setEditingStudent] = useState<Partial<Student> | null>(null);
     const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
@@ -121,7 +125,23 @@ const App: React.FC = () => {
                 }
                 
                 if (subjectAreasDoc && (subjectAreasDoc as any).areasBySubject) {
-                    setSubjectAreas((subjectAreasDoc as any).areasBySubject);
+                    const areasBySubject = (subjectAreasDoc as any).areasBySubject;
+                    const migratedAreas: { [key: string]: AreaDefinition[] } = {};
+            
+                    for (const subject in areasBySubject) {
+                        if (Array.isArray(areasBySubject[subject])) {
+                            migratedAreas[subject] = areasBySubject[subject].map((area: any) => {
+                                if (typeof area === 'string') {
+                                    return { title: area, description: '' }; // Migrate old string to new object
+                                }
+                                if (typeof area === 'object' && area !== null && typeof area.title === 'string') {
+                                    return { title: area.title, description: area.description || '' };
+                                }
+                                return null;
+                            }).filter((area: AreaDefinition | null): area is AreaDefinition => area !== null);
+                        }
+                    }
+                    setSubjectAreas(migratedAreas);
                 } else {
                     setSubjectAreas({});
                 }
@@ -129,11 +149,55 @@ const App: React.FC = () => {
 
             } catch (error) {
                 console.error("Failed to fetch initial data from Firestore:", error);
-                alert("Could not load data. Please check your internet connection and refresh the page.");
+                showToast("Could not load data. Please check your connection.", 'error');
+            } finally {
+                setIsLoading(false);
             }
         };
         fetchAllData();
-    }, []);
+    }, [showToast]);
+
+    // Effect to create default 'Absent' records for today
+    useEffect(() => {
+        const createDefaultAttendanceRecords = async () => {
+            if (students.length === 0) return;
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            const activeStudents = students.filter(s => !s.isArchived);
+            const recordsForToday = new Set(
+                attendanceRecords
+                    .filter(r => r.date === todayStr)
+                    .map(r => r.studentId)
+            );
+
+            const studentsWithoutRecords = activeStudents.filter(s => !recordsForToday.has(s.id));
+
+            if (studentsWithoutRecords.length > 0) {
+                const writes: { type: 'set', path: string, data: AttendanceRecord }[] = studentsWithoutRecords.map(student => {
+                    const recordId = `${student.id}_${todayStr}`;
+                    const newRecord: AttendanceRecord = {
+                        id: recordId,
+                        studentId: student.id,
+                        date: todayStr,
+                        status: 'Absent',
+                    };
+                    return { type: 'set', path: `attendance/${recordId}`, data: newRecord };
+                });
+
+                try {
+                    await runBatch(writes);
+                    const newRecords = writes.map(w => w.data);
+                    setAttendanceRecords(prev => [...prev, ...newRecords]);
+                } catch (error) {
+                    console.error("Failed to create default attendance records:", error);
+                    showToast("Error setting up today's attendance.", 'error');
+                }
+            }
+        };
+
+        createDefaultAttendanceRecords();
+    }, [students, attendanceRecords, showToast]);
+
 
     // Effect to auto-update doubt status if a linked task is completed
     useEffect(() => {
@@ -187,7 +251,7 @@ const App: React.FC = () => {
     }, [darkMode]);
 
 
-    const handleSaveStudent = useCallback(async (studentData: Student) => {
+    const handleSaveStudent = useCallback(async (studentData: Student): Promise<void> => {
         const isNewStudent = !students.some(s => s.id === studentData.id);
         try {
             await setDocument("students", studentData.id, studentData);
@@ -202,21 +266,24 @@ const App: React.FC = () => {
             if (!isNewStudent) {
                 setViewingStudent(studentData);
             }
+            showToast(`Student "${studentData.name}" saved successfully!`, 'success');
         } catch (error: any) {
             console.error("Error saving student:", error);
-            alert(`Failed to save student data. Please check your internet connection. Error: ${error.message}`);
+            showToast(`Failed to save student: ${error.message}`, 'error');
+            throw error; // Re-throw to allow form to handle UI state
         }
-    }, [students]);
+    }, [students, showToast]);
     
     const handleSaveSubjects = useCallback(async (studentId: string, subjects: SubjectData[]) => {
         try {
             await setDocument("studentSubjects", studentId, { studentId, subjects });
             setAllStudentSubjects(prev => ({ ...prev, [studentId]: { studentId, subjects } }));
+            showToast('Subjects saved successfully!', 'success');
         } catch (error: any) {
             console.error("Error saving subjects:", error);
-            alert(`Failed to save subjects. Please check your internet connection. Error: ${error.message}`);
+            showToast(`Failed to save subjects: ${error.message}`, 'error');
         }
-    }, []);
+    }, [showToast]);
 
     const handleSaveChapterProgress = useCallback(async (progress: ChapterProgress) => {
         try {
@@ -274,11 +341,12 @@ const App: React.FC = () => {
                 });
             }
             if (writes.length > 0) await runBatch(writes);
+            showToast('Syllabus progress saved!', 'success');
         } catch (error: any) {
             console.error("Error saving chapter progress:", error);
-            alert(`Failed to save chapter progress. Please check your internet connection. Error: ${error.message}`);
+            showToast(`Failed to save progress: ${error.message}`, 'error');
         }
-    }, [chapterProgress, workItems]);
+    }, [chapterProgress, workItems, showToast]);
 
     const handleSaveWorkItem = useCallback(async (workItem: WorkItem) => {
         try {
@@ -288,21 +356,23 @@ const App: React.FC = () => {
                 if (exists) return prev.map(w => w.id === workItem.id ? workItem : w);
                 return [...prev, workItem];
             });
+            showToast('Work item saved successfully!', 'success');
         } catch (error: any) {
             console.error("Error saving work item:", error);
-            alert(`Failed to save work item. Please check your internet connection. Error: ${error.message}`);
+            showToast(`Failed to save work item: ${error.message}`, 'error');
         }
-    }, []);
+    }, [showToast]);
 
     const handleDeleteWorkItem = useCallback(async (workItemId: string) => {
         try {
             await deleteDocument("workItems", workItemId);
             setWorkItems(prev => prev.filter(w => w.id !== workItemId));
+            showToast('Work item deleted.', 'success');
         } catch (error: any) {
             console.error("Error deleting work item:", error);
-            alert(`Failed to delete work item. Please check your internet connection. Error: ${error.message}`);
+            showToast(`Failed to delete work item: ${error.message}`, 'error');
         }
-    }, []);
+    }, [showToast]);
 
     const handleSaveDoubt = useCallback(async (doubt: Doubt) => {
         try {
@@ -312,11 +382,12 @@ const App: React.FC = () => {
                 if (exists) return prev.map(d => d.id === doubt.id ? doubt : d);
                 return [...prev, doubt];
             });
+            showToast('Doubt saved successfully!', 'success');
         } catch (error: any) {
             console.error("Error saving doubt:", error);
-            alert(`Failed to save doubt. Please check your internet connection. Error: ${error.message}`);
+            showToast(`Failed to save doubt: ${error.message}`, 'error');
         }
-    }, []);
+    }, [showToast]);
 
     const handleDeleteDoubt = useCallback(async (doubtId: string) => {
         try {
@@ -330,12 +401,12 @@ const App: React.FC = () => {
             
             setDoubts(prev => prev.filter(d => d.id !== doubtId));
             if(linkedWorkItem) setWorkItems(prev => prev.filter(w => w.id !== linkedWorkItem.id));
-
+            showToast('Doubt deleted successfully.', 'success');
         } catch (error: any) {
             console.error("Error deleting doubt:", error);
-            alert(`Failed to delete doubt. Please check your internet connection. Error: ${error.message}`);
+            showToast(`Failed to delete doubt: ${error.message}`, 'error');
         }
-    }, [workItems]);
+    }, [workItems, showToast]);
 
     const handleSaveTest = useCallback(async (test: Test) => {
         try {
@@ -345,21 +416,23 @@ const App: React.FC = () => {
                 if (exists) return prev.map(t => t.id === test.id ? test : t);
                 return [...prev, test];
             });
+            showToast('Test record saved.', 'success');
         } catch (error: any) {
             console.error("Error saving test:", error);
-            alert(`Failed to save test. Please check your internet connection. Error: ${error.message}`);
+            showToast(`Failed to save test: ${error.message}`, 'error');
         }
-    }, []);
+    }, [showToast]);
 
     const handleDeleteTest = useCallback(async (testId: string) => {
         try {
             await deleteDocument("tests", testId);
             setTests(prev => prev.filter(t => t.id !== testId));
+            showToast('Test record deleted.', 'success');
         } catch (error: any) {
             console.error("Error deleting test:", error);
-            alert(`Failed to delete test. Please check your internet connection. Error: ${error.message}`);
+            showToast(`Failed to delete test: ${error.message}`, 'error');
         }
-    }, []);
+    }, [showToast]);
 
     const handleSaveFaceDescriptor = useCallback(async (descriptorData: FaceDescriptorData) => {
         try {
@@ -371,9 +444,10 @@ const App: React.FC = () => {
             });
         } catch (error: any) {
             console.error("Error saving face descriptor:", error);
-            alert(`Failed to save face registration data. Please check your internet connection. Error: ${error.message}`);
+            showToast(`Failed to save registration: ${error.message}`, 'error');
+            throw error;
         }
-    }, []);
+    }, [showToast]);
 
     const handleSaveAttendanceRecord = useCallback(async (record: AttendanceRecord) => {
         try {
@@ -385,9 +459,9 @@ const App: React.FC = () => {
             });
         } catch (error: any) {
             console.error("Error saving attendance record:", error);
-            alert(`Failed to save attendance. Please check your internet connection. Error: ${error.message}`);
+            showToast(`Failed to save attendance: ${error.message}`, 'error');
         }
-    }, []);
+    }, [showToast]);
     
     const handleSaveCustomMistakeTypes = useCallback(async (types: MistakeTypeDefinition[]) => {
         try {
@@ -396,21 +470,23 @@ const App: React.FC = () => {
             );
             await setDocument("configuration", "mistakeTypes", { types: uniqueTypes });
             setCustomMistakeTypes(uniqueTypes);
+            showToast('Custom mistake types saved.', 'success');
         } catch (error: any) {
             console.error("Error saving custom mistake types:", error);
-            alert(`Failed to save custom mistake types. Please check your internet connection. Error: ${error.message}`);
+            showToast(`Failed to save mistake types: ${error.message}`, 'error');
         }
-    }, []);
+    }, [showToast]);
     
-    const handleSaveSubjectAreas = useCallback(async (areas: { [key: string]: string[] }) => {
+    const handleSaveSubjectAreas = useCallback(async (areas: { [key: string]: AreaDefinition[] }) => {
         try {
             await setDocument("configuration", "subjectAreas", { areasBySubject: areas });
             setSubjectAreas(areas);
+            showToast('Subject areas saved.', 'success');
         } catch (error: any) {
             console.error("Error saving subject areas:", error);
-            alert(`Failed to save subject areas. Error: ${error.message}`);
+            showToast(`Failed to save subject areas: ${error.message}`, 'error');
         }
-    }, []);
+    }, [showToast]);
 
     const handleArchive = useCallback(async (id: string) => {
         try {
@@ -419,24 +495,30 @@ const App: React.FC = () => {
                 const updatedStudent = { ...student, isArchived: !student.isArchived };
                 await setDocument("students", id, updatedStudent);
                 setStudents(prev => prev.map(s => s.id === id ? updatedStudent : s));
+                showToast(`Student "${student.name}" has been ${updatedStudent.isArchived ? 'archived' : 'unarchived'}.`, 'success');
             }
             setViewingStudent(null);
         } catch (error: any) {
             console.error("Error archiving student:", error);
-            alert(`Failed to archive student. Please check your internet connection. Error: ${error.message}`);
+            showToast(`Failed to update student status: ${error.message}`, 'error');
         }
-    }, [students]);
+    }, [students, showToast]);
 
     const handleDelete = useCallback(async (id: string) => {
+        const studentName = students.find(s => s.id === id)?.name || 'the student';
+        if (!window.confirm(`Are you sure you want to permanently delete ${studentName}? This action cannot be undone.`)) {
+            return;
+        }
         try {
             await deleteDocument("students", id);
             setStudents(prev => prev.filter(s => s.id !== id));
             setViewingStudent(null);
+            showToast(`Successfully deleted ${studentName}.`, 'success');
         } catch (error: any) {
             console.error("Error deleting student:", error);
-            alert(`Failed to delete student. Please check your internet connection. Error: ${error.message}`);
+            showToast(`Failed to delete student: ${error.message}`, 'error');
         }
-    }, []);
+    }, [students, showToast]);
 
     const handleFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -478,15 +560,38 @@ const App: React.FC = () => {
 
     const todaysAttendanceMap = useMemo(() => {
         const todayStr = new Date().toISOString().split('T')[0];
-        const map = new Map<string, 'Present'>();
+        const map = new Map<string, 'Present' | 'Absent'>();
         attendanceRecords.forEach(record => {
-            if (record.date === todayStr && record.status === 'Present') {
-                map.set(record.studentId, 'Present');
+            if (record.date === todayStr) {
+                map.set(record.studentId, record.status);
             }
         });
         return map;
     }, [attendanceRecords]);
 
+
+    const handleNavigate = (page: Page) => {
+        setCurrentPage(page);
+        // On smaller screens, close the sidebar after navigating to a new page.
+        if (window.innerWidth < 768) {
+            setIsSidebarExpanded(false);
+        }
+    };
+
+    const LoadingSkeleton = () => (
+        <>
+            <SkeletonFilterBar />
+            <div className="flex items-center mb-4 mt-6">
+                <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                <div className="ml-2 h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                {Array.from({ length: 12 }).map((_, index) => (
+                    <SkeletonCard key={index} />
+                ))}
+            </div>
+        </>
+    );
 
     const renderPageContent = () => {
         switch (currentPage) {
@@ -564,6 +669,18 @@ const App: React.FC = () => {
                         allStudentSubjects={allStudentSubjects}
                     />
                 );
+            case 'ai-assistant':
+                return (
+                    <AiAssistantPage
+                        students={students}
+                        allStudentSubjects={allStudentSubjects}
+                        chapterProgress={chapterProgress}
+                        workItems={workItems}
+                        doubts={doubts}
+                        tests={tests}
+                        attendanceRecords={attendanceRecords}
+                    />
+                );
             case 'students':
             default:
                 return (
@@ -621,6 +738,7 @@ const App: React.FC = () => {
             case 'reports': return 'Test Tracker';
             case 'attendance': return 'Attendance';
             case 'settings': return 'Settings';
+            case 'ai-assistant': return 'AI Assistant';
             case 'students':
             default: return 'Student Directory';
         }
@@ -630,20 +748,37 @@ const App: React.FC = () => {
     return (
         <div className="relative min-h-screen">
             <ToastContainer toasts={toasts} onClose={removeToast} />
+             {/* Mobile-only overlay */}
+            {isSidebarExpanded && (
+                <div 
+                    onClick={() => setIsSidebarExpanded(false)}
+                    className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                    aria-hidden="true"
+                />
+            )}
+
             <Sidebar
                 isExpanded={isSidebarExpanded}
                 onToggle={toggleSidebar}
                 currentPage={currentPage}
-                onNavigate={setCurrentPage}
+                onNavigate={handleNavigate}
             />
              <div 
-                className="flex-grow transition-all duration-300"
-                style={{ marginLeft: isSidebarExpanded ? '220px' : '60px' }}
+                className={`flex-grow transition-all duration-300 ${isSidebarExpanded ? 'md:ml-[220px]' : 'md:ml-[60px]'}`}
             >
-                <header className="flex justify-between items-center h-20 px-8">
-                    <h1 className="text-2xl font-bold">
-                        {getPageTitle()}
-                    </h1>
+                <header className="flex justify-between items-center h-20 px-4 sm:px-8">
+                     <div className="flex items-center gap-4">
+                        <button
+                            onClick={toggleSidebar}
+                            className="p-2 rounded-full text-gray-600 dark:text-gray-300 md:hidden hover:bg-gray-200 dark:hover:bg-gray-700"
+                            aria-label="Toggle Menu"
+                        >
+                            <FaBars className="h-5 w-5" />
+                        </button>
+                        <h1 className="text-2xl font-bold">
+                            {getPageTitle()}
+                        </h1>
+                    </div>
                     <div className="flex items-center space-x-4">
                         {currentPage === 'students' && (
                              <button
@@ -661,8 +796,8 @@ const App: React.FC = () => {
                         </button>
                     </div>
                 </header>
-                <main className="p-8 pt-0">
-                    {renderPageContent()}
+                <main className="p-4 sm:p-8 pt-0">
+                    {isLoading && currentPage === 'students' ? <LoadingSkeleton /> : renderPageContent()}
                 </main>
             </div>
 
