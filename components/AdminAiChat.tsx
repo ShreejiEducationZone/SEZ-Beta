@@ -79,17 +79,17 @@ const AdminAiChat: React.FC<AdminAiChatProps> = ({ onBack }) => {
     const [formData, setFormData] = useState<Partial<Student>>({});
 
     useEffect(() => {
-        // @FIX: Use environment variable for API key as per guidelines. This resolves the comparison error.
-        const apiKey = process.env.API_KEY;
+        // Use Vercel environment variable for Gemini API key
+        const apiKey = process.env.gemini_api;
 
         if (!apiKey) {
-            setMessages([{ role: 'model', text: "AI Assistant is not configured correctly (missing API key)." }]);
+            setMessages([{ role: 'model', text: "AI Assistant is not configured correctly (missing Gemini API key)." }]);
             return;
         }
 
         try {
             const ai = new GoogleGenAI({ apiKey });
-            const newChat = ai.chats.create({ model: 'gemini-2.5-flash', config: { systemInstruction: `You are "Sez AI", an expert assistant in a student management dashboard...` } });
+            const newChat = ai.chats.create({ model: 'gemini-2.5-flash', config: { systemInstruction: `You are \"Sez AI\", an expert assistant in a student management dashboard...` } });
             setChat(newChat);
             setMessages([{ role: 'model', text: "Hello! I am the Sez AI Assistant. How can I help?" }]);
         } catch (error) {
