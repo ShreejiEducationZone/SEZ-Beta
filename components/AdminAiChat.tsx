@@ -11,6 +11,7 @@ import { GRADES, BOARDS, TIME_SLOTS } from '../constants';
 import { getProgramStage, getBatchFromTime } from '../utils/studentUtils';
 import { useData } from '../context/DataContext';
 import ChevronLeftIcon from './icons/ChevronLeftIcon';
+import { GEMINI_API_KEY } from '../utils/apiHUB';
 
 type Message = {
     role: 'user' | 'model';
@@ -79,17 +80,16 @@ const AdminAiChat: React.FC<AdminAiChatProps> = ({ onBack }) => {
     const [formData, setFormData] = useState<Partial<Student>>({});
 
     useEffect(() => {
-    // Use Vercel frontend environment variable for Gemini API key
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API;
+        const apiKey = GEMINI_API_KEY;
 
         if (!apiKey) {
-            setMessages([{ role: 'model', text: "AI Assistant is not configured correctly (missing Gemini API key)." }]);
+            setMessages([{ role: 'model', text: "AI Assistant is not configured correctly (missing API key)." }]);
             return;
         }
 
         try {
             const ai = new GoogleGenAI({ apiKey });
-            const newChat = ai.chats.create({ model: 'gemini-2.5-flash', config: { systemInstruction: `You are \"Sez AI\", an expert assistant in a student management dashboard...` } });
+            const newChat = ai.chats.create({ model: 'gemini-2.5-flash', config: { systemInstruction: `You are "Sez AI", an expert assistant in a student management dashboard...` } });
             setChat(newChat);
             setMessages([{ role: 'model', text: "Hello! I am the Sez AI Assistant. How can I help?" }]);
         } catch (error) {

@@ -4,6 +4,7 @@ import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
 import XIcon from './icons/XIcon';
 import SendIcon from './icons/SendIcon';
 import RobotIcon from './icons/RobotIcon';
+import { GEMINI_API_KEY } from '../utils/apiHUB';
 
 interface AiAssistantChatProps {
     student: Student;
@@ -25,84 +26,86 @@ const AiAssistantChat: React.FC<AiAssistantChatProps> = ({ student, onApply, onC
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        // Use Vercel frontend environment variable for Gemini API key
-        const apiKey = process.env.NEXT_PUBLIC_GEMINI_API;
+        const apiKey = GEMINI_API_KEY;
 
-            if (!apiKey) {
-                setMessages([
-                    { role: 'model', text: "AI Assistant is not configured correctly (missing Gemini API key)." }
-                ]);
-                return;
-            }
+        if (!apiKey) {
+            console.error("API_KEY environment variable not set. The AI Assistant will not work.");
+            setMessages([
+                { role: 'model', text: "I'm sorry, but the AI Assistant is not configured correctly (missing API key)." }
+            ]);
+            return;
+        }
 
-            try {
-                const ai = new GoogleGenAI({ apiKey });
-                const systemInstruction = `You are the “AI Subject Builder,” an expert curriculum designer inside an education dashboard. Your role is to help a mentor create subject and chapter lists for a specific student.
 
-    **Student Context (Do not ask for this, you already know it):**
-    - Grade: ${student.grade}
-    - Board: ${student.board}
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            
+            const systemInstruction = `You are the “AI Subject Builder,” an expert curriculum designer inside an education dashboard. Your role is to help a mentor create subject and chapter lists for a specific student.
 
-    **Your Core Task: A Two-Step Conversation**
+**Student Context (Do not ask for this, you already know it):**
+- Grade: ${student.grade}
+- Board: ${student.board}
 
-    **Step 1: Generate Data & Ask for Format**
-    When the user asks for a curriculum (e.g., "Give me Science chapters for Grade 10 CBSE," "NCERT math syllabus," etc.), your first action is to generate the requested subject and chapter data internally.
-    However, **DO NOT** output this data immediately.
-    Instead, your first response must be to ask the user for their preferred format. Your reply should be polite and clear, like this example:
+**Your Core Task: A Two-Step Conversation**
 
-    "I have prepared the chapter list for Science (Grade 10 – CBSE).
-    👉 Please choose how you'd like to view the results:
-    1. 📜 View as List (for easy reading)
-    2. 🧩 View as JSON (to use in the editor)
+**Step 1: Generate Data & Ask for Format**
+When the user asks for a curriculum (e.g., "Give me Science chapters for Grade 10 CBSE," "NCERT math syllabus," etc.), your first action is to generate the requested subject and chapter data internally.
+However, **DO NOT** output this data immediately.
+Instead, your first response must be to ask the user for their preferred format. Your reply should be polite and clear, like this example:
 
-    You can reply with 'list', 'json', or 'both'."
+"I have prepared the chapter list for Science (Grade 10 – CBSE).
+👉 Please choose how you'd like to view the results:
+1. 📜 View as List (for easy reading)
+2. 🧩 View as JSON (to use in the editor)
 
-    **Step 2: Provide Data in the Chosen Format**
-    In your next response, based on the user's choice:
+You can reply with 'list', 'json', or 'both'."
 
-    - If the user types **"list"**:
-      Provide a clean, human-readable, formatted list. For example:
-      **Science – Grade 10**
-      1. Chemical Reactions and Equations
-      2. Acids, Bases and Salts
-      3. Metals and Non-metals
+**Step 2: Provide Data in the Chosen Format**
+In your next response, based on the user's choice:
 
-    - If the user types **"json"**:
-      Provide **ONLY** the raw, valid JSON. This is critical for the application to work. The JSON structure MUST be an ARRAY of subjects, even if there is only one, where each chapter is an object with "no" and "name".
-      Correct Structure: \`[{"subject": "Science", "chapters": [{"no": 1, "name": "Chemical Reactions and Equations"}, ... ]}]\`
-      **DO NOT** wrap the JSON in markdown backticks (\`\`\`json) or add any explanatory text before or after it.
+- If the user types **"list"**:
+  Provide a clean, human-readable, formatted list. For example:
+  **Science – Grade 10**
+  1. Chemical Reactions and Equations
+  2. Acids, Bases and Salts
+  3. Metals and Non-metals
 
-    - If the user types **"both"**:
-      Provide the human-readable list first, then provide the raw JSON object below it, separated by a clear marker.
+- If the user types **"json"**:
+  Provide **ONLY** the raw, valid JSON. This is critical for the application to work. The JSON structure MUST be an ARRAY of subjects, even if there is only one, where each chapter is an object with "no" and "name".
+  Correct Structure: \`[{"subject": "Science", "chapters": [{"no": 1, "name": "Chemical Reactions and Equations"}, ... ]}]\`
+  **DO NOT** wrap the JSON in markdown backticks (\`\`\`json) or add any explanatory text before or after it.
 
-    - **Default Behavior**: If the user's response is unclear or doesn't specify a format, default to providing the **"list"** format, as it's the most user-friendly for reading.
+- If the user types **"both"**:
+  Provide the human-readable list first, then provide the raw JSON object below it, separated by a clear marker.
 
-    **Follow-up Questions:**
-    If the user asks to modify a list (e.g., "add two more chapters to Science"), generate the updated list internally and repeat the process from Step 1 (ask for the format again).
+- **Default Behavior**: If the user's response is unclear or doesn't specify a format, default to providing the **"list"** format, as it's the most user-friendly for reading.
 
-    **Supported Languages:**
-    You must be able to understand and respond in English, Hindi, and Gujarati.`;
+**Follow-up Questions:**
+If the user asks to modify a list (e.g., "add two more chapters to Science"), generate the updated list internally and repeat the process from Step 1 (ask for the format again).
 
-                const newChat = ai.chats.create({
-                    model: 'gemini-2.5-flash',
-                    config: {
-                        systemInstruction: systemInstruction,
-                    },
-                });
-                setChat(newChat);
+**Supported Languages:**
+You must be able to understand and respond in English, Hindi, and Gujarati.`;
 
-                // Reset messages when student changes, keeping the intro
-                setMessages([
-                    { role: 'model', text: `Hi! I'm the AI Subject Builder. How can I help you plan the curriculum for ${student.name}? You can ask for subjects for their grade and board, even in Hindi or Gujarati.` }
-                ]);
-            } catch (error) {
-                console.error("Error initializing GoogleGenAI in Subject Builder:", error);
-                setMessages([
-                    { role: 'model', text: "An error occurred while setting up the AI Assistant. Please try again later." }
-                ]);
-            }
+            const newChat = ai.chats.create({
+                model: 'gemini-2.5-flash',
+                config: {
+                    systemInstruction: systemInstruction,
+                },
+            });
+            setChat(newChat);
 
-        }, [student]);
+            // Reset messages when student changes, keeping the intro
+            setMessages([
+                { role: 'model', text: `Hi! I'm the AI Subject Builder. How can I help you plan the curriculum for ${student.name}? You can ask for subjects for their grade and board, even in Hindi or Gujarati.` }
+            ]);
+        } catch (error) {
+            console.error("Error initializing GoogleGenAI in Subject Builder:", error);
+            setMessages([
+                { role: 'model', text: "An error occurred while setting up the AI Assistant. Please try again later." }
+            ]);
+        }
+
+    }, [student]);
 
     // Auto-scroll to the bottom of the chat on new messages
     useEffect(() => {

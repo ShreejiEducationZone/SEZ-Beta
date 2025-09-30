@@ -7,6 +7,7 @@ import AiThinking from './AiThinking';
 import AnalyticsReport from './AnalyticsReport';
 import { Student } from '../types';
 import ChevronLeftIcon from './icons/ChevronLeftIcon';
+import { GEMINI_API_KEY } from '../utils/apiHUB';
 
 type Message = {
     role: 'user' | 'model';
@@ -61,16 +62,15 @@ const StudentAiChat: React.FC<StudentAiChatProps> = ({ student, studentData, onB
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        // Use Vercel frontend environment variable for Gemini API key
-        const apiKey = process.env.NEXT_PUBLIC_GEMINI_API;
+        const apiKey = GEMINI_API_KEY;
 
         if (!apiKey) {
-            setMessages([{ role: 'model', text: "AI Assistant is not configured correctly (missing Gemini API key)." }]);
+            setMessages([{ role: 'model', text: "AI Assistant is not configured correctly (missing API key)." }]);
             return;
         }
 
         const ai = new GoogleGenAI({ apiKey });
-
+        
         const systemInstruction = `
 You are a helpful and friendly AI assistant for a student named ${student.name}.
 Your name is Sez AI.
