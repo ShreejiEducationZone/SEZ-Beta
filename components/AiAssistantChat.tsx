@@ -25,16 +25,20 @@ const AiAssistantChat: React.FC<AiAssistantChatProps> = ({ student, onApply, onC
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (!process.env.API_KEY) {
-            console.error("API_KEY environment variable not set for AI Subject Builder.");
+        // @FIX: Use environment variable for API key as per guidelines. This resolves the comparison error.
+        const apiKey = process.env.API_KEY;
+
+        if (!apiKey) {
+            console.error("API_KEY environment variable not set. The AI Assistant will not work.");
             setMessages([
-                { role: 'model', text: "I'm sorry, but the AI Assistant is not configured correctly (missing API key). Please contact support." }
+                { role: 'model', text: "I'm sorry, but the AI Assistant is not configured correctly (missing API key)." }
             ]);
             return;
         }
 
+
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const ai = new GoogleGenAI({ apiKey });
             
             const systemInstruction = `You are the “AI Subject Builder,” an expert curriculum designer inside an education dashboard. Your role is to help a mentor create subject and chapter lists for a specific student.
 

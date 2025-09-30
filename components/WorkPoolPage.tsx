@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback } from 'react';
 import { Student, SubjectData, WorkItem, WorkHealthStatus } from '../types';
 import StudentWorkCard from './StudentWorkCard';
@@ -10,16 +9,11 @@ import WorkItemDetailModal from './WorkItemDetailModal';
 import CalendarIcon from './icons/CalendarIcon';
 import TableIcon from './icons/TableIcon';
 import WorkPoolDrawer from './WorkPoolDrawer';
+import { useData } from '../context/DataContext';
 
-interface WorkPoolPageProps {
-    students: Student[];
-    allStudentSubjects: { [key: string]: { studentId: string; subjects: SubjectData[] } };
-    workItems: WorkItem[];
-    onSaveWorkItem: (item: WorkItem) => void;
-    onDeleteWorkItem: (id: string) => void;
-}
+const WorkPoolPage: React.FC = () => {
+    const { students, allStudentSubjects, workItems, handleSaveWorkItem, handleDeleteWorkItem } = useData();
 
-const WorkPoolPage: React.FC<WorkPoolPageProps> = ({ students, allStudentSubjects, workItems, onSaveWorkItem, onDeleteWorkItem }) => {
     const [showArchived, setShowArchived] = useState(false);
     const [studentForNewWork, setStudentForNewWork] = useState<Student | null>(null);
     const [editingWorkItem, setEditingWorkItem] = useState<WorkItem | null>(null);
@@ -56,7 +50,6 @@ const WorkPoolPage: React.FC<WorkPoolPageProps> = ({ students, allStudentSubject
 
     const allSubjects = useMemo(() => {
         const subjectsSet = new Set<string>();
-        // FIX: Explicitly type studentSubjects to resolve 'subjects' property error.
         Object.values(allStudentSubjects).forEach((studentSubjects: { subjects: SubjectData[] }) => {
             studentSubjects.subjects.forEach(subject => subjectsSet.add(subject.subject));
         });
@@ -74,7 +67,6 @@ const WorkPoolPage: React.FC<WorkPoolPageProps> = ({ students, allStudentSubject
     }, [workItems]);
 
     const filteredWorkItems = useMemo(() => {
-        // FIX: Explicitly type the Map to ensure correct type inference for 'student'.
         const studentMap = new Map<string, Student>(students.map(s => [s.id, s]));
 
         return workItems.filter(item => {
@@ -143,7 +135,7 @@ const WorkPoolPage: React.FC<WorkPoolPageProps> = ({ students, allStudentSubject
     }, [workItems]);
 
     const handleEditWork = (item: WorkItem) => {
-        setViewingStudentWork(null); // Close drawer if open
+        setViewingStudentWork(null); 
         setEditingWorkItem(item);
     };
     
@@ -211,7 +203,6 @@ const WorkPoolPage: React.FC<WorkPoolPageProps> = ({ students, allStudentSubject
                 </div>
             )}
 
-
             <div className="mt-12">
                 <div className="flex justify-end my-4">
                     <button
@@ -229,21 +220,20 @@ const WorkPoolPage: React.FC<WorkPoolPageProps> = ({ students, allStudentSubject
                         )}
                     </button>
                 </div>
-
                  {viewMode === 'table' ? (
                     <WorkItemsTable 
                         workItems={filteredWorkItems} 
                         students={students} 
                         workHealthByStudent={workHealthByStudent}
                         onEdit={handleEditWork}
-                        onDelete={onDeleteWorkItem}
+                        onDelete={handleDeleteWorkItem}
                     />
                  ) : (
                     <WorkCalendarView
                         workItems={filteredWorkItems}
                         students={students}
                         onItemClick={handleViewWorkDetails}
-                        onSaveWorkItem={onSaveWorkItem}
+                        onSaveWorkItem={handleSaveWorkItem}
                     />
                  )}
             </div>
@@ -254,10 +244,10 @@ const WorkPoolPage: React.FC<WorkPoolPageProps> = ({ students, allStudentSubject
                     workItems={workItemsByStudent[viewingStudentWork.id] || []}
                     onClose={() => setViewingStudentWork(null)}
                     onEditWorkItem={handleEditWork}
-                    onDeleteWorkItem={onDeleteWorkItem}
+                    onDeleteWorkItem={handleDeleteWorkItem}
                     onAddWork={() => {
-                        setViewingStudentWork(null); // Close drawer
-                        setStudentForNewWork(viewingStudentWork); // Open form
+                        setViewingStudentWork(null);
+                        setStudentForNewWork(viewingStudentWork);
                     }}
                 />
             )}
@@ -268,7 +258,7 @@ const WorkPoolPage: React.FC<WorkPoolPageProps> = ({ students, allStudentSubject
                     subjects={allStudentSubjects[studentForForm.id]?.subjects || []}
                     workItem={editingWorkItem || undefined}
                     workItems={workItems}
-                    onSave={onSaveWorkItem}
+                    onSave={handleSaveWorkItem}
                     onCancel={handleCloseForm}
                 />
             )}

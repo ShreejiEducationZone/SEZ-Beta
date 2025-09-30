@@ -1,16 +1,11 @@
-
 import React, { useState, useMemo } from 'react';
-import { Student, SubjectData } from '../types';
+import { Student } from '../types';
 import StudentSubjectCard from './StudentSubjectCard';
 import SubjectManagerDrawer from './SubjectManagerDrawer';
+import { useData } from '../context/DataContext';
 
-interface SubjectManagerPageProps {
-    students: Student[];
-    allStudentSubjects: { [key: string]: { studentId: string; subjects: SubjectData[] } };
-    onSaveSubjects: (studentId: string, subjects: SubjectData[]) => void;
-}
-
-const SubjectManagerPage: React.FC<SubjectManagerPageProps> = ({ students, allStudentSubjects, onSaveSubjects }) => {
+const SubjectManagerPage: React.FC = () => {
+    const { students, allStudentSubjects, handleSaveSubjects } = useData();
     const [showArchived, setShowArchived] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
@@ -59,7 +54,7 @@ const SubjectManagerPage: React.FC<SubjectManagerPageProps> = ({ students, allSt
                 <SubjectManagerDrawer
                     student={selectedStudent}
                     studentSubjects={allStudentSubjects[selectedStudent.id]?.subjects}
-                    onSave={onSaveSubjects}
+                    onSave={handleSaveSubjects}
                     onClose={() => setSelectedStudent(null)}
                 />
             )}

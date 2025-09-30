@@ -1,19 +1,13 @@
-
-
 import React, { useState, useMemo, useCallback } from 'react';
 import { Student, SubjectData, ChapterProgress } from '../types';
 import StudentProgressCard from './StudentProgressCard';
 import SyllabusTimelineDrawer from './SyllabusTimelineDrawer';
 import SyllabusFilterBar from './SyllabusFilterBar';
+import { useData } from '../context/DataContext';
 
-interface SyllabusProgressPageProps {
-    students: Student[];
-    allStudentSubjects: { [key: string]: { studentId: string; subjects: SubjectData[] } };
-    chapterProgress: ChapterProgress[];
-    onSaveChapterProgress: (progress: ChapterProgress) => void;
-}
+const SyllabusProgressPage: React.FC = () => {
+    const { students, allStudentSubjects, chapterProgress, handleSaveChapterProgress } = useData();
 
-const SyllabusProgressPage: React.FC<SyllabusProgressPageProps> = ({ students, allStudentSubjects, chapterProgress, onSaveChapterProgress }) => {
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [showArchived, setShowArchived] = useState(false);
     const [filters, setFilters] = useState({ board: '', grade: '', batch: '', subject: '' });
@@ -21,7 +15,6 @@ const SyllabusProgressPage: React.FC<SyllabusProgressPageProps> = ({ students, a
 
     const allSubjects = useMemo(() => {
         const subjectsSet = new Set<string>();
-        // FIX: Explicitly type studentSubjects to resolve 'subjects' property error.
         Object.values(allStudentSubjects).forEach((studentSubjects: { subjects: SubjectData[] }) => {
             studentSubjects.subjects.forEach(subject => subjectsSet.add(subject.subject));
         });
@@ -149,7 +142,7 @@ const SyllabusProgressPage: React.FC<SyllabusProgressPageProps> = ({ students, a
                     student={selectedStudent}
                     studentSubjects={allStudentSubjects[selectedStudent.id]?.subjects || []}
                     chapterProgress={chapterProgress}
-                    onSave={onSaveChapterProgress}
+                    onSave={handleSaveChapterProgress}
                     onClose={() => setSelectedStudent(null)}
                 />
             )}

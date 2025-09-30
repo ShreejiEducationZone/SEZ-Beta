@@ -1,7 +1,5 @@
-
-
 import React, { useState } from 'react';
-import { MistakeTypeDefinition, Student, SubjectData, AreaDefinition } from '../types';
+import { Student, SubjectData, AreaDefinition } from '../types';
 import AdministratorSettings from './settings/AdministratorSettings';
 import StudentPasswordSettings from './settings/StudentPasswordSettings';
 import MistakeTypeSettings from './settings/MistakeTypeSettings';
@@ -14,22 +12,23 @@ import WrenchScrewdriverIcon from './icons/WrenchScrewdriverIcon';
 import SunIcon from './icons/SunIcon';
 import ShieldCheckIcon from './icons/ShieldCheckIcon';
 import TagIcon from './icons/TagIcon';
-
-interface SettingsPageProps {
-    darkMode: boolean;
-    onToggleDarkMode: () => void;
-    customMistakeTypes: MistakeTypeDefinition[];
-    onSaveMistakeTypes: (types: MistakeTypeDefinition[]) => void;
-    students: Student[];
-    onSaveStudent: (student: Student) => void;
-    subjectAreas: { [key: string]: AreaDefinition[] };
-    onSaveSubjectAreas: (areas: { [key: string]: AreaDefinition[] }) => void;
-    allStudentSubjects: { [key: string]: { studentId: string; subjects: SubjectData[] } };
-}
+import { useData } from '../context/DataContext';
 
 type SettingsTab = 'administrator' | 'passwords' | 'mistakes' | 'manage-subject-areas' | 'appearance' | 'permissions';
 
-const SettingsPage: React.FC<SettingsPageProps> = (props) => {
+const SettingsPage: React.FC = () => {
+    const { 
+        darkMode, 
+        setDarkMode, 
+        customMistakeTypes, 
+        handleSaveCustomMistakeTypes,
+        students,
+        handleSaveStudent,
+        subjectAreas,
+        handleSaveSubjectAreas,
+        allStudentSubjects
+    } = useData();
+
     const [activeTab, setActiveTab] = useState<SettingsTab>('administrator');
 
     const tabs = [
@@ -46,17 +45,17 @@ const SettingsPage: React.FC<SettingsPageProps> = (props) => {
             case 'administrator':
                 return <AdministratorSettings />;
             case 'passwords':
-                return <StudentPasswordSettings students={props.students} onSaveStudent={props.onSaveStudent} />;
+                return <StudentPasswordSettings students={students.filter(s => !s.isArchived)} onSaveStudent={handleSaveStudent} />;
             case 'mistakes':
-                return <MistakeTypeSettings customMistakeTypes={props.customMistakeTypes} onSaveMistakeTypes={props.onSaveMistakeTypes} />;
+                return <MistakeTypeSettings customMistakeTypes={customMistakeTypes} onSaveMistakeTypes={handleSaveCustomMistakeTypes} />;
             case 'manage-subject-areas':
                 return <AreaSettings 
-                            subjectAreas={props.subjectAreas} 
-                            onSaveSubjectAreas={props.onSaveSubjectAreas} 
-                            allStudentSubjects={props.allStudentSubjects} 
+                            subjectAreas={subjectAreas} 
+                            onSaveSubjectAreas={handleSaveSubjectAreas} 
+                            allStudentSubjects={allStudentSubjects} 
                         />;
             case 'appearance':
-                return <AppearanceSettings darkMode={props.darkMode} onToggleDarkMode={props.onToggleDarkMode} />;
+                return <AppearanceSettings darkMode={darkMode} onToggleDarkMode={() => setDarkMode(!darkMode)} />;
             case 'permissions':
                 return <PermissionSettings />;
             default:
