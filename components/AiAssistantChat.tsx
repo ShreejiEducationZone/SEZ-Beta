@@ -25,8 +25,8 @@ const AiAssistantChat: React.FC<AiAssistantChatProps> = ({ student, onApply, onC
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-            // Use Vercel environment variable for Gemini API key
-            const apiKey = process.env.gemini_api;
+        // Use Vercel frontend environment variable for Gemini API key
+        const apiKey = process.env.NEXT_PUBLIC_GEMINI_API;
 
             if (!apiKey) {
                 setMessages([

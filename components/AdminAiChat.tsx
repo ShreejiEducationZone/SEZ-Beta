@@ -79,8 +79,8 @@ const AdminAiChat: React.FC<AdminAiChatProps> = ({ onBack }) => {
     const [formData, setFormData] = useState<Partial<Student>>({});
 
     useEffect(() => {
-        // Use Vercel environment variable for Gemini API key
-        const apiKey = process.env.gemini_api;
+    // Use Vercel frontend environment variable for Gemini API key
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API;
 
         if (!apiKey) {
             setMessages([{ role: 'model', text: "AI Assistant is not configured correctly (missing Gemini API key)." }]);
