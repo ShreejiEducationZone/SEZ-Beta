@@ -1,6 +1,6 @@
 
 
-import { Student, Board, WorkStatus, WorkPriority, DoubtStatus, DoubtPriority, DoubtOrigin, Gender, TestType, TestStatus, TestPriority, MistakeTypeDefinition } from './types';
+import { Student, Board, WorkStatus, WorkPriority, DoubtStatus, DoubtPriority, DoubtOrigin, Gender, TestType, TestStatus, TestPriority, MistakeTypeDefinition, AttendanceStatus } from './types';
 
 export const initialStudents: Student[] = [
     { id: '1', name: 'Rohan Sharma', grade: '10', board: 'CBSE', school: 'Delhi Public School', batch: 'A', timeSlot: '3:00–4:30', personalPhone: '9876543210', isArchived: false, avatarUrl: 'https://i.pravatar.cc/150?u=a1', email: 'rohan@sez.com', password: 'rohan123' },
@@ -24,6 +24,7 @@ export const DOUBT_ORIGINS: readonly DoubtOrigin[] = ['During Reading', 'During 
 export const TEST_TYPES: readonly TestType[] = ['School Test', 'Self-Test', 'Class Test'];
 export const TEST_STATUSES: readonly TestStatus[] = ['Upcoming', 'Completed', 'Absent'];
 export const TEST_PRIORITIES: readonly TestPriority[] = ['Low', 'Medium', 'High'];
+export const ATTENDANCE_STATUSES: readonly AttendanceStatus[] = ['Present', 'Absent', 'Holiday', 'Leave', 'None'];
 export const MISTAKE_TYPES: readonly MistakeTypeDefinition[] = [
     { title: 'Careless', description: 'Silly mistakes made despite knowing the concept, like calculation errors or misreading the question.' },
     { title: 'Conceptual', description: 'A fundamental misunderstanding of the underlying theory or concept.' },

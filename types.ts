@@ -1,6 +1,5 @@
 
 
-
 export type Board = 'CBSE' | 'ICSE' | 'GSEB' | 'Cambridge' | 'IB';
 export type Gender = 'Male' | 'Female' | 'Other';
 
@@ -142,11 +141,20 @@ export interface FaceDescriptorData {
   descriptor: number[];
 }
 
+export type AttendanceStatus = 'Present' | 'Absent' | 'Holiday' | 'Leave' | 'None';
+
 export interface AttendanceRecord {
   id: string; // Composite key: studentId_YYYY-MM-DD
   studentId: string;
   date: string; // YYYY-MM-DD
-  status: 'Present' | 'Absent';
+  status: AttendanceStatus;
   inTime?: string; // HH:MM:SS
   lastSeen?: string; // HH:MM:SS
+  reason?: string; // For Holiday or Leave
+}
+
+export interface Holiday {
+    id: string; // YYYY-MM-DD
+    date: string; // YYYY-MM-DD
+    reason: string;
 }

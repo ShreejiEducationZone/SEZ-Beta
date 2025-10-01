@@ -5,6 +5,7 @@ import { HiUsers, HiOutlineCollection } from 'react-icons/hi';
 import { MdSubject } from 'react-icons/md';
 import { VscChecklist } from 'react-icons/vsc';
 import { BsCalendar2Check, BsChatDots } from 'react-icons/bs';
+import XIcon from '../icons/XIcon';
 
 
 type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'attendance' | 'settings' | 'ai-assistant';
@@ -61,6 +62,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle, currentPage, on
                     : '-translate-x-full md:translate-x-0 md:w-[60px]'}
             `}
         >
+             {isExpanded && (
+                <button 
+                    onClick={onToggle} 
+                    className="absolute top-4 right-4 p-2 text-gray-500 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 md:hidden"
+                    aria-label="Close sidebar"
+                >
+                    <XIcon className="h-6 w-6" />
+                </button>
+            )}
             <div className="flex flex-col h-full">
                 <div className="flex items-center justify-center h-20 flex-shrink-0">
                     <FaBookOpen className="h-8 w-8 text-brand-blue" />

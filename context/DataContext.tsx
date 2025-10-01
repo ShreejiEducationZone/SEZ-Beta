@@ -1,6 +1,8 @@
+
+
 import React, { useState, useEffect, useCallback, createContext, useContext, ReactNode, useMemo } from 'react';
 import { getCollection, setDocument, deleteDocument, runBatch, getDocument } from '../firebase';
-import { Student, SubjectData, ChapterProgress, WorkItem, Doubt, Test, FaceDescriptorData, AttendanceRecord, MistakeTypeDefinition, AreaDefinition } from '../types';
+import { Student, SubjectData, ChapterProgress, WorkItem, Doubt, Test, FaceDescriptorData, AttendanceRecord, MistakeTypeDefinition, AreaDefinition, Holiday, AttendanceStatus } from '../types';
 import { updateDoubtStatusFromWorkItems } from '../utils/workPoolService';
 import { Toast } from '../components/Toast';
 import { MISTAKE_TYPES, initialStudents } from '../constants';
@@ -29,6 +31,7 @@ interface DataContextType {
     subjectAreas: { [key: string]: AreaDefinition[] };
     faceDescriptors: FaceDescriptorData[];
     attendanceRecords: AttendanceRecord[];
+    holidays: Holiday[];
     isLoading: boolean;
     darkMode: boolean;
     toasts: Toast[];
@@ -54,6 +57,10 @@ interface DataContextType {
     handleSaveSubjectAreas: (areas: { [key: string]: AreaDefinition[] }) => Promise<void>;
     handleArchiveStudent: (id: string) => Promise<void>;
     handleDeleteStudent: (id: string) => Promise<void>;
+    handleSaveHoliday: (holiday: Holiday) => Promise<void>;
+    handleDeleteHoliday: (holidayId: string) => Promise<void>;
+    handleBatchUpdateAttendance: (studentIds: string[], date: string, status: AttendanceStatus, reason?: string) => Promise<void>;
+    handleBatchSaveAttendanceRecords: (records: AttendanceRecord[]) => Promise<void>;
     
     setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
     showToast: (message: string, type?: Toast['type']) => void;
@@ -76,6 +83,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [subjectAreas, setSubjectAreas] = useState<{ [key: string]: AreaDefinition[] }>({});
     const [faceDescriptors, setFaceDescriptors] = useState<FaceDescriptorData[]>([]);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+    const [holidays, setHolidays] = useState<Holiday[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [darkMode, setDarkMode] = useState<boolean>(false);
     const [toasts, setToasts] = useState<Toast[]>([]);
@@ -157,12 +165,12 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             try {
                 const [
                     studentsData, subjectsData, chaptersData, workData, doubtsData, testsData,
-                    mistakeTypesDoc, subjectAreasDoc, descriptorsData, attendanceData,
+                    mistakeTypesDoc, subjectAreasDoc, descriptorsData, attendanceData, holidaysData,
                 ] = await Promise.all([
                     getCollection("students"), getCollection("studentSubjects"), getCollection("chapterProgress"),
                     getCollection("workItems"), getCollection("doubts"), getCollection("tests"),
                     getDocument("configuration", "mistakeTypes"), getDocument("configuration", "subjectAreas"),
-                    getCollection("faceDescriptors"), getCollection("attendance"),
+                    getCollection("faceDescriptors"), getCollection("attendance"), getCollection("holidays"),
                 ]);
 
                 setStudents(studentsData as Student[]);
@@ -177,6 +185,32 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setTests(testsData as Test[]);
                 setFaceDescriptors(descriptorsData as FaceDescriptorData[]);
                 setAttendanceRecords(attendanceData as AttendanceRecord[]);
+                
+                // --- Holiday Cleanup ---
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // Normalize to start of day for accurate comparison
+
+                const allHolidays = holidaysData as Holiday[];
+                // Use replace to avoid timezone issues with 'YYYY-MM-DD' format
+                const pastHolidays = allHolidays.filter(h => new Date(h.date.replace(/-/g, '/')) < today);
+                const futureHolidays = allHolidays.filter(h => new Date(h.date.replace(/-/g, '/')) >= today);
+
+                // Update local state immediately with only valid holidays
+                setHolidays(futureHolidays);
+
+                // If there are past holidays, delete them from the database in the background
+                if (pastHolidays.length > 0) {
+                    console.log(`Auto-deleting ${pastHolidays.length} past holiday(s).`);
+                    const deleteWrites = pastHolidays.map(h => ({
+                        type: 'delete' as const,
+                        path: `holidays/${h.id}`
+                    }));
+                    // Run this without awaiting to not block UI rendering
+                    runBatch(deleteWrites).catch(error => {
+                        console.error("Failed to auto-delete past holidays:", error);
+                    });
+                }
+
                 if (mistakeTypesDoc && Array.isArray((mistakeTypesDoc as any).types)) {
                     const fetchedTypes = (mistakeTypesDoc as any).types;
                     const migratedTypes = fetchedTypes.map((type: any) => {
@@ -212,16 +246,20 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     useEffect(() => {
         const createDefaultAttendanceRecords = async () => {
-            if (students.length === 0) return;
+            if (isLoading || students.length === 0) return;
             const todayStr = new Date().toISOString().split('T')[0];
             const activeStudents = students.filter(s => !s.isArchived);
             const recordsForToday = new Set(attendanceRecords.filter(r => r.date === todayStr).map(r => r.studentId));
             const studentsWithoutRecords = activeStudents.filter(s => !recordsForToday.has(s.id));
+            const todayIsHoliday = holidays.find(h => h.date === todayStr);
 
             if (studentsWithoutRecords.length > 0) {
+                const newStatus: AttendanceStatus = todayIsHoliday ? 'Holiday' : 'None';
+                const reason = todayIsHoliday ? todayIsHoliday.reason : undefined;
+
                 const writes = studentsWithoutRecords.map(student => {
                     const recordId = `${student.id}_${todayStr}`;
-                    const newRecord: AttendanceRecord = { id: recordId, studentId: student.id, date: todayStr, status: 'Absent' };
+                    const newRecord: AttendanceRecord = { id: recordId, studentId: student.id, date: todayStr, status: newStatus, reason };
                     return { type: 'set' as const, path: `attendance/${recordId}`, data: newRecord };
                 });
                 try {
@@ -234,7 +272,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
         };
         createDefaultAttendanceRecords();
-    }, [students, attendanceRecords, showToast]);
+    }, [students, attendanceRecords, holidays, showToast, isLoading]);
 
     useEffect(() => {
         const updateDoubtsInFirestore = async (doubtsToUpdate: Doubt[]) => {
@@ -295,7 +333,6 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const handleSaveChapterProgress = useCallback(async (progress: ChapterProgress) => {
         try {
             const writes: { type: 'set' | 'delete', path: string, data?: any }[] = [];
-            const oldProgress = chapterProgress.find(p => p.id === progress.id);
             if (progress.entries.length === 0) {
                 writes.push({ type: 'delete', path: `chapterProgress/${progress.id}` });
                 setChapterProgress(prev => prev.filter(p => p.id !== progress.id));
@@ -313,7 +350,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.error("Error saving chapter progress:", error);
             showToast(`Failed to save progress: ${error.message}`, 'error');
         }
-    }, [chapterProgress, showToast]);
+    }, [showToast]);
 
     const handleSaveWorkItem = useCallback(async (workItem: WorkItem) => {
         try {
@@ -426,6 +463,54 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             showToast(`Failed to save attendance: ${error.message}`, 'error');
         }
     }, [showToast]);
+    
+    const handleBatchUpdateAttendance = useCallback(async (studentIds: string[], date: string, status: AttendanceStatus, reason?: string) => {
+        try {
+            const writes = studentIds.map(studentId => {
+                const recordId = `${studentId}_${date}`;
+                const record: AttendanceRecord = { id: recordId, studentId, date, status, reason };
+                return { type: 'set' as const, path: `attendance/${recordId}`, data: record };
+            });
+            await runBatch(writes);
+            
+            const newRecords = writes.map(w => w.data);
+            const newRecordMap = new Map(newRecords.map(r => [r.id, r]));
+
+            setAttendanceRecords(prev => {
+                // Update existing records for the day or add new ones
+                const otherRecords = prev.filter(r => !newRecordMap.has(r.id));
+                return [...otherRecords, ...newRecords];
+            });
+        } catch (error: any) {
+            console.error("Error batch updating attendance:", error);
+            showToast(`Failed to update attendance: ${error.message}`, 'error');
+        }
+    }, [showToast]);
+    
+    const handleBatchSaveAttendanceRecords = useCallback(async (records: AttendanceRecord[]) => {
+        if (records.length === 0) return;
+        try {
+            const writes = records.map(record => ({
+                type: 'set' as const,
+                path: `attendance/${record.id}`,
+                data: record
+            }));
+            await runBatch(writes);
+            
+            const newRecordsMap = new Map(records.map(r => [r.id, r]));
+            setAttendanceRecords(prev => {
+                const otherRecords = prev.filter(r => !newRecordsMap.has(r.id));
+                return [...otherRecords, ...records];
+            });
+
+            showToast(`${records.length} attendance record(s) saved.`, 'success');
+        } catch (error: any) {
+            console.error("Error batch saving attendance:", error);
+            showToast(`Failed to save attendance: ${error.message}`, 'error');
+            throw error; // re-throw to handle in component
+        }
+    }, [showToast]);
+
 
     const handleSaveCustomMistakeTypes = useCallback(async (types: MistakeTypeDefinition[]) => {
         try {
@@ -476,6 +561,30 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     }, [showToast]);
 
+    const handleSaveHoliday = useCallback(async (holiday: Holiday) => {
+        try {
+            await setDocument("holidays", holiday.id, holiday);
+            setHolidays(prev => {
+                const exists = prev.some(h => h.id === holiday.id);
+                if (exists) return prev.map(h => h.id === holiday.id ? holiday : h);
+                return [...prev, holiday];
+            });
+            showToast("Holiday saved successfully!", "success");
+        } catch (error: any) {
+            showToast(`Failed to save holiday: ${error.message}`, "error");
+        }
+    }, [showToast]);
+
+    const handleDeleteHoliday = useCallback(async (holidayId: string) => {
+        try {
+            await deleteDocument("holidays", holidayId);
+            setHolidays(prev => prev.filter(h => h.id !== holidayId));
+            showToast("Holiday deleted.", "success");
+        } catch (error: any) {
+            showToast(`Failed to delete holiday: ${error.message}`, "error");
+        }
+    }, [showToast]);
+
     const allMistakeTypes = useMemo(() => {
         const combined = new Map<string, MistakeTypeDefinition>();
         MISTAKE_TYPES.forEach(type => combined.set(type.title.toLowerCase(), type));
@@ -485,12 +594,13 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const value = {
         students, allStudentSubjects, chapterProgress, workItems, doubts, tests, customMistakeTypes,
-        subjectAreas, faceDescriptors, attendanceRecords, isLoading, darkMode, toasts, allMistakeTypes,
+        subjectAreas, faceDescriptors, attendanceRecords, holidays, isLoading, darkMode, toasts, allMistakeTypes,
         currentUser, login, logout,
         handleSaveStudent, handleSaveSubjects, handleSaveChapterProgress, handleSaveWorkItem,
         handleDeleteWorkItem, handleSaveDoubt, handleDeleteDoubt, handleSaveTest, handleDeleteTest,
         handleSaveFaceDescriptor, handleSaveAttendanceRecord, handleSaveCustomMistakeTypes,
-        handleSaveSubjectAreas, handleArchiveStudent, handleDeleteStudent,
+        handleSaveSubjectAreas, handleArchiveStudent, handleDeleteStudent, handleSaveHoliday,
+        handleDeleteHoliday, handleBatchUpdateAttendance, handleBatchSaveAttendanceRecords,
         setDarkMode, showToast, removeToast
     };
 

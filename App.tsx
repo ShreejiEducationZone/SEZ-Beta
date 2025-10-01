@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { useData } from './context/DataContext';
-import { Student } from './types';
+import { Student, AttendanceStatus } from './types';
 import StudentCard from './components/StudentCard';
 import StudentDrawer from './components/StudentDrawer';
 import StudentForm from './components/StudentForm';
@@ -44,7 +45,7 @@ const App: React.FC = () => {
         batch: '',
     });
     const [searchQuery, setSearchQuery] = useState('');
-    const [currentPage, setCurrentPage] = useState<Page>('students');
+    const [currentPage, setCurrentPage] = useState<Page>('attendance');
     const [isSidebarExpanded, setSidebarExpanded] = useState(true);
 
     const filteredStudents = useMemo(() => {
@@ -64,8 +65,8 @@ const App: React.FC = () => {
         return new Map(todaysRecords.map(r => [r.studentId, r.status]));
     }, [attendanceRecords]);
     
-    const getStudentAttendance = (studentId: string): 'Present' | 'Absent' => {
-        return todaysAttendance.get(studentId) || 'Absent';
+    const getStudentAttendance = (studentId: string): AttendanceStatus => {
+        return todaysAttendance.get(studentId) || 'None';
     };
 
     const handleFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -165,6 +166,14 @@ const App: React.FC = () => {
                 onNavigate={(page) => setCurrentPage(page)}
             />
             
+            {isSidebarExpanded && (
+                <div
+                    onClick={() => setSidebarExpanded(false)}
+                    className="fixed inset-0 bg-black/60 z-40 md:hidden"
+                    aria-hidden="true"
+                />
+            )}
+
             <div className={`transition-all duration-300 ${isSidebarExpanded ? 'md:pl-[220px]' : 'md:pl-[60px]'}`}>
                 <header className="flex items-center justify-between h-16 bg-light-card/95 dark:bg-dark-card/95 backdrop-blur-sm px-4 md:px-8 sticky top-0 z-40 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center gap-4">

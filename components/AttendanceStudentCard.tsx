@@ -1,11 +1,12 @@
+
 import React from 'react';
-import { Student } from '../types';
+import { Student, AttendanceStatus } from '../types';
 import PlaceholderAvatar from './PlaceholderAvatar';
 import FaceIdIcon from './icons/FaceIdIcon';
 import CheckCircleIcon from './icons/CheckCircleIcon';
 
 interface StudentAttendanceData extends Student {
-    status: 'Present' | 'Absent';
+    status: AttendanceStatus;
     lastSeen: string | null;
     isRegistered: boolean;
 }
@@ -18,7 +19,16 @@ interface AttendanceStudentCardProps {
 }
 
 const AttendanceStudentCard: React.FC<AttendanceStudentCardProps> = ({ student, onCardClick, onRegisterClick, isRegistering }) => {
-    const isPresent = student.status === 'Present';
+    
+    const getStatusColor = () => {
+        switch(student.status) {
+            case 'Present': return 'bg-green-500';
+            case 'Leave': return 'bg-yellow-500';
+            case 'Holiday': return 'bg-blue-500';
+            case 'Absent':
+            default: return 'bg-red-500';
+        }
+    };
 
     const handleRegister = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -40,7 +50,7 @@ const AttendanceStudentCard: React.FC<AttendanceStudentCardProps> = ({ student, 
             <div
                 title={`Status: ${student.status}`}
                 className={`absolute top-3.5 right-3.5 w-3 h-3 rounded-full border-2 border-light-card dark:border-dark-card
-                ${isPresent ? 'bg-green-500' : 'bg-red-500'}`}
+                ${getStatusColor()}`}
             ></div>
             
             {/* Main content */}

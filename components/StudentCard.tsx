@@ -1,5 +1,7 @@
+
+
 import React from 'react';
-import { Student } from '../types';
+import { Student, AttendanceStatus } from '../types';
 import PlaceholderAvatar from './PlaceholderAvatar';
 import CheckBadgeIcon from './icons/CheckBadgeIcon';
 import ClockIcon from './icons/ClockIcon';
@@ -9,7 +11,7 @@ import WarningIcon from './icons/WarningIcon';
 interface StudentCardProps {
     student: Student;
     onClick: (student: Student) => void;
-    attendanceStatus: 'Present' | 'Absent';
+    attendanceStatus: AttendanceStatus;
 }
 
 const StudentCard: React.FC<StudentCardProps> = ({ student, onClick, attendanceStatus }) => {
@@ -30,17 +32,29 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, onClick, attendanceS
 
     const contact = student.personalPhone || student.fatherPhone || student.motherPhone;
 
+    const getStatusStyle = () => {
+        switch (attendanceStatus) {
+            case 'Present':
+                return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 border border-green-200 dark:border-green-700';
+            case 'Holiday':
+                return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-700';
+            case 'Leave':
+                return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300 border border-purple-200 dark:border-purple-700';
+            case 'None':
+                 return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600';
+            case 'Absent':
+            default:
+                return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 border border-red-200 dark:border-red-700';
+        }
+    };
+
     return (
         <div
             onClick={() => onClick(student)}
             className="relative h-80 bg-white/30 dark:bg-gray-800/30 backdrop-blur-lg rounded-2xl shadow-lg border border-gray-200/80 dark:border-white/30 p-5 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-[1.03] group"
         >
             {/* Attendance Status Badge */}
-            <div className={`absolute top-4 right-4 px-2 py-0.5 text-xs font-semibold rounded-full ${
-                attendanceStatus === 'Present'
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 border border-green-200 dark:border-green-700'
-                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 border border-red-200 dark:border-red-700'
-            }`}>
+            <div className={`absolute top-4 right-4 px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusStyle()}`}>
                 {attendanceStatus}
             </div>
 
