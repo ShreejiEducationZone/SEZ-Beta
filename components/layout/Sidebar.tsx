@@ -57,6 +57,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle, currentPage, on
                 w-[220px] 
                 md:transition-all 
                 md:rounded-r-xl
+                overflow-x-hidden
                 ${isExpanded 
                     ? 'translate-x-0 md:w-[220px]' 
                     : '-translate-x-full md:translate-x-0 md:w-[60px]'}

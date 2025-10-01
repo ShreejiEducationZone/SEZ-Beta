@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { useData } from './context/DataContext';
 import { Student, AttendanceStatus } from './types';
@@ -45,8 +46,8 @@ const App: React.FC = () => {
         batch: '',
     });
     const [searchQuery, setSearchQuery] = useState('');
-    const [currentPage, setCurrentPage] = useState<Page>('attendance');
-    const [isSidebarExpanded, setSidebarExpanded] = useState(true);
+    const [currentPage, setCurrentPage] = useState<Page>('students');
+    const [isSidebarExpanded, setSidebarExpanded] = useState(() => window.innerWidth >= 768);
 
     const filteredStudents = useMemo(() => {
         return students.filter(student => {

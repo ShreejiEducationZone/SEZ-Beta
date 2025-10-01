@@ -551,15 +551,47 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, [students, showToast]);
 
     const handleDeleteStudent = useCallback(async (id: string) => {
+        const studentToDelete = students.find(s => s.id === id);
+        if (!studentToDelete) {
+            showToast("Student not found for deletion.", 'error');
+            return;
+        }
+    
         try {
-            await deleteDocument("students", id);
+            const writes: { type: 'delete'; path: string; }[] = [];
+            
+            // 1. Student document
+            writes.push({ type: 'delete', path: `students/${id}` });
+    
+            // 2. Associated 1-to-1 documents
+            if (allStudentSubjects[id]) writes.push({ type: 'delete', path: `studentSubjects/${id}` });
+            if (faceDescriptors.some(d => d.id === id)) writes.push({ type: 'delete', path: `faceDescriptors/${id}` });
+    
+            // 3. Associated 1-to-many documents
+            chapterProgress.filter(p => p.studentId === id).forEach(p => writes.push({ type: 'delete', path: `chapterProgress/${p.id}` }));
+            workItems.filter(w => w.studentId === id).forEach(w => writes.push({ type: 'delete', path: `workItems/${w.id}` }));
+            doubts.filter(d => d.studentId === id).forEach(d => writes.push({ type: 'delete', path: `doubts/${d.id}` }));
+            tests.filter(t => t.studentId === id).forEach(t => writes.push({ type: 'delete', path: `tests/${t.id}` }));
+            attendanceRecords.filter(a => a.studentId === id).forEach(a => writes.push({ type: 'delete', path: `attendance/${a.id}` }));
+    
+            await runBatch(writes);
+    
+            // Update local state after successful deletion
             setStudents(prev => prev.filter(s => s.id !== id));
-            showToast(`Successfully deleted student.`, 'success');
+            setAllStudentSubjects(prev => { const next = {...prev}; delete next[id]; return next; });
+            setFaceDescriptors(prev => prev.filter(d => d.id !== id));
+            setChapterProgress(prev => prev.filter(p => p.studentId !== id));
+            setWorkItems(prev => prev.filter(w => w.studentId !== id));
+            setDoubts(prev => prev.filter(d => d.studentId !== id));
+            setTests(prev => prev.filter(t => t.studentId !== id));
+            setAttendanceRecords(prev => prev.filter(a => a.studentId !== id));
+    
+            showToast(`Successfully deleted ${studentToDelete.name} and all their data.`, 'success');
         } catch (error: any) {
-            console.error("Error deleting student:", error);
+            console.error("Error deleting student and their data:", error);
             showToast(`Failed to delete student: ${error.message}`, 'error');
         }
-    }, [showToast]);
+    }, [students, allStudentSubjects, faceDescriptors, chapterProgress, workItems, doubts, tests, attendanceRecords, showToast]);
 
     const handleSaveHoliday = useCallback(async (holiday: Holiday) => {
         try {
