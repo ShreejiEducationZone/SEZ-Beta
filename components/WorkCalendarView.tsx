@@ -158,8 +158,6 @@ const WorkCalendarView: React.FC<WorkCalendarViewProps> = ({ workItems, students
         const itemToUpdate = workItems.find(item => item.id === workItemId);
 
         if (itemToUpdate && itemToUpdate.dueDate !== dateString) {
-            // **FIXED**: Create a new, "clean" object to avoid circular reference errors.
-            // Do NOT use `{ ...itemToUpdate, dueDate: dateString }` as it carries over Firestore's internal properties.
             const cleanItem: WorkItem = {
                 id: itemToUpdate.id,
                 studentId: itemToUpdate.studentId,

@@ -1,7 +1,3 @@
-
-
-
-
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import CheckCircleIcon from './icons/CheckCircleIcon';
 import XCircleIcon from './icons/XCircleIcon';
@@ -32,12 +28,15 @@ const ToastNotification: React.FC<ToastNotificationProps> = ({ toast, onClose })
         opacity: 0,
         transform: 'translateY(-20px) scale(0.95)',
     });
-    const closeTimerRef = useRef<number>();
+    // FIX: Changed ref type to allow null for better type safety.
+    const closeTimerRef = useRef<number | null>(null);
 
     const handleClose = useCallback((direction: 'up' | 'left' | 'right' | 'timeout' = 'timeout') => {
         // Prevent multiple close calls
         if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-        closeTimerRef.current = undefined; // Mark as closing
+        // FIX: The error "Expected 1 arguments, but got 0" might be misleadingly pointing here.
+        // Changed to null to match the updated ref type.
+        closeTimerRef.current = null; // Mark as closing
 
         let exitTransform = 'translateY(20px) scale(0.95)';
         let exitOpacity = 0;
@@ -52,8 +51,6 @@ const ToastNotification: React.FC<ToastNotificationProps> = ({ toast, onClose })
             transition: 'all 0.3s ease-in'
         });
 
-        // FIX: The onClose callback requires the toast ID to be passed.
-        // @FIX: Pass the toast id to the onClose callback.
         setTimeout(() => onClose(toast.id), 300);
     }, [onClose, toast.id]);
 
@@ -67,6 +64,7 @@ const ToastNotification: React.FC<ToastNotificationProps> = ({ toast, onClose })
             });
         }, 100);
 
+        // FIX: Explicitly pass 'timeout' argument for consistency, although default parameter should work. This might fix a subtle bug.
         closeTimerRef.current = window.setTimeout(() => handleClose('timeout'), 5000);
 
         return () => {

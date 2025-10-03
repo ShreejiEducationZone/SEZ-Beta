@@ -15,7 +15,6 @@ export interface User {
     name: string;
     studentId?: string; // Link to student object if role is student
     avatarUrl?: string | null;
-    // FIX: Add password property for authentication logic
     password?: string;
 }
 

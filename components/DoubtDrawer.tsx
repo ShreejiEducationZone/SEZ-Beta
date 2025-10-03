@@ -187,7 +187,6 @@ const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItem
 
         // If a linked task exists and it's not already completed, mark it as completed.
         if (linkedWorkItem && linkedWorkItem.status !== 'Completed') {
-            // **FIXED**: Create a sanitized copy of the work item object before saving.
             const cleanWorkItem: WorkItemType = {
                 id: linkedWorkItem.id, studentId: linkedWorkItem.studentId, title: linkedWorkItem.title, 
                 subject: linkedWorkItem.subject, chapterNo: linkedWorkItem.chapterNo, chapterName: linkedWorkItem.chapterName, 
@@ -199,7 +198,6 @@ const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItem
             onSaveWorkItem(cleanWorkItem);
         }
 
-        // **FIXED**: Create a sanitized copy of the doubt object before saving.
         const cleanDoubt: Doubt = {
             id: doubt.id, studentId: doubt.studentId, subject: doubt.subject, chapterNo: doubt.chapterNo, 
             chapterName: doubt.chapterName, testId: doubt.testId, text: doubt.text, priority: doubt.priority, 
@@ -210,7 +208,6 @@ const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItem
     };
 
     const handleUndoResolve = (doubt: Doubt) => {
-        // **FIXED**: Create a sanitized copy of the doubt object before saving.
          const cleanDoubt: Doubt = {
             id: doubt.id, studentId: doubt.studentId, subject: doubt.subject, chapterNo: doubt.chapterNo, 
             chapterName: doubt.chapterName, testId: doubt.testId, text: doubt.text, priority: doubt.priority, 
@@ -248,7 +245,6 @@ const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItem
         };
         onSaveWorkItem(newWorkItem);
         
-        // **FIXED**: Create a sanitized copy of the doubt object before saving.
         const cleanDoubt: Doubt = {
             id: doubt.id, studentId: doubt.studentId, subject: doubt.subject, chapterNo: doubt.chapterNo, 
             chapterName: doubt.chapterName, testId: doubt.testId, text: doubt.text, priority: doubt.priority, 

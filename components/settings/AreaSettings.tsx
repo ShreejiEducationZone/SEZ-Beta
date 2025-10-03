@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { SubjectData, AreaDefinition } from '../../types';
 import SelectField from '../form/SelectField';
@@ -21,7 +22,6 @@ const AreaSettings: React.FC<AreaSettingsProps> = ({ subjectAreas, onSaveSubject
 
     const allSubjects = useMemo(() => {
         const subjectsSet = new Set<string>();
-        // Fixed: Explicitly typed `data` to resolve error when accessing `data.subjects`.
         Object.values(allStudentSubjects).forEach((data: { subjects: SubjectData[] }) => {
             if (data && data.subjects) {
               data.subjects.forEach(s => subjectsSet.add(s.subject));

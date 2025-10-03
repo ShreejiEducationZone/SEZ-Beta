@@ -3,16 +3,13 @@ import { useData } from '../../context/DataContext';
 import App from '../../App';
 import Login from './Login';
 import StudentPortal from '../StudentPortal';
+import SplashScreenLoader from './SplashScreenLoader';
 
 const AuthWrapper: React.FC = () => {
     const { currentUser, isLoading } = useData();
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-brand-blue"></div>
-            </div>
-        );
+        return <SplashScreenLoader />;
     }
 
     if (!currentUser) {

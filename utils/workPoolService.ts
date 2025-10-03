@@ -4,9 +4,6 @@ export function updateDoubtStatusFromWorkItems(doubt: Doubt, workItems: WorkItem
   const linkedItem = workItems.find(w => w.linkedDoubtId === doubt.id);
 
   if (linkedItem && linkedItem.status === 'Completed' && doubt.status !== 'Resolved') {
-    // FIX: Reconstruct the doubt object explicitly to create a "clean" plain JavaScript object.
-    // Using the spread operator `{ ...doubt }` can carry over internal properties from Firestore objects,
-    // leading to "converting circular structure to JSON" errors when the object is later serialized.
     const cleanDoubt: Doubt = {
       id: doubt.id,
       studentId: doubt.studentId,

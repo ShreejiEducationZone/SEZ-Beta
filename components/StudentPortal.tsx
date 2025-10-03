@@ -32,7 +32,6 @@ const StudentPortal: React.FC = () => {
         workItems,
         tests,
         doubts,
-        // FIX: Removed 'subjects' as it's not on the context. 'allStudentSubjects' is used instead.
         allStudentSubjects,
         faceDescriptors,
         handleSaveDoubt,

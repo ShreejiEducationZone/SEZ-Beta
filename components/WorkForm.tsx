@@ -57,7 +57,6 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFiles = Array.from(e.target.files || []);
-        // FIX: Explicitly type 'file' as File to resolve property access and method argument errors.
         selectedFiles.forEach((file: File) => {
             const reader = new FileReader();
             reader.onload = (event) => {

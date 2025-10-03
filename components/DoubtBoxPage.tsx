@@ -3,6 +3,7 @@
 
 
 
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { Student, SubjectData, WorkItem, Doubt } from '../types';
 import StudentDoubtCard from './StudentDoubtCard';
@@ -93,7 +94,7 @@ const DoubtBoxPage: React.FC = () => {
                 return true;
             }).map(d => d.studentId)
         );
-        return students.filter((student: Student) => {
+        return students.filter(student => {
             if (student.isArchived !== showArchived) return false;
             if (filters.board && student.board !== filters.board) return false;
             if (filters.grade && student.grade !== filters.grade) return false;
@@ -162,7 +163,6 @@ const DoubtBoxPage: React.FC = () => {
     return (
         <div>
             <p className="mt-2 mb-6 text-gray-600 dark:text-gray-400 max-w-3xl">Track and resolve student doubts. Click on a student to view their doubt history, or add a new one.</p>
-            {/* FIX: Pass correct props to DoubtFilterBar */}
             <DoubtFilterBar 
                 filters={filters} 
                 onFilterChange={handleFilterChange} 

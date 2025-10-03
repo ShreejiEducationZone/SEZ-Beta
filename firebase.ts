@@ -116,11 +116,30 @@ const firestoreRequest = async (url: string, options: RequestInit) => {
 // ========== Public API Functions ==========
 
 /**
- * Fetches all documents from a collection.
+ * Fetches all documents from a collection, handling pagination.
  */
 export const getCollection = async (collectionPath: string) => {
-    const data = await firestoreRequest(`${BASE_URL}/${collectionPath}`, { method: 'GET' });
-    return (data.documents || []).map(transformFirestoreDocResponse);
+    const allDocuments: any[] = [];
+    let nextPageToken: string | undefined = undefined;
+    const initialUrl = `${BASE_URL}/${collectionPath}`;
+
+    do {
+        // Append pageToken to the URL if it exists.
+        const url = nextPageToken ? `${initialUrl}?pageToken=${nextPageToken}` : initialUrl;
+
+        const data = await firestoreRequest(url, { method: 'GET' });
+
+        // Add documents from the current page to the results array.
+        if (data.documents && data.documents.length > 0) {
+            allDocuments.push(...data.documents.map(transformFirestoreDocResponse));
+        }
+
+        // Get the token for the next page. If it's not in the response, the loop will end.
+        nextPageToken = data.nextPageToken;
+
+    } while (nextPageToken);
+
+    return allDocuments;
 };
 
 /**
