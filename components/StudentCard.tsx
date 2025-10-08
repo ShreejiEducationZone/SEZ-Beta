@@ -1,7 +1,7 @@
 import React from 'react';
 import { Student, AttendanceStatus } from '../types';
 import PlaceholderAvatar from './PlaceholderAvatar';
-import ClockIcon from './icons/ClockIcon';
+import { FaClock } from 'react-icons/fa';
 
 interface StudentCardProps {
     student: Student;
@@ -50,7 +50,7 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, onClick, attendanceS
                     <Stat label="Batch" value={student.batch} />
                     <div className="h-6 md:h-8 w-px bg-border hidden md:block"></div>
                     <div className="text-center hidden md:block">
-                        <p className="text-sm font-bold text-foreground flex items-center gap-1 justify-center"><ClockIcon className="h-4 w-4" />{student.timeSlot.split('–')[0]}</p>
+                        <p className="text-sm font-bold text-foreground flex items-center gap-1 justify-center"><FaClock className="h-4 w-4" />{student.timeSlot.split('–')[0]}</p>
                         <p className="text-xs text-muted-foreground">Time</p>
                     </div>
                 </div>

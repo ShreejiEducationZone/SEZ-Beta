@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, createContext, useContext, ReactNode, useMemo } from 'react';
 import { getCollection, setDocument, deleteDocument, runBatch, getDocument } from '../firebase';
-import { Student, SubjectData, SyllabusProgress, WorkItem, Doubt, Test, FaceDescriptorData, AttendanceRecord, MistakeTypeDefinition, AreaDefinition, Holiday, AttendanceStatus, ProgressEntry } from '../types';
+import { Student, SubjectData, SyllabusProgress, WorkItem, Doubt, Test, FaceDescriptorData, AttendanceRecord, MistakeTypeDefinition, AreaDefinition, Holiday, AttendanceStatus, ProgressEntry, VideoLibraryEntry, VideoLink } from '../types';
 import { updateDoubtStatusFromWorkItems } from '../services/workPoolService';
 import { Toast } from '../components/Toast';
 import { MISTAKE_TYPES, initialStudents } from '../constants';
@@ -29,6 +29,7 @@ interface DataContextType {
     faceDescriptors: FaceDescriptorData[];
     attendanceRecords: AttendanceRecord[];
     holidays: Holiday[];
+    videoLibrary: VideoLibraryEntry[];
     isLoading: boolean;
     darkMode: boolean;
     toasts: Toast[];
@@ -42,7 +43,7 @@ interface DataContextType {
     handleSaveStudent: (studentData: Student) => Promise<void>;
     handleSaveSubjects: (studentId: string, subjects: SubjectData[]) => Promise<void>;
     handleUpdateSyllabusNode: (studentId: string, subject: string, nodeNo: string | number, updates: { isCompleted?: boolean; notesToAdd?: ProgressEntry[]; noteIndicesToDelete?: number[] }) => Promise<void>;
-    handleSaveWorkItem: (workItem: WorkItem) => Promise<void>;
+    handleSaveWorkItem: (workItem: WorkItem, showToastNotification?: boolean) => Promise<void>;
     handleDeleteWorkItem: (workItemId: string) => Promise<void>;
     handleSaveDoubt: (doubt: Doubt) => Promise<void>;
     handleDeleteDoubt: (doubtId: string) => Promise<void>;
@@ -58,6 +59,8 @@ interface DataContextType {
     handleDeleteHoliday: (holidayId: string) => Promise<void>;
     handleBatchUpdateAttendance: (studentIds: string[], date: string, status: AttendanceStatus, reason?: string) => Promise<void>;
     handleBatchSaveAttendanceRecords: (records: AttendanceRecord[]) => Promise<void>;
+    handleSaveVideo: (entry: VideoLibraryEntry) => Promise<void>;
+    handleDeleteVideo: (entryId: string, videoId: string) => Promise<void>;
     
     setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
     showToast: (message: string, type?: Toast['type']) => void;
@@ -81,6 +84,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [faceDescriptors, setFaceDescriptors] = useState<FaceDescriptorData[]>([]);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
     const [holidays, setHolidays] = useState<Holiday[]>([]);
+    const [videoLibrary, setVideoLibrary] = useState<VideoLibraryEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [darkMode, setDarkMode] = useState<boolean>(false);
     const [toasts, setToasts] = useState<Toast[]>([]);
@@ -162,12 +166,13 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             try {
                 const [
                     studentsData, subjectsData, syllabusProgressData, workData, doubtsData, testsData,
-                    mistakeTypesDoc, subjectAreasDoc, descriptorsData, attendanceData, holidaysData,
+                    mistakeTypesDoc, subjectAreasDoc, descriptorsData, attendanceData, holidaysData, videoLibraryData
                 ] = await Promise.all([
                     getCollection("students"), getCollection("studentSubjects"), getCollection("syllabusProgress"),
                     getCollection("workItems"), getCollection("doubts"), getCollection("tests"),
                     getDocument("configuration", "mistakeTypes"), getDocument("configuration", "subjectAreas"),
                     getCollection("faceDescriptors"), getCollection("attendance"), getCollection("holidays"),
+                    getCollection("videoLibrary")
                 ]);
 
                 setStudents(studentsData as Student[]);
@@ -183,6 +188,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setTests(testsData as Test[]);
                 setFaceDescriptors(descriptorsData as FaceDescriptorData[]);
                 setAttendanceRecords(attendanceData as AttendanceRecord[]);
+                setVideoLibrary(videoLibraryData as VideoLibraryEntry[]);
                 
                 // --- Holiday Cleanup ---
                 const today = new Date();
@@ -398,7 +404,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     }, [syllabusProgress, showToast]);
 
-    const handleSaveWorkItem = useCallback(async (workItem: WorkItem) => {
+    const handleSaveWorkItem = useCallback(async (workItem: WorkItem, showToastNotification = true) => {
         try {
             await setDocument("workItems", workItem.id, workItem);
             setWorkItems(prev => {
@@ -406,7 +412,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 if (exists) return prev.map(w => w.id === workItem.id ? workItem : w);
                 return [...prev, workItem];
             });
-            showToast('Work item saved successfully!', 'success');
+            if (showToastNotification) {
+                showToast('Work item saved successfully!', 'success');
+            }
         } catch (error: any) {
             console.error("Error saving work item:", error);
             showToast(`Failed to save work item: ${error.message}`, 'error');
@@ -663,6 +671,51 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     }, [showToast]);
 
+    const handleSaveVideo = useCallback(async (entry: VideoLibraryEntry) => {
+        try {
+            await setDocument("videoLibrary", entry.id, entry);
+            setVideoLibrary(prev => {
+                const exists = prev.some(v => v.id === entry.id);
+                if (exists) return prev.map(v => v.id === entry.id ? entry : v);
+                return [...prev, entry];
+            });
+            showToast('Video library updated!', 'success');
+        } catch (error: any) {
+            showToast(`Failed to save video: ${error.message}`, 'error');
+            throw error;
+        }
+    }, [showToast]);
+
+    const handleDeleteVideo = useCallback(async (entryId: string, videoId: string) => {
+        const entry = videoLibrary.find(v => v.id === entryId);
+        if (!entry) return;
+
+        const updatedEntry = {
+            ...entry,
+            videos: entry.videos.filter(v => v.id !== videoId)
+        };
+
+        try {
+            if (updatedEntry.videos.length > 0) {
+                await setDocument("videoLibrary", entryId, updatedEntry);
+            } else {
+                await deleteDocument("videoLibrary", entryId);
+            }
+            
+            setVideoLibrary(prev => {
+                if (updatedEntry.videos.length > 0) {
+                    return prev.map(v => v.id === entryId ? updatedEntry : v);
+                } else {
+                    return prev.filter(v => v.id !== entryId);
+                }
+            });
+            showToast('Video deleted.', 'success');
+        } catch (error: any) {
+            showToast(`Failed to delete video: ${error.message}`, 'error');
+            throw error;
+        }
+    }, [videoLibrary, showToast]);
+
     const allMistakeTypes = useMemo(() => {
         const combined = new Map<string, MistakeTypeDefinition>();
         MISTAKE_TYPES.forEach(type => combined.set(type.title.toLowerCase(), type));
@@ -672,13 +725,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const value = {
         students, allStudentSubjects, syllabusProgress, workItems, doubts, tests, customMistakeTypes,
-        subjectAreas, faceDescriptors, attendanceRecords, holidays, isLoading, darkMode, toasts, allMistakeTypes,
+        subjectAreas, faceDescriptors, attendanceRecords, holidays, videoLibrary, isLoading, darkMode, toasts, allMistakeTypes,
         currentUser, login, logout,
         handleSaveStudent, handleSaveSubjects, handleUpdateSyllabusNode, handleSaveWorkItem,
         handleDeleteWorkItem, handleSaveDoubt, handleDeleteDoubt, handleSaveTest, handleDeleteTest,
         handleSaveFaceDescriptor, handleSaveAttendanceRecord, handleSaveCustomMistakeTypes,
         handleSaveSubjectAreas, handleArchiveStudent, handleDeleteStudent, handleSaveHoliday,
         handleDeleteHoliday, handleBatchUpdateAttendance, handleBatchSaveAttendanceRecords,
+        handleSaveVideo, handleDeleteVideo,
         setDarkMode, showToast, removeToast
     };
 

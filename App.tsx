@@ -17,13 +17,13 @@ import SettingsPage from './components/SettingsPage';
 import Sidebar from './components/layout/Sidebar';
 import { ToastContainer } from './components/Toast';
 import AiAssistantPage from './components/AiAssistantPage';
-import { FaBars } from 'react-icons/fa';
+import { FaBars, FaPlus } from 'react-icons/fa';
 import SkeletonCard from './components/loading/SkeletonCard';
 import SkeletonFilterBar from './components/loading/SkeletonFilterBar';
 import ProfileDropdown from './components/layout/ProfileDropdown';
-import PlusIcon from './components/icons/PlusIcon';
+import VideoLibraryPage from './components/VideoLibraryPage';
 
-type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'attendance' | 'settings' | 'ai-assistant';
+type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'attendance' | 'settings' | 'ai-assistant' | 'video-library';
 
 const FloatingActionButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
     <button
@@ -31,7 +31,7 @@ const FloatingActionButton: React.FC<{ onClick: () => void }> = ({ onClick }) =>
         className="fixed bottom-8 right-8 h-16 w-16 rounded-full bg-primary text-primary-foreground shadow-soft-xl flex items-center justify-center transition-transform duration-300 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary/50 z-40"
         aria-label="Add new student"
     >
-        <PlusIcon className="h-8 w-8" />
+        <FaPlus className="h-7 w-7" />
     </button>
 );
 
@@ -106,6 +106,7 @@ const App: React.FC = () => {
         'attendance': 'Attendance',
         'ai-assistant': 'AI Assistant',
         'settings': 'Settings',
+        'video-library': 'Video Library',
     };
 
     const renderContent = () => {
@@ -165,6 +166,7 @@ const App: React.FC = () => {
             case 'attendance': return <AttendancePage />;
             case 'ai-assistant': return <AiAssistantPage />;
             case 'settings': return <SettingsPage />;
+            case 'video-library': return <VideoLibraryPage />;
             default: return <div>Page not found</div>;
         }
     };

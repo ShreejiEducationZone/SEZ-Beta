@@ -1,13 +1,12 @@
 import React from 'react';
-import { FaBookOpen, FaQuestionCircle, FaChartBar, FaCog, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaBookOpen, FaQuestionCircle, FaChartBar, FaCog, FaChevronLeft, FaChevronRight, FaVideo, FaTimes } from 'react-icons/fa';
 import { HiUsers, HiOutlineCollection } from 'react-icons/hi';
 import { MdSubject } from 'react-icons/md';
 import { VscChecklist } from 'react-icons/vsc';
 import { BsCalendar2Check, BsChatDots } from 'react-icons/bs';
-import XIcon from '../icons/XIcon';
 
 
-type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'attendance' | 'settings' | 'ai-assistant';
+type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'attendance' | 'settings' | 'ai-assistant' | 'video-library';
 
 interface SidebarProps {
     isExpanded: boolean;
@@ -47,7 +46,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle, currentPage, on
             >
                 {isExpanded && (
                     <button onClick={onToggle} className="absolute top-4 right-4 p-2 text-muted-foreground rounded-full hover:bg-muted md:hidden" aria-label="Close sidebar">
-                        <XIcon className="h-6 w-6" />
+                        <FaTimes className="h-6 w-6" />
                     </button>
                 )}
                 <div className="flex items-center justify-center h-20 flex-shrink-0">
@@ -61,6 +60,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle, currentPage, on
                     <NavLink to="doubts" icon={FaQuestionCircle} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Doubt Box</NavLink>
                     <NavLink to="reports" icon={FaChartBar} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Reports</NavLink>
                     <NavLink to="attendance" icon={BsCalendar2Check} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Attendance</NavLink>
+                    <NavLink to="video-library" icon={FaVideo} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Video Library</NavLink>
                     <NavLink to="ai-assistant" icon={BsChatDots} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>AI Assistant</NavLink>
                     <div className="flex-grow" />
                     <NavLink to="settings" icon={FaCog} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Settings</NavLink>

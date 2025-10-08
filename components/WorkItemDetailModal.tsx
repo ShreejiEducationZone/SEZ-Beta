@@ -1,5 +1,6 @@
 import React from 'react';
 import { WorkItem, Student, WorkStatus, WorkPriority } from '../types';
+import { FaYoutube } from 'react-icons/fa';
 
 interface WorkItemDetailModalProps {
     item: WorkItem;
@@ -76,6 +77,27 @@ const WorkItemDetailModal: React.FC<WorkItemDetailModalProps> = ({ item, student
                         <p className="whitespace-pre-wrap">{item.description}</p>
                     </DetailRow>
                 </div>
+
+                {item.links && item.links.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-border">
+                        <DetailRow label="Attached Links">
+                            <div className="space-y-2 mt-1">
+                                {item.links.map((link, index) => (
+                                    <a 
+                                        key={index}
+                                        href={link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg hover:bg-muted transition-colors group"
+                                    >
+                                        <FaYoutube className="h-6 w-6 text-red-500 flex-shrink-0" />
+                                        <span className="text-sm font-medium text-primary group-hover:underline truncate">{link}</span>
+                                    </a>
+                                ))}
+                            </div>
+                        </DetailRow>
+                    </div>
+                )}
                 
                  <div className="mt-6 flex justify-end">
                     <button onClick={onClose} className="h-10 px-5 rounded-lg bg-muted text-muted-foreground hover:bg-border font-semibold">

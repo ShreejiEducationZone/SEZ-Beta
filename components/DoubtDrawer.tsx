@@ -1,6 +1,5 @@
 
-
-import React, { useState, useMemo, FC } from 'react';
+import React, { useState, useMemo, FC, useRef, useEffect } from 'react';
 import { Student, Doubt, SubjectData, WorkItem, DoubtStatus, DoubtPriority, WorkItem as WorkItemType } from '../types';
 import PlaceholderAvatar from './PlaceholderAvatar';
 import EditIcon from './icons/EditIcon';
@@ -13,6 +12,12 @@ import CheckSquareIcon from './icons/CheckSquareIcon';
 import { updateDoubtStatusFromWorkItems } from '../utils/workPoolService';
 import { DOUBT_PRIORITIES, DOUBT_STATUSES } from '../constants';
 import SelectField from './form/SelectField';
+import PlusIcon from './icons/PlusIcon';
+import DownloadIcon from './icons/DownloadIcon';
+import ChevronDownIcon from './icons/ChevronDownIcon';
+import CsvIcon from './icons/CsvIcon';
+import PdfIcon from './icons/PdfIcon';
+import XIcon from './icons/XIcon';
 
 interface DoubtDrawerProps {
     student: Student;
@@ -48,6 +53,18 @@ const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItem
         status: '',
         searchQuery: ''
     });
+    const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+    const exportMenuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+                setIsExportMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const uniqueSubjects = useMemo(() => {
         return Array.from(new Set(subjects.map(s => s.subject)));
@@ -101,6 +118,7 @@ const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItem
     }, [doubts, activeTab, filters]);
 
     const handleExportCSV = () => {
+        setIsExportMenuOpen(false);
         const headers = ['Student Name', 'Subject', 'Chapter No', 'Chapter Name', 'Doubt Text', 'Priority', 'Status', 'Origin', 'Logged At', 'Resolved At'];
         const csvRows = [headers.join(',')];
 
@@ -133,6 +151,7 @@ const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItem
     };
 
     const handleExportPDF = () => {
+        setIsExportMenuOpen(false);
         const { jsPDF } = (window as any).jspdf;
         const doc = new jsPDF();
         
@@ -358,7 +377,7 @@ const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItem
     return (
         <>
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex justify-end" onClick={onClose}>
-                <div className="w-full max-w-2xl h-full bg-card/80 backdrop-blur-lg border-l border-border shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+                <div className="w-full max-w-3xl h-full bg-card/80 backdrop-blur-lg border-l border-border shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
                     <header className="p-6 border-b border-border flex-shrink-0">
                         <div className="flex justify-between items-start">
                             <div className="flex items-center space-x-4">
@@ -373,23 +392,35 @@ const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItem
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={onAddDoubt}
-                                    className="flex items-center justify-center gap-2 h-9 px-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold transition-colors"
+                                    className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold transition-colors"
                                 >
-                                    + Add Doubt
+                                    <PlusIcon className="h-4 w-4" /> Add Doubt
                                 </button>
-                                <button
-                                    onClick={handleExportCSV}
-                                    className="flex items-center justify-center gap-2 h-9 px-3 rounded-md bg-success text-success-foreground hover:bg-success/90 text-xs font-semibold transition-colors"
-                                >
-                                    📤 Export CSV
-                                </button>
-                                <button
-                                    onClick={handleExportPDF}
-                                    className="flex items-center justify-center gap-2 h-9 px-3 rounded-md bg-danger text-danger-foreground hover:bg-danger/90 text-xs font-semibold transition-colors"
-                                >
-                                    📄 Export PDF
-                                </button>
-                                <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-3xl font-light ml-2">&times;</button>
+                                
+                                <div className="relative" ref={exportMenuRef}>
+                                    <button
+                                        onClick={() => setIsExportMenuOpen(prev => !prev)}
+                                        className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-muted text-muted-foreground hover:bg-border text-sm font-semibold transition-colors"
+                                    >
+                                        <DownloadIcon className="h-4 w-4" />
+                                        Export
+                                        <ChevronDownIcon className={`h-4 w-4 transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
+                                    </button>
+                                    {isExportMenuOpen && (
+                                        <div className="absolute right-0 mt-2 w-48 bg-card rounded-xl shadow-soft-lg border border-border z-10 py-1">
+                                            <button onClick={handleExportCSV} className="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted">
+                                                <CsvIcon className="h-5 w-5 text-muted-foreground"/>
+                                                Export as CSV
+                                            </button>
+                                            <button onClick={handleExportPDF} className="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted">
+                                                <PdfIcon className="h-5 w-5 text-muted-foreground"/>
+                                                Export as PDF
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button onClick={onClose} className="p-2 rounded-full text-muted-foreground hover:bg-muted" aria-label="Close"><XIcon className="h-6 w-6" /></button>
                             </div>
                         </div>
                         <div className="mt-4 border-b border-border">

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { WorkItem, Student, WorkStatus, WorkPriority, WorkHealthStatus } from '../types';
 import EditIcon from './icons/EditIcon';
 import DeleteIcon from './icons/DeleteIcon';
+import { FaYoutube } from 'react-icons/fa';
 
 interface WorkItemsTableProps {
     workItems: WorkItem[];
@@ -194,29 +195,32 @@ const WorkItemsTable: React.FC<WorkItemsTableProps> = ({ workItems, students, wo
                                         )}
                                     </td>
                                     <td className="px-4 py-3 align-top">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <div className="font-medium">{item.title}</div>
-                                            {item.source === 'syllabus' && (
-                                                <span 
-                                                    title="Auto-generated from Syllabus Progress"
-                                                    className="px-2 py-0.5 text-xs font-semibold rounded-md bg-info-muted text-info-muted-foreground"
-                                                >
-                                                    Syllabus
-                                                </span>
-                                            )}
-                                            {item.source === 'doubt' && (
-                                                <span 
-                                                    title="Created via Doubt Box"
-                                                    className="px-2 py-0.5 text-xs font-semibold rounded-md bg-warning-muted text-warning-muted-foreground"
-                                                >
-                                                    Doubt Box
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">
-                                            {item.subject} - Ch {item.chapterNo}
-                                            {item.topic && <span className="font-medium"> - {item.topic}</span>}
-                                        </div>
+                                        {item.links && item.links.length > 0 && item.links[0].includes('youtu') ? (
+                                            <a href={item.links[0]} target="_blank" rel="noopener noreferrer" className="group">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <FaYoutube className="h-5 w-5 text-red-500 flex-shrink-0" />
+                                                    <div className="font-medium group-hover:underline group-hover:text-primary">{item.title}</div>
+                                                    {item.source === 'syllabus' && <span title="Auto-generated from Syllabus Progress" className="px-2 py-0.5 text-xs font-semibold rounded-md bg-info-muted text-info-muted-foreground">Syllabus</span>}
+                                                    {item.source === 'doubt' && <span title="Created via Doubt Box" className="px-2 py-0.5 text-xs font-semibold rounded-md bg-warning-muted text-warning-muted-foreground">Doubt Box</span>}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground pl-7">
+                                                    {item.subject} - Ch {item.chapterNo}
+                                                    {item.topic && <span className="font-medium"> - {item.topic}</span>}
+                                                </div>
+                                            </a>
+                                        ) : (
+                                            <>
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <div className="font-medium">{item.title}</div>
+                                                    {item.source === 'syllabus' && <span title="Auto-generated from Syllabus Progress" className="px-2 py-0.5 text-xs font-semibold rounded-md bg-info-muted text-info-muted-foreground">Syllabus</span>}
+                                                    {item.source === 'doubt' && <span title="Created via Doubt Box" className="px-2 py-0.5 text-xs font-semibold rounded-md bg-warning-muted text-warning-muted-foreground">Doubt Box</span>}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {item.subject} - Ch {item.chapterNo}
+                                                    {item.topic && <span className="font-medium"> - {item.topic}</span>}
+                                                </div>
+                                            </>
+                                        )}
                                     </td>
                                     <td className="px-4 py-3 text-muted-foreground align-top">{item.dueDate}</td>
                                     <td className="px-4 py-3 align-top">

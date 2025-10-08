@@ -179,3 +179,14 @@ export interface Holiday {
     date: string; // YYYY-MM-DD
     reason: string;
 }
+
+export interface VideoLink {
+  id: string;
+  title: string;
+  url: string;
+}
+
+export interface VideoLibraryEntry {
+  id: string; // Composite key, e.g., CBSE-10-Mathematics-1.1 or 'universal'
+  videos: VideoLink[];
+}
