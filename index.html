@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Directory</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        border: 'hsl(var(--border))',
+                        background: 'hsl(var(--background))',
+                        foreground: 'hsl(var(--foreground))',
+                        primary: {
+                            DEFAULT: 'hsl(var(--primary))',
+                            foreground: 'hsl(var(--primary-foreground))',
+                        },
+                        card: {
+                            DEFAULT: 'hsl(var(--card))',
+                            foreground: 'hsl(var(--card-foreground))',
+                        },
+                        muted: {
+                            DEFAULT: 'hsl(var(--muted))',
+                            foreground: 'hsl(var(--muted-foreground))',
+                        },
+                        success: {
+                            DEFAULT: 'hsl(var(--success))',
+                            foreground: 'hsl(var(--success-foreground))',
+                            muted: {
+                                DEFAULT: 'hsl(var(--success-muted))',
+                                foreground: 'hsl(var(--success-muted-foreground))'
+                            }
+                        },
+                        warning: {
+                            DEFAULT: 'hsl(var(--warning))',
+                            foreground: 'hsl(var(--warning-foreground))',
+                            muted: {
+                                DEFAULT: 'hsl(var(--warning-muted))',
+                                foreground: 'hsl(var(--warning-muted-foreground))'
+                            }
+                        },
+                        danger: {
+                            DEFAULT: 'hsl(var(--danger))',
+                            foreground: 'hsl(var(--danger-foreground))',
+                            muted: {
+                                DEFAULT: 'hsl(var(--danger-muted))',
+                                foreground: 'hsl(var(--danger-muted-foreground))'
+                            }
+                        },
+                        info: {
+                            DEFAULT: 'hsl(var(--info))',
+                            foreground: 'hsl(var(--info-foreground))',
+                            muted: {
+                                DEFAULT: 'hsl(var(--info-muted))',
+                                foreground: 'hsl(var(--info-muted-foreground))'
+                            }
+                        },
+                        accent: {
+                            DEFAULT: 'hsl(var(--accent))',
+                            foreground: 'hsl(var(--accent-foreground))',
+                            muted: {
+                                DEFAULT: 'hsl(var(--accent-muted))',
+                                foreground: 'hsl(var(--accent-muted-foreground))'
+                            }
+                        }
+                    },
+                    borderRadius: {
+                        lg: '0.75rem',
+                        xl: '1rem',
+                        '2xl': '1.5rem',
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 12px 0 hsla(var(--foreground-hsl) / 0.07), 0 2px 4px 0 hsla(var(--foreground-hsl) / 0.05)',
+                        'soft-lg': '0 8px 24px 0 hsla(var(--foreground-hsl) / 0.07), 0 4px 8px 0 hsla(var(--foreground-hsl) / 0.05)',
+                        'soft-xl': '0 12px 32px 0 hsla(var(--foreground-hsl) / 0.07), 0 6px 12px 0 hsla(var(--foreground-hsl) / 0.05)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 240 10% 4%;
+            --foreground-hsl: 240 10% 4%; /* For shadow calculation */
+            --card: 0 0% 100%;
+            --card-foreground: 240 10% 4%;
+            --primary: 217 91% 60%;
+            --primary-foreground: 210 40% 98%;
+            --muted: 240 5% 96%;
+            --muted-foreground: 240 4% 46%;
+            --border: 240 6% 90%;
+            --gradient-stop-1: hsl(220, 100%, 97%);
+
+            /* Semantic Colors */
+            --success-hsl: 142 71% 45%;
+            --success: 142 71% 45%;
+            --success-foreground: 210 40% 98%;
+            --warning-hsl: 45 93% 47%;
+            --warning: 45 93% 47%;
+            --warning-foreground: 240 10% 4%;
+            --danger-hsl: 0 84% 60%;
+            --danger: 0 84% 60%;
+            --danger-foreground: 210 40% 98%;
+            --info: 217 91% 60%; /* Same as primary */
+            --info-foreground: 210 40% 98%;
+            --accent: 262 83% 58%;
+            --accent-foreground: 210 40% 98%;
+
+            /* Semantic Muted Colors */
+            --success-muted: 145 63% 90%;
+            --success-muted-foreground: 145 56% 20%;
+            --warning-muted: 48 96% 89%;
+            --warning-muted-foreground: 45 74% 25%;
+            --danger-muted: 0 86% 91%;
+            --danger-muted-foreground: 0 74% 35%;
+            --info-muted: 220 100% 97%;
+            --info-muted-foreground: 217 91% 60%;
+            --accent-muted: 260 100% 97%;
+            --accent-muted-foreground: 262 70% 40%;
+        }
+        .dark {
+            --background: 240 10% 4%;
+            --foreground: 0 0% 98%;
+            --foreground-hsl: 0 0% 98%; /* For shadow calculation */
+            --card: 240 4% 12%;
+            --card-foreground: 0 0% 98%;
+            --primary: 217 91% 60%;
+            --primary-foreground: 210 40% 98%;
+            --muted: 240 4% 16%;
+            --muted-foreground: 240 5% 65%;
+            --border: 240 4% 24%;
+            --gradient-stop-1: hsl(240, 8%, 10%);
+
+            /* Semantic Colors */
+            --success-hsl: 142 67% 51%;
+            --success: 142 67% 51%;
+            --success-foreground: 210 40% 98%;
+            --warning-hsl: 45 93% 47%;
+            --warning: 45 93% 47%;
+            --warning-foreground: 240 10% 4%;
+            --danger-hsl: 0 72% 51%;
+            --danger: 0 72% 51%;
+            --danger-foreground: 210 40% 98%;
+            --info: 217 91% 60%;
+            --info-foreground: 210 40% 98%;
+            --accent: 262 83% 58%;
+            --accent-foreground: 210 40% 98%;
+
+            /* Semantic Muted Colors */
+            --success-muted: 145 56% 20%;
+            --success-muted-foreground: 145 63% 90%;
+            --warning-muted: 45 74% 25%;
+            --warning-muted-foreground: 48 96% 89%;
+            --danger-muted: 0 74% 35%;
+            --danger-muted-foreground: 0 86% 91%;
+            --info-muted: 240 4% 16%;
+            --info-muted-foreground: 217 91% 60%;
+            --accent-muted: 262 70% 40%;
+            --accent-muted-foreground: 260 100% 97%;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: hsl(var(--background));
+            background-image: radial-gradient(ellipse at top, var(--gradient-stop-1), hsl(var(--background)) 50%);
+            background-attachment: fixed;
+            color: hsl(var(--foreground));
+        }
+
+        @keyframes pulse-green {
+          0%, 100% { box-shadow: 0 0 0 0 hsla(var(--success-hsl), 0.7); }
+          70% { box-shadow: 0 0 0 8px hsla(var(--success-hsl), 0); }
+        }
+        .pulse-green {
+            animation: pulse-green 2s infinite;
+        }
+
+        .thin-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+        .thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .thin-scrollbar::-webkit-scrollbar-thumb { background-color: hsl(var(--border)); border-radius: 20px; }
+        .dark .thin-scrollbar::-webkit-scrollbar-thumb { background-color: hsl(var(--border)); }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.1.1/",
+    "react": "https://esm.sh/react@^19.1.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
+    "@google/genai": "https://esm.sh/@google/genai",
+    "recharts": "https://esm.sh/recharts@^2.12.7",
+    "react-icons/": "https://esm.sh/react-icons@5.0.1/",
+    "lodash.isequal": "https://aistudiocdn.com/lodash.isequal@^4.5.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-background text-foreground">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>
