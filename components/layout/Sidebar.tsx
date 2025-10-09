@@ -4,9 +4,10 @@ import { HiUsers, HiOutlineCollection } from 'react-icons/hi';
 import { MdSubject } from 'react-icons/md';
 import { VscChecklist } from 'react-icons/vsc';
 import { BsCalendar2Check, BsChatDots } from 'react-icons/bs';
+import SheetsIcon from '../icons/SheetsIcon';
 
 
-type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'attendance' | 'settings' | 'ai-assistant' | 'video-library';
+type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'sheets' | 'attendance' | 'settings' | 'ai-assistant' | 'video-library';
 
 interface SidebarProps {
     isExpanded: boolean;
@@ -59,6 +60,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle, currentPage, on
                     <NavLink to="work-pool" icon={HiOutlineCollection} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Work Pool</NavLink>
                     <NavLink to="doubts" icon={FaQuestionCircle} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Doubt Box</NavLink>
                     <NavLink to="reports" icon={FaChartBar} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Reports</NavLink>
+                    <NavLink to="sheets" icon={SheetsIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Sheets</NavLink>
                     <NavLink to="attendance" icon={BsCalendar2Check} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Attendance</NavLink>
                     <NavLink to="video-library" icon={FaVideo} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Video Library</NavLink>
                     <NavLink to="ai-assistant" icon={BsChatDots} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>AI Assistant</NavLink>

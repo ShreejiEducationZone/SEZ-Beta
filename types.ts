@@ -1,6 +1,4 @@
-
-
-
+// FIX: Removed self-import which caused type declaration conflicts.
 export type Board = 'CBSE' | 'ICSE' | 'GSEB' | 'Cambridge' | 'IB';
 export type Gender = 'Male' | 'Female' | 'Other';
 
@@ -50,15 +48,22 @@ export interface CambridgeSyllabusNode {
   children?: CambridgeSyllabusNode[];
 }
 
+export interface SheetColumn {
+  id: string;
+  name: string;
+}
+
 export interface SubjectData {
   subject: string;
   chapters: SyllabusNode[];
+  sheetColumns?: SheetColumn[];
 }
 
 // FIX: Added missing CambridgeSubjectData interface export.
 export interface CambridgeSubjectData {
   subject: string;
   chapters: CambridgeSyllabusNode[];
+  sheetColumns?: SheetColumn[];
 }
 
 export interface ProgressEntry {
@@ -96,7 +101,9 @@ export interface WorkItem {
   mentorNote?: string;
   dateCreated: string; // YYYY-MM-DD
   linkedDoubtId?: string;
-  source?: 'syllabus' | 'doubt';
+  source?: 'syllabus' | 'doubt' | 'sheets';
+  sheetTasks?: string[]; // Array of task names, e.g., ["Reading", "Videos"]
+  sheetTaskIds?: string[]; // Array of task IDs, e.g., ["reading", "videos_123"]
 }
 
 export type DoubtStatus = 'Open' | 'Resolved' | 'Tasked';
@@ -189,4 +196,14 @@ export interface VideoLink {
 export interface VideoLibraryEntry {
   id: string; // Composite key, e.g., CBSE-10-Mathematics-1.1 or 'universal'
   videos: VideoLink[];
+}
+
+export type SheetTaskType = 'reading' | 'videos' | 'notes' | 'exercise' | 'test';
+
+export interface SheetProgress {
+  id: string; // Composite key: studentId__subject__chapterNo
+  studentId: string;
+  subject: string;
+  chapterNo: string | number;
+  tasks: Record<string, boolean>;
 }

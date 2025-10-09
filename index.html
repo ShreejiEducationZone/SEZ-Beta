@@ -172,9 +172,52 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+        }
+
+        /* Enhanced Background for Login */
+        .login-bg {
+            position: relative;
+            overflow: hidden;
             background-image: radial-gradient(ellipse at top, var(--gradient-stop-1), hsl(var(--background)) 50%);
             background-attachment: fixed;
-            color: hsl(var(--foreground));
+        }
+
+        .login-bg::before,
+        .login-bg::after {
+            content: '';
+            position: absolute;
+            width: 50vw;
+            height: 50vw;
+            min-width: 400px;
+            min-height: 400px;
+            border-radius: 50%;
+            opacity: 0.15;
+            filter: blur(100px);
+            z-index: 0;
+        }
+        
+        .login-bg::before {
+            background: hsl(var(--primary));
+            top: -20%;
+            left: -20%;
+            animation: blob-one 15s infinite alternate ease-in-out;
+        }
+
+        .login-bg::after {
+            background: hsl(var(--accent));
+            bottom: -20%;
+            right: -20%;
+            animation: blob-two 20s infinite alternate ease-in-out;
+        }
+        
+        @keyframes blob-one {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(40vw, -20vh) scale(1.2); }
+        }
+        @keyframes blob-two {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(-30vw, 15vh) scale(0.9); }
         }
 
         @keyframes pulse-green {

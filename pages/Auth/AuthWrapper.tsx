@@ -2,7 +2,7 @@ import React from 'react';
 import { useData } from '../../context/DataContext';
 import App from '../../App';
 import Login from './components/Login';
-import StudentPortal from '../Students/StudentPortal';
+import StudentPortal from '../../components/StudentPortal';
 import SplashScreenLoader from './components/SplashScreenLoader';
 
 const AuthWrapper: React.FC = () => {

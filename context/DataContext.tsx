@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, createContext, useContext, ReactNode, useMemo } from 'react';
 import { getCollection, setDocument, deleteDocument, runBatch, getDocument } from '../firebase';
-import { Student, SubjectData, SyllabusProgress, WorkItem, Doubt, Test, FaceDescriptorData, AttendanceRecord, MistakeTypeDefinition, AreaDefinition, Holiday, AttendanceStatus, ProgressEntry, VideoLibraryEntry, VideoLink } from '../types';
+import { Student, SubjectData, SyllabusProgress, WorkItem, Doubt, Test, FaceDescriptorData, AttendanceRecord, MistakeTypeDefinition, AreaDefinition, Holiday, AttendanceStatus, ProgressEntry, VideoLibraryEntry, VideoLink, SheetProgress, SheetTaskType, SheetColumn } from '../types';
 import { updateDoubtStatusFromWorkItems } from '../services/workPoolService';
 import { Toast } from '../components/Toast';
 import { MISTAKE_TYPES, initialStudents } from '../constants';
@@ -30,6 +30,7 @@ interface DataContextType {
     attendanceRecords: AttendanceRecord[];
     holidays: Holiday[];
     videoLibrary: VideoLibraryEntry[];
+    sheetProgress: SheetProgress[];
     isLoading: boolean;
     darkMode: boolean;
     toasts: Toast[];
@@ -61,6 +62,7 @@ interface DataContextType {
     handleBatchSaveAttendanceRecords: (records: AttendanceRecord[]) => Promise<void>;
     handleSaveVideo: (entry: VideoLibraryEntry) => Promise<void>;
     handleDeleteVideo: (entryId: string, videoId: string) => Promise<void>;
+    handleSaveSheetProgress: (changes: Map<string, Record<string, boolean>>) => Promise<void>;
     
     setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
     showToast: (message: string, type?: Toast['type']) => void;
@@ -71,6 +73,14 @@ interface DataContextType {
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
+
+const DEFAULT_SHEET_COLUMNS: SheetColumn[] = [
+    { id: 'reading', name: 'Reading' },
+    { id: 'videos', name: 'Videos' },
+    { id: 'notes', name: 'Notes' },
+    { id: 'exercise', name: 'Exercise' },
+    { id: 'test', name: 'Test' },
+];
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [students, setStudents] = useState<Student[]>([]);
@@ -85,6 +95,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
     const [holidays, setHolidays] = useState<Holiday[]>([]);
     const [videoLibrary, setVideoLibrary] = useState<VideoLibraryEntry[]>([]);
+    const [sheetProgress, setSheetProgress] = useState<SheetProgress[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [darkMode, setDarkMode] = useState<boolean>(false);
     const [toasts, setToasts] = useState<Toast[]>([]);
@@ -166,13 +177,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             try {
                 const [
                     studentsData, subjectsData, syllabusProgressData, workData, doubtsData, testsData,
-                    mistakeTypesDoc, subjectAreasDoc, descriptorsData, attendanceData, holidaysData, videoLibraryData
+                    mistakeTypesDoc, subjectAreasDoc, descriptorsData, attendanceData, holidaysData, videoLibraryData,
+                    sheetProgressData
                 ] = await Promise.all([
                     getCollection("students"), getCollection("studentSubjects"), getCollection("syllabusProgress"),
                     getCollection("workItems"), getCollection("doubts"), getCollection("tests"),
                     getDocument("configuration", "mistakeTypes"), getDocument("configuration", "subjectAreas"),
                     getCollection("faceDescriptors"), getCollection("attendance"), getCollection("holidays"),
-                    getCollection("videoLibrary")
+                    getCollection("videoLibrary"), getCollection("sheetProgress")
                 ]);
 
                 setStudents(studentsData as Student[]);
@@ -189,6 +201,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setFaceDescriptors(descriptorsData as FaceDescriptorData[]);
                 setAttendanceRecords(attendanceData as AttendanceRecord[]);
                 setVideoLibrary(videoLibraryData as VideoLibraryEntry[]);
+                setSheetProgress(sheetProgressData as SheetProgress[]);
                 
                 // --- Holiday Cleanup ---
                 const today = new Date();
@@ -405,21 +418,80 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, [syllabusProgress, showToast]);
 
     const handleSaveWorkItem = useCallback(async (workItem: WorkItem, showToastNotification = true) => {
+        const previousWorkItem = workItems.find(w => w.id === workItem.id);
+        const writes: { type: 'set', path: string, data: any }[] = [];
+        writes.push({ type: 'set', path: `workItems/${workItem.id}`, data: workItem });
+        
+        let updatedSheetProgressItem: SheetProgress | null = null;
+    
+        const isCompletingSheetTask =
+            workItem.status === 'Completed' &&
+            previousWorkItem?.status !== 'Completed' &&
+            workItem.source === 'sheets';
+    
+        if (isCompletingSheetTask) {
+            let taskIdsToComplete: string[] = [];
+    
+            if (workItem.sheetTaskIds && workItem.sheetTaskIds.length > 0) {
+                taskIdsToComplete = workItem.sheetTaskIds;
+            } else if (workItem.sheetTasks && workItem.sheetTasks.length > 0) {
+                const studentSubjectsData = allStudentSubjects[workItem.studentId];
+                const subjectData = studentSubjectsData?.subjects.find(s => s.subject === workItem.subject);
+                const columns = subjectData?.sheetColumns && subjectData.sheetColumns.length > 0
+                    ? subjectData.sheetColumns
+                    : DEFAULT_SHEET_COLUMNS;
+                
+                taskIdsToComplete = columns
+                    .filter(col => workItem.sheetTasks!.includes(col.name))
+                    .map(col => col.id);
+            }
+    
+            if (taskIdsToComplete.length > 0) {
+                const progressId = `${workItem.studentId}__${workItem.subject}__${workItem.chapterNo}`;
+                const existingProgress = sheetProgress.find(p => p.id === progressId);
+                const existingTasks = existingProgress?.tasks || {};
+                
+                const newTasks = { ...existingTasks };
+                taskIdsToComplete.forEach(id => { newTasks[id] = true; });
+                
+                updatedSheetProgressItem = {
+                    id: progressId,
+                    studentId: workItem.studentId,
+                    subject: workItem.subject,
+                    chapterNo: workItem.chapterNo,
+                    tasks: newTasks,
+                };
+                
+                writes.push({ type: 'set', path: `sheetProgress/${progressId}`, data: updatedSheetProgressItem });
+            }
+        }
+        
         try {
-            await setDocument("workItems", workItem.id, workItem);
+            await runBatch(writes);
+            
             setWorkItems(prev => {
                 const exists = prev.some(w => w.id === workItem.id);
                 if (exists) return prev.map(w => w.id === workItem.id ? workItem : w);
                 return [...prev, workItem];
             });
+    
+            if (updatedSheetProgressItem) {
+                setSheetProgress(prev => {
+                    const exists = prev.some(p => p.id === updatedSheetProgressItem!.id);
+                    if (exists) return prev.map(p => p.id === updatedSheetProgressItem!.id ? updatedSheetProgressItem! : p);
+                    return [...prev, updatedSheetProgressItem!];
+                });
+            }
+    
             if (showToastNotification) {
                 showToast('Work item saved successfully!', 'success');
             }
         } catch (error: any) {
-            console.error("Error saving work item:", error);
+            console.error("Error saving work item and/or syncing sheet progress:", error);
             showToast(`Failed to save work item: ${error.message}`, 'error');
+            throw error; 
         }
-    }, [showToast]);
+    }, [workItems, allStudentSubjects, sheetProgress, showToast]);
 
     const handleDeleteWorkItem = useCallback(async (workItemId: string) => {
         try {
@@ -716,6 +788,49 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     }, [videoLibrary, showToast]);
 
+    const handleSaveSheetProgress = useCallback(async (changes: Map<string, Record<string, boolean>>) => {
+        if (changes.size === 0) {
+            showToast("No changes to save.", "info");
+            return;
+        }
+    
+        const writes: { type: 'set', path: string, data: any }[] = [];
+        const updatedProgressItems: SheetProgress[] = [];
+    
+        changes.forEach((tasks, progressId) => {
+            const [studentId, subject, chapterNo] = progressId.split('__');
+
+            // Merge with existing tasks to not lose data from other columns
+            const existingProgress = sheetProgress.find(p => p.id === progressId);
+            const existingTasks = existingProgress?.tasks || {};
+            const newTasks = { ...existingTasks, ...tasks };
+
+            const newProgressItem: SheetProgress = {
+                id: progressId,
+                studentId,
+                subject,
+                chapterNo,
+                tasks: newTasks,
+            };
+            writes.push({ type: 'set', path: `sheetProgress/${progressId}`, data: newProgressItem });
+            updatedProgressItems.push(newProgressItem);
+        });
+    
+        try {
+            await runBatch(writes);
+            setSheetProgress(prev => {
+                const newProgressMap = new Map(updatedProgressItems.map(p => [p.id, p]));
+                const otherProgress = prev.filter(p => !newProgressMap.has(p.id));
+                return [...otherProgress, ...updatedProgressItems];
+            });
+            showToast(`Progress for ${changes.size} item(s) saved!`, 'success');
+        } catch (error: any) {
+            console.error("Error saving sheet progress:", error);
+            showToast(`Failed to save progress: ${error.message}`, 'error');
+            throw error;
+        }
+    }, [showToast, sheetProgress]);
+
     const allMistakeTypes = useMemo(() => {
         const combined = new Map<string, MistakeTypeDefinition>();
         MISTAKE_TYPES.forEach(type => combined.set(type.title.toLowerCase(), type));
@@ -725,14 +840,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const value = {
         students, allStudentSubjects, syllabusProgress, workItems, doubts, tests, customMistakeTypes,
-        subjectAreas, faceDescriptors, attendanceRecords, holidays, videoLibrary, isLoading, darkMode, toasts, allMistakeTypes,
+        subjectAreas, faceDescriptors, attendanceRecords, holidays, videoLibrary, sheetProgress, isLoading, darkMode, toasts, allMistakeTypes,
         currentUser, login, logout,
         handleSaveStudent, handleSaveSubjects, handleUpdateSyllabusNode, handleSaveWorkItem,
         handleDeleteWorkItem, handleSaveDoubt, handleDeleteDoubt, handleSaveTest, handleDeleteTest,
         handleSaveFaceDescriptor, handleSaveAttendanceRecord, handleSaveCustomMistakeTypes,
         handleSaveSubjectAreas, handleArchiveStudent, handleDeleteStudent, handleSaveHoliday,
         handleDeleteHoliday, handleBatchUpdateAttendance, handleBatchSaveAttendanceRecords,
-        handleSaveVideo, handleDeleteVideo,
+        handleSaveVideo, handleDeleteVideo, handleSaveSheetProgress,
         setDarkMode, showToast, removeToast
     };
 

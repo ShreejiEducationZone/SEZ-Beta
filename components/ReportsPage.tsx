@@ -1,11 +1,11 @@
 
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { Student, SubjectData, Test, MistakeTypeDefinition, AreaDefinition } from '../types';
 import TestForm from './TestForm';
 import TestDetailModal from './TestDetailModal';
 import ScoreTrendChart from './ScoreTrendChart';
 import TestSchedule from './TestSchedule';
-import CompletedTestsTable from './CompletedTestsTable';
 import ReportsFilterBar from './ReportsFilterBar';
 import StudentTestReportCard from './StudentTestReportCard';
 import ChevronLeftIcon from './icons/ChevronLeftIcon';
@@ -125,10 +125,15 @@ const ReportsPage: React.FC = () => {
                             </div>
                         </div>
                         <OverallStrengthsWeaknesses tests={completedAndAbsentTests.filter(t => t.status === 'Completed')} />
-                        <TestSchedule tests={testsForSelectedStudent} onTestSelect={setViewingTest} />
+                        <TestSchedule 
+                            tests={testsForSelectedStudent}
+                            onTestSelect={setViewingTest}
+                            onEditTest={handleEditTest}
+                            onDeleteTest={handleDeleteTest}
+                            onAddMarking={handleAddMarking}
+                        />
                         <ScoreTrendChart completedTests={completedAndAbsentTests.filter(t => t.status === 'Completed')} onTestSelect={setViewingTest} />
                         <MistakeAnalytics tests={completedAndAbsentTests.filter(t => t.status === 'Completed')} />
-                        <CompletedTestsTable tests={completedAndAbsentTests} onTestSelect={setViewingTest} onEditTest={handleEditTest} onDeleteTest={handleDeleteTest} />
                     </div>
                 </div>
             )}

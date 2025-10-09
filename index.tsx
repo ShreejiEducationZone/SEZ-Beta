@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { DataProvider } from './context/DataContext';
-import AuthWrapper from './pages/Auth/AuthWrapper';
+import AuthWrapper from './components/auth/AuthWrapper';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

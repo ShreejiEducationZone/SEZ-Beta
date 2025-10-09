@@ -142,7 +142,7 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!validate()) return;
-
+    
         const [chapterNo, chapterName] = formData.chapter.split('::');
         
         let topicName = '';
@@ -151,18 +151,24 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
         else if (selectedSubTopicNo) node = subTopicOptions.find(o => String(o.no) === selectedSubTopicNo);
         else if (selectedTopicNo) node = topicOptions.find(o => String(o.no) === selectedTopicNo);
         topicName = node ? node.name : '';
-
+    
+        // Create a base object from the original work item (if editing) or a new object.
+        // This preserves all properties not on the form, like source, sheetTaskIds, etc.
+        const baseItem = workItem ? { ...workItem } : {
+            id: `w_${Date.now()}`,
+            dateCreated: new Date().toISOString().split('T')[0],
+        };
+    
         const finalWorkItem: WorkItem = {
-            id: workItem?.id || `w_${Date.now()}`,
+            ...(baseItem as WorkItem), // Cast to WorkItem
+    
+            // Overwrite with form data
             studentId: student.id,
-            dateCreated: workItem?.dateCreated || new Date().toISOString().split('T')[0],
-            linkedDoubtId: workItem?.linkedDoubtId,
-            source: workItem?.source,
             title: formData.title.trim(),
             subject: formData.subject,
             chapterNo,
             chapterName,
-            topic: topicName,
+            topic: topicName || undefined, // Ensure topic is undefined if empty
             description: formData.description.trim(),
             dueDate: formData.dueDate,
             status: formData.status as WorkStatus,
@@ -171,7 +177,7 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
             files: files,
             mentorNote: formData.mentorNote.trim(),
         };
-
+    
         onSave(finalWorkItem);
         onCancel();
     };

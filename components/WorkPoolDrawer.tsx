@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, FC, useRef, useEffect } from 'react';
 import { Student, WorkItem, WorkStatus, WorkPriority } from '../types';
 import PlaceholderAvatar from './PlaceholderAvatar';
@@ -13,6 +12,7 @@ import ChevronDownIcon from './icons/ChevronDownIcon';
 import CsvIcon from './icons/CsvIcon';
 import PdfIcon from './icons/PdfIcon';
 import XIcon from './icons/XIcon';
+import SheetsIcon from './icons/SheetsIcon';
 
 const PRIORITY_STYLES: Record<WorkPriority, string> = {
     High: 'bg-danger-muted text-danger-muted-foreground',
@@ -46,20 +46,37 @@ const WorkItemCard: FC<{ item: WorkItem; onEdit: (item: WorkItem) => void; onDel
                         <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${STATUS_STYLES[item.status]}`}>{item.status}</span>
                         <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${PRIORITY_STYLES[item.priority]}`}>{item.priority} Priority</span>
                     </div>
-                    {isVideo ? (
-                        <a href={item.links![0]} target="_blank" rel="noopener noreferrer" className="group">
-                            <div className="flex items-center gap-2">
-                                <FaYoutube className="h-5 w-5 text-red-500 flex-shrink-0" />
-                                <span className="font-semibold text-foreground group-hover:underline group-hover:text-primary">{item.title}</span>
-                            </div>
-                        </a>
-                    ) : (
-                        <p className="font-semibold text-foreground">{item.title}</p>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {isVideo ? (
+                            <a href={item.links![0]} target="_blank" rel="noopener noreferrer" className="group">
+                                <div className="flex items-center gap-2">
+                                    <FaYoutube className="h-5 w-5 text-red-500 flex-shrink-0" />
+                                    <span className="font-semibold text-foreground group-hover:underline group-hover:text-primary">{item.title}</span>
+                                </div>
+                            </a>
+                        ) : (
+                            <p className="font-semibold text-foreground">{item.title}</p>
+                        )}
+                        {item.source === 'sheets' && (
+                            <span title="Created via Sheets" className="flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-md bg-success-muted text-success-muted-foreground">
+                                <SheetsIcon className="h-3 w-3" />
+                                Sheets
+                            </span>
+                        )}
+                    </div>
                     <p className="text-sm text-muted-foreground mt-1">
                         {item.subject} - Ch {item.chapterNo}: {item.chapterName}
                         {item.topic && <span className="font-semibold"> • {item.topic}</span>}
                     </p>
+                    {item.source === 'sheets' && item.sheetTasks && item.sheetTasks.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                            {item.sheetTasks.map(taskName => (
+                                <span key={taskName} className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+                                    {taskName}
+                                </span>
+                            ))}
+                        </div>
+                    )}
                 </div>
                 <div className="flex-shrink-0 flex items-center space-x-1">
                     <button onClick={() => onEdit(item)} className="p-1.5 text-muted-foreground hover:bg-muted rounded-md" title="Edit Work"><EditIcon className="h-4 w-4" /></button>

@@ -1,31 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 
-const thinkingMessages = [
-    "Finding in database...",
-    "Analyzing the data...",
-    "Filtering for accurate results...",
-    "Compiling the report...",
-];
-
-const AiThinking: React.FC = () => {
-    const [messageIndex, setMessageIndex] = useState(0);
-
-    useEffect(() => {
-        const intervalId = setInterval(() => {
-            setMessageIndex(prevIndex => (prevIndex + 1) % thinkingMessages.length);
-        }, 1500);
-
-        return () => clearInterval(intervalId);
-    }, []);
-
-    return (
-        <div className="flex items-center gap-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-            <span>
-                {thinkingMessages[messageIndex]}
-            </span>
-        </div>
-    );
-};
+const AiThinking: React.FC = () => (
+    <div className="flex items-center gap-2 px-2 py-1">
+        <span className="h-2 w-2 bg-current rounded-full animate-pulse" style={{ animationDelay: '0s' }}></span>
+        <span className="h-2 w-2 bg-current rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></span>
+        <span className="h-2 w-2 bg-current rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></span>
+    </div>
+);
 
 export default AiThinking;

@@ -9,7 +9,17 @@ export default defineConfig(({ mode }) => {
         port: 3000,
         host: '0.0.0.0',
       },
-      plugins: [react()],
+      plugins: [
+        react(),
+        {
+          name: 'exclude-models',
+          resolveId(id) {
+            if (id.includes('face_recognition_model') || id.includes('.bin') || id.includes('shard')) {
+              return { id, external: true };
+            }
+          }
+        }
+      ],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
@@ -18,6 +28,19 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
-      }
+      },
+      build: {
+        rollupOptions: {
+          external: [
+            /face_recognition_model/,
+            /\.bin$/,
+            /shard\d+$/
+          ]
+        }
+      },
+      assetsInclude: [
+        '**/*.bin',
+        '**/face_recognition_model*'
+      ]
     };
 });

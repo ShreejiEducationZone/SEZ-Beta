@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Test, Student, TestPriority, TestStatus } from '../types';
 
@@ -12,21 +11,21 @@ interface TestDetailModalProps {
 }
 
 const PRIORITY_STYLES: Record<TestPriority, string> = {
-    High: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-    Medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-    Low: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    High: 'bg-danger-muted text-danger-muted-foreground',
+    Medium: 'bg-warning-muted text-warning-muted-foreground',
+    Low: 'bg-info-muted text-info-muted-foreground',
 };
 
 const STATUS_STYLES: Record<TestStatus, string> = {
-    Completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-    Upcoming: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-    Absent: 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+    Completed: 'bg-success-muted text-success-muted-foreground',
+    Upcoming: 'bg-info-muted text-info-muted-foreground',
+    Absent: 'bg-muted text-muted-foreground',
 };
 
 const DetailRow: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({ label, children, className }) => (
     <div className={className}>
-        <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">{label}</p>
-        <div className="text-gray-800 dark:text-gray-200 mt-1">{children}</div>
+        <p className="text-sm font-semibold text-muted-foreground">{label}</p>
+        <div className="text-foreground mt-1">{children}</div>
     </div>
 );
 
@@ -48,14 +47,14 @@ const TestDetailModal: React.FC<TestDetailModalProps> = ({ test, student, onClos
     const weakAreas = getAreasAsArray(test.weakArea);
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-light-card dark:bg-dark-card rounded-2xl shadow-lg p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto thin-scrollbar" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-card/80 dark:bg-card/70 backdrop-blur-lg border border-border rounded-2xl shadow-soft-xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto thin-scrollbar" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-start">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{test.title}</h2>
-                        <p className="text-gray-600 dark:text-gray-400">For {student.name}</p>
+                        <h2 className="text-2xl font-bold text-foreground">{test.title}</h2>
+                        <p className="text-muted-foreground">For {student.name}</p>
                     </div>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-900 dark:hover:text-white text-3xl font-light">&times;</button>
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-3xl font-light">&times;</button>
                 </div>
                 
                 <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -65,7 +64,7 @@ const TestDetailModal: React.FC<TestDetailModalProps> = ({ test, student, onClos
                     <DetailRow label="Priority"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${PRIORITY_STYLES[test.priority]}`}>{test.priority}</span></DetailRow>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="mt-4 pt-4 border-t border-border">
                     <DetailRow label="Syllabus / Chapters">
                         <ul className="list-disc list-inside space-y-1">
                             {test.chapters.map(c => <li key={`${c.no}-${c.name}`}>{c.name} (Ch. {c.no})</li>)}
@@ -74,59 +73,59 @@ const TestDetailModal: React.FC<TestDetailModalProps> = ({ test, student, onClos
                 </div>
 
                 {test.status === 'Completed' && (
-                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
-                        <div className="bg-gray-50 dark:bg-dark-bg/50 p-4 rounded-lg">
-                            <h3 className="font-semibold text-lg mb-2 text-center">Performance Summary</h3>
+                    <div className="mt-4 pt-4 border-t border-border space-y-4">
+                        <div className="bg-muted/50 p-4 rounded-lg">
+                            <h3 className="font-semibold text-lg mb-2 text-center text-foreground">Performance Summary</h3>
                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                                 <DetailRow label="Score">
                                     <p className="text-xl font-bold">{test.marksObtained} / {test.totalMarks}</p>
                                 </DetailRow>
                                 <DetailRow label="Percentage">
-                                    <p className="text-xl font-bold text-brand-blue">{scorePercentage}%</p>
+                                    <p className="text-xl font-bold text-primary">{scorePercentage}%</p>
                                 </DetailRow>
                                 <DetailRow label="Test Type"><p>{test.testType || 'N/A'}</p></DetailRow>
-                                <DetailRow label="Retest?"><p className={`font-bold ${test.retestRequired === 'Yes' ? 'text-red-500' : 'text-green-500'}`}>{test.retestRequired || 'N/A'}</p></DetailRow>
+                                <DetailRow label="Retest?"><p className={`font-bold ${test.retestRequired === 'Yes' ? 'text-danger' : 'text-success'}`}>{test.retestRequired || 'N/A'}</p></DetailRow>
                             </div>
                         </div>
                         
                         <DetailRow label="Mistake Analysis">
                             {test.mistakeTypes && test.mistakeTypes.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
-                                    {test.mistakeTypes.map(type => <span key={type} className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">{type}</span>)}
+                                    {test.mistakeTypes.map(type => <span key={type} className="px-2 py-1 text-xs font-medium rounded-full bg-warning-muted text-warning-muted-foreground">{type}</span>)}
                                 </div>
-                            ) : <p className="text-sm italic text-gray-500">No mistake types logged.</p>}
+                            ) : <p className="text-sm italic text-muted-foreground">No mistake types logged.</p>}
                         </DetailRow>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                              <DetailRow label="Strong Areas">
                                 {strongAreas.length > 0 ? (
                                     <div className="flex flex-wrap gap-2">
-                                        {strongAreas.map(area => <span key={area} className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">{area}</span>)}
+                                        {strongAreas.map(area => <span key={area} className="px-2 py-1 text-xs font-medium rounded-full bg-success-muted text-success-muted-foreground">{area}</span>)}
                                     </div>
-                                ) : <p className="text-sm italic text-gray-500">No strong areas logged.</p>}
+                                ) : <p className="text-sm italic text-muted-foreground">No strong areas logged.</p>}
                             </DetailRow>
                              <DetailRow label="Weak Areas">
                                 {weakAreas.length > 0 ? (
                                     <div className="flex flex-wrap gap-2">
-                                        {weakAreas.map(area => <span key={area} className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">{area}</span>)}
+                                        {weakAreas.map(area => <span key={area} className="px-2 py-1 text-xs font-medium rounded-full bg-danger-muted text-danger-muted-foreground">{area}</span>)}
                                     </div>
-                                ) : <p className="text-sm italic text-gray-500">No weak areas logged.</p>}
+                                ) : <p className="text-sm italic text-muted-foreground">No weak areas logged.</p>}
                             </DetailRow>
                         </div>
                     </div>
                 )}
                 
-                <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-end items-center gap-3">
-                    <button onClick={onClose} className="py-2 px-5 rounded-lg bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 font-semibold">
+                <div className="mt-8 pt-6 border-t border-border flex justify-end items-center gap-3">
+                    <button onClick={onClose} className="h-10 px-5 rounded-lg bg-muted text-muted-foreground hover:bg-border font-semibold">
                         Close
                     </button>
-                    <button onClick={() => onDelete(test.id)} className="h-10 px-4 rounded-md bg-red-600 text-white hover:bg-red-700 text-sm font-semibold">
+                    <button onClick={() => onDelete(test.id)} className="h-10 px-4 rounded-lg bg-danger text-danger-foreground hover:bg-danger/90 text-sm font-semibold">
                         Delete
                     </button>
-                     <button onClick={() => onEdit(test)} className="h-10 px-4 rounded-md bg-gray-700 text-white hover:bg-gray-800 dark:bg-gray-500 dark:hover:bg-gray-400 text-sm font-semibold">
+                     <button onClick={() => onEdit(test)} className="h-10 px-4 rounded-lg bg-muted text-muted-foreground hover:bg-border text-sm font-semibold">
                         Edit Test
                     </button>
                     {test.status === 'Upcoming' && (
-                        <button onClick={() => onAddMarking(test)} className="h-10 px-4 rounded-md bg-brand-blue text-white hover:bg-blue-600 text-sm font-semibold">
+                        <button onClick={() => onAddMarking(test)} className="h-10 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold">
                             + Add Marking
                         </button>
                     )}

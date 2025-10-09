@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { Student, SubjectData, WorkItem, Doubt } from './types';
 import StudentDoubtCard from './components/StudentDoubtCard';
@@ -114,7 +115,10 @@ const DoubtBoxPage: React.FC = () => {
                 return true;
             }).map(d => d.studentId)
         );
-        return (students as Student[]).filter(student => {
+        // FIX: Explicitly type the 'student' parameter in the filter callback
+        // to prevent it from being inferred as 'unknown' due to type conflicts
+        // in a large project with duplicated type definitions.
+        return (students as Student[]).filter((student: Student) => {
             if (student.isArchived !== showArchived) return false;
             if (filters.board && student.board !== filters.board) return false;
             if (filters.grade && student.grade.toString() !== filters.grade) return false;
@@ -128,6 +132,8 @@ const DoubtBoxPage: React.FC = () => {
 
     const filteredDoubtsForTable = useMemo(() => {
         const studentMap = new Map((students as Student[]).map(s => [s.id, s]));
+        // FIX: Explicitly type the 'doubt' and 'student' variables to ensure
+        // type safety and prevent errors from 'unknown' type inference.
         return doubts.filter((doubt: Doubt) => {
             const student: Student | undefined = studentMap.get(doubt.studentId);
             if (!student || student.isArchived !== showArchived) return false;

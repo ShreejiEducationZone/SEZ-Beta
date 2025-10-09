@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Student, SubjectData, Test, TestStatus, TestPriority, TestType, Chapter, MistakeTypeDefinition, AreaDefinition, SyllabusNode } from '../types';
 import { TEST_PRIORITIES, TEST_TYPES } from '../constants';
@@ -173,21 +170,21 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
-            <div className="bg-light-card dark:bg-dark-card rounded-2xl shadow-lg p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto thin-scrollbar" onClick={e => e.stopPropagation()}>
-                <h2 className="text-2xl font-bold mb-1">{isEditMode ? 'Edit Test Record' : 'Add New Test Record'}</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">For {student.name}</p>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+            <div className="bg-card/80 dark:bg-card/70 backdrop-blur-lg border border-border rounded-2xl shadow-soft-xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto thin-scrollbar" onClick={e => e.stopPropagation()}>
+                <h2 className="text-2xl font-bold mb-1 text-foreground">{isEditMode ? 'Edit Test Record' : 'Add New Test Record'}</h2>
+                <p className="text-sm text-muted-foreground mb-6">For {student.name}</p>
 
-                <div className="flex bg-gray-200 dark:bg-gray-700 rounded-lg p-1 mb-6">
+                <div className="flex bg-muted rounded-lg p-1 mb-6">
                     <button
                         onClick={() => setStatus('Upcoming')}
-                        className={`w-1/2 px-3 py-2 text-sm font-semibold rounded-md transition-colors ${status === 'Upcoming' ? 'bg-white dark:bg-dark-card shadow' : 'text-gray-600 dark:text-gray-300'}`}
+                        className={`w-1/2 px-3 py-2 text-sm font-semibold rounded-md transition-colors ${status === 'Upcoming' ? 'bg-background shadow-soft text-foreground' : 'text-muted-foreground'}`}
                     >
                         📝 Upcoming Test
                     </button>
                     <button
                         onClick={() => setStatus('Completed')}
-                        className={`w-1/2 px-3 py-2 text-sm font-semibold rounded-md transition-colors ${(status === 'Completed' || status === 'Absent') ? 'bg-white dark:bg-dark-card shadow' : 'text-gray-600 dark:text-gray-300'}`}
+                        className={`w-1/2 px-3 py-2 text-sm font-semibold rounded-md transition-colors ${(status === 'Completed' || status === 'Absent') ? 'bg-background shadow-soft text-foreground' : 'text-muted-foreground'}`}
                     >
                         ✅ Completed Test
                     </button>
@@ -202,30 +199,30 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
                     </div>
                     
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Chapters / Syllabus {errors.chapters && <span className="text-red-500">*</span>}</label>
-                        {errors.chapters && <p className="text-red-500 text-xs mt-1">{errors.chapters}</p>}
-                        <div className="mt-2 max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <label className="block text-sm font-medium text-muted-foreground">Chapters / Syllabus {errors.chapters && <span className="text-danger">*</span>}</label>
+                        {errors.chapters && <p className="text-danger text-xs mt-1">{errors.chapters}</p>}
+                        <div className="mt-2 max-h-40 overflow-y-auto border border-border rounded-lg p-2 grid grid-cols-1 sm:grid-cols-2 gap-2 bg-background">
                             {availableChapters.length > 0 ? availableChapters.map(chap => (
-                                <label key={`${chap.no}-${chap.name}`} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+                                <label key={`${chap.no}-${chap.name}`} className="flex items-center space-x-2 p-2 rounded hover:bg-muted cursor-pointer">
                                     <input
                                         type="checkbox"
                                         checked={selectedChapters.some(c => c.no === chap.no && c.name === chap.name)}
                                         onChange={() => handleChapterToggle(chap as Chapter)}
-                                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                                     />
-                                    <span>Ch {chap.no} - {chap.name}</span>
+                                    <span className="text-foreground">Ch {chap.no} - {chap.name}</span>
                                 </label>
-                            )) : <p className="text-sm text-gray-500 p-2">Select a subject to see chapters.</p>}
+                            )) : <p className="text-sm text-muted-foreground p-2">Select a subject to see chapters.</p>}
                         </div>
                     </div>
 
                     {(status === 'Completed' || status === 'Absent') && (
-                        <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="space-y-4 pt-4 border-t border-border">
                              <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Attendance</label>
+                                <label className="block text-sm font-medium text-muted-foreground">Attendance</label>
                                 <div className="mt-2 flex gap-4">
-                                    <label><input type="radio" name="attendance" value="present" checked={!isAbsent} onChange={() => setIsAbsent(false)} className="mr-1" /> Present</label>
-                                    <label><input type="radio" name="attendance" value="absent" checked={isAbsent} onChange={() => setIsAbsent(true)} className="mr-1" /> Absent</label>
+                                    <label className="flex items-center gap-2"><input type="radio" name="attendance" value="present" checked={!isAbsent} onChange={() => setIsAbsent(false)} className="h-4 w-4 text-primary focus:ring-primary" /> Present</label>
+                                    <label className="flex items-center gap-2"><input type="radio" name="attendance" value="absent" checked={isAbsent} onChange={() => setIsAbsent(true)} className="h-4 w-4 text-primary focus:ring-primary" /> Absent</label>
                                 </div>
                             </div>
                             
@@ -237,51 +234,51 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
                                     <InputField label="Total Marks" name="totalMarks" type="number" value={formData.totalMarks} onChange={handleChange} error={errors.totalMarks} required />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Mistake Types</label>
-                                    <div className="mt-2 max-h-40 overflow-y-auto thin-scrollbar border border-gray-300 dark:border-gray-600 rounded-lg p-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <label className="block text-sm font-medium text-muted-foreground">Mistake Types</label>
+                                    <div className="mt-2 max-h-40 overflow-y-auto thin-scrollbar border border-border rounded-lg p-2 grid grid-cols-1 sm:grid-cols-2 gap-2 bg-background">
                                         {allMistakeTypes.map(type => (
-                                            <label key={type.title} className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/50 cursor-pointer has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/50" title={type.description}>
+                                            <label key={type.title} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted has-[:checked]:bg-primary/10 cursor-pointer" title={type.description}>
                                                 <input
                                                     type="checkbox"
                                                     checked={mistakeTypes.has(type.title)}
                                                     onChange={() => handleMistakeTypeToggle(type.title)}
-                                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                                                 />
-                                                <span className="font-semibold text-sm">{type.title}</span>
+                                                <span className="font-semibold text-sm text-foreground">{type.title}</span>
                                             </label>
                                         ))}
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-2">To add or remove mistake types, go to the Settings page.</p>
+                                    <p className="text-xs text-muted-foreground mt-2">To add or remove mistake types, go to the Settings page.</p>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Strong Areas</label>
-                                        <div className="mt-2 max-h-52 overflow-y-auto thin-scrollbar border border-gray-300 dark:border-gray-600 rounded-lg p-2 space-y-2">
+                                        <label className="block text-sm font-medium text-muted-foreground">Strong Areas</label>
+                                        <div className="mt-2 max-h-52 overflow-y-auto thin-scrollbar border border-border rounded-lg p-2 space-y-2 bg-background">
                                             {availableAreas.length > 0 ? availableAreas.map(area => (
-                                                <label key={`strong-${area}`} className={`flex items-center gap-2 p-2 rounded-md transition-colors ${weakAreas.has(area) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 has-[:checked]:bg-green-50 dark:has-[:checked]:bg-green-900/50'}`} title={subjectAreas[formData.subject]?.find(def => def.title === area)?.description || ''}>
-                                                    <input type="checkbox" checked={strongAreas.has(area)} onChange={() => handleAreaToggle(area, 'strong')} disabled={weakAreas.has(area)} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"/>
-                                                    <span>{area}</span>
+                                                <label key={`strong-${area}`} className={`flex items-center gap-2 p-2 rounded-md transition-colors ${weakAreas.has(area) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted has-[:checked]:bg-success-muted'}`} title={subjectAreas[formData.subject]?.find(def => def.title === area)?.description || ''}>
+                                                    <input type="checkbox" checked={strongAreas.has(area)} onChange={() => handleAreaToggle(area, 'strong')} disabled={weakAreas.has(area)} className="h-4 w-4 rounded border-border text-primary focus:ring-primary"/>
+                                                    <span className="text-foreground">{area}</span>
                                                 </label>
-                                            )) : <p className="text-sm text-gray-500 italic p-2">No areas defined for this subject. Add them in Settings.</p>}
+                                            )) : <p className="text-sm text-muted-foreground italic p-2">No areas defined for this subject. Add them in Settings.</p>}
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Weak Areas</label>
-                                        <div className="mt-2 max-h-52 overflow-y-auto thin-scrollbar border border-gray-300 dark:border-gray-600 rounded-lg p-2 space-y-2">
+                                        <label className="block text-sm font-medium text-muted-foreground">Weak Areas</label>
+                                        <div className="mt-2 max-h-52 overflow-y-auto thin-scrollbar border border-border rounded-lg p-2 space-y-2 bg-background">
                                              {availableAreas.length > 0 ? availableAreas.map(area => (
-                                                <label key={`weak-${area}`} className={`flex items-center gap-2 p-2 rounded-md transition-colors ${strongAreas.has(area) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 has-[:checked]:bg-red-50 dark:has-[:checked]:bg-red-900/50'}`} title={subjectAreas[formData.subject]?.find(def => def.title === area)?.description || ''}>
-                                                    <input type="checkbox" checked={weakAreas.has(area)} onChange={() => handleAreaToggle(area, 'weak')} disabled={strongAreas.has(area)} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"/>
-                                                    <span>{area}</span>
+                                                <label key={`weak-${area}`} className={`flex items-center gap-2 p-2 rounded-md transition-colors ${strongAreas.has(area) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted has-[:checked]:bg-danger-muted'}`} title={subjectAreas[formData.subject]?.find(def => def.title === area)?.description || ''}>
+                                                    <input type="checkbox" checked={weakAreas.has(area)} onChange={() => handleAreaToggle(area, 'weak')} disabled={strongAreas.has(area)} className="h-4 w-4 rounded border-border text-primary focus:ring-primary"/>
+                                                    <span className="text-foreground">{area}</span>
                                                 </label>
-                                            )) : <p className="text-sm text-gray-500 italic p-2">No areas defined for this subject. Add them in Settings.</p>}
+                                            )) : <p className="text-sm text-muted-foreground italic p-2">No areas defined for this subject. Add them in Settings.</p>}
                                         </div>
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Retest Required?</label>
+                                    <label className="block text-sm font-medium text-muted-foreground">Retest Required?</label>
                                     <div className="mt-2 flex gap-4">
-                                        <label><input type="radio" name="retestRequired" value="No" checked={formData.retestRequired === 'No'} onChange={handleChange} className="mr-1" /> No</label>
-                                        <label><input type="radio" name="retestRequired" value="Yes" checked={formData.retestRequired === 'Yes'} onChange={handleChange} className="mr-1" /> Yes</label>
+                                        <label className="flex items-center gap-2"><input type="radio" name="retestRequired" value="No" checked={formData.retestRequired === 'No'} onChange={handleChange} className="h-4 w-4 text-primary focus:ring-primary" /> No</label>
+                                        <label className="flex items-center gap-2"><input type="radio" name="retestRequired" value="Yes" checked={formData.retestRequired === 'Yes'} onChange={handleChange} className="h-4 w-4 text-primary focus:ring-primary" /> Yes</label>
                                     </div>
                                 </div>
                                 </>
@@ -290,8 +287,8 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
                     )}
                     
                     <div className="flex justify-end space-x-4 pt-6">
-                       <button type="button" onClick={onCancel} className="py-2 px-5 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500 font-semibold">Cancel</button>
-                       <button type="submit" className="h-10 px-4 rounded-md bg-brand-blue text-white hover:bg-blue-600 text-sm font-semibold">Save Record</button>
+                       <button type="button" onClick={onCancel} className="h-10 px-5 rounded-lg bg-muted text-muted-foreground hover:bg-border font-semibold">Cancel</button>
+                       <button type="submit" className="h-10 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold">Save Record</button>
                    </div>
                 </form>
             </div>

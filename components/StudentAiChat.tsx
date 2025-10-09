@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, Chat } from "@google/genai";
 import SendIcon from './icons/SendIcon';
 import RobotIcon from './icons/RobotIcon';
-import UserCircleIcon from './icons/UserCircleIcon';
 import AiThinking from './AiThinking';
 import AnalyticsReport from './AnalyticsReport';
 import { Student } from '../types';
 import ChevronLeftIcon from './icons/ChevronLeftIcon';
 import { GEMINI_API_KEY } from '../utils/apiHUB';
+import PlaceholderAvatar from './PlaceholderAvatar';
 
 type Message = {
     role: 'user' | 'model';
@@ -24,7 +24,7 @@ interface StudentAiChatProps {
         tests: any[];
         attendance: any[];
     };
-    onBack: () => void;
+    onBack?: () => void;
 }
 
 function extractAndParseJSON(text: string): { jsonData: any | null, remainingText: string } {
@@ -60,6 +60,7 @@ const StudentAiChat: React.FC<StudentAiChatProps> = ({ student, studentData, onB
     const [isLoading, setIsLoading] = useState(false);
     const [chat, setChat] = useState<Chat | null>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         const apiKey = GEMINI_API_KEY;
@@ -98,12 +99,21 @@ Answer the student's questions based ONLY on this data. Be conversational and he
 
         const newChat = ai.chats.create({ model: 'gemini-2.5-flash', config: { systemInstruction } });
         setChat(newChat);
-        setMessages([{ role: 'model', text: `Welcome ${student.name}! I am your personal assistant. How can I help you today?` }]);
+        setMessages([]); // Start with an empty message list
     }, [student, studentData]);
 
-     useEffect(() => {
+    useEffect(() => {
         chatContainerRef.current?.scrollTo({ top: chatContainerRef.current.scrollHeight, behavior: 'smooth' });
-    }, [messages]);
+    }, [messages, isLoading]);
+    
+    useEffect(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+            textarea.style.height = 'auto';
+            const scrollHeight = textarea.scrollHeight;
+            textarea.style.height = `${scrollHeight}px`;
+        }
+    }, [input]);
 
     const sendAiMessage = async (userInput: string) => {
         if (!chat) return;
@@ -111,10 +121,12 @@ Answer the student's questions based ONLY on this data. Be conversational and he
         setMessages(prev => [...prev, { role: 'model', text: '' }]);
         try {
             const responseStream = await chat.sendMessageStream({ message: userInput });
+            let fullResponse = '';
             for await (const chunk of responseStream) {
+                fullResponse += chunk.text;
                 setMessages(prev => {
                     const updated = [...prev];
-                    updated[updated.length - 1].text += chunk.text;
+                    updated[updated.length - 1].text = fullResponse;
                     return updated;
                 });
             }
@@ -122,7 +134,7 @@ Answer the student's questions based ONLY on this data. Be conversational and he
             console.error("Error fetching AI response:", error);
             setMessages(prev => {
                 const updated = [...prev];
-                updated[updated.length - 1] = { role: 'model', text: "Sorry, I couldn't connect." };
+                updated[updated.length - 1] = { role: 'model', text: "Sorry, I couldn't connect. Please check your network." };
                 return updated;
             });
         } finally {
@@ -139,44 +151,87 @@ Answer the student's questions based ONLY on this data. Be conversational and he
         sendAiMessage(userInput);
     };
 
-    const renderMessage = (msg: Message) => {
+    const renderMessageContent = (msg: Message, isLastMessage: boolean) => {
+        if (isLoading && isLastMessage) return <AiThinking />;
+
         const { jsonData, remainingText } = extractAndParseJSON(msg.text);
         return (
-            <>
-                {remainingText && <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: remainingText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>') }} />}
+            <div className="space-y-3">
+                {remainingText && <div className="prose prose-sm dark:prose-invert max-w-none text-card-foreground" dangerouslySetInnerHTML={{ __html: remainingText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>') }} />}
                 {jsonData && <AnalyticsReport data={jsonData} />}
-            </>
+            </div>
         );
     };
 
     return (
-        <div className="flex flex-col h-[calc(100vh-112px)] max-w-4xl mx-auto">
-            <div className="relative mb-4 text-center flex items-center justify-center">
-                <button 
-                    onClick={onBack} 
-                    className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-2 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:text-brand-blue dark:hover:text-brand-blue"
-                >
-                    <ChevronLeftIcon className="h-5 w-5" /> Back to Selection
-                </button>
-                <h2 className="text-xl font-bold">Chatting as {student.name}</h2>
-            </div>
-            
-            <div ref={chatContainerRef} className="flex-grow overflow-y-auto thin-scrollbar p-6 space-y-6">
-                 {messages.map((msg, idx) => (
-                    <div key={idx} className={`flex gap-4 items-start ${msg.role === 'user' ? 'justify-end' : ''}`}>
-                        {msg.role === 'model' && <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center flex-shrink-0"><RobotIcon className="h-6 w-6 text-indigo-500" /></div>}
-                        <div className={`max-w-2xl rounded-2xl px-5 py-3 text-base shadow-sm ${msg.role === 'user' ? 'bg-brand-blue text-white rounded-br-lg' : 'bg-light-card dark:bg-dark-card rounded-bl-lg'}`}>
-                            {isLoading && idx === messages.length - 1 ? <AiThinking /> : renderMessage(msg)}
+        <div className="grid grid-rows-[auto_1fr_auto] h-full bg-background overflow-hidden">
+            <header className="flex items-center gap-4 p-3 border-b border-border bg-card shadow-sm">
+                {onBack && (
+                    <button onClick={onBack} className="p-2 rounded-full text-muted-foreground hover:bg-muted">
+                        <ChevronLeftIcon className="h-6 w-6" />
+                    </button>
+                )}
+                <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <RobotIcon className="h-6 w-6 text-primary"/>
+                </div>
+                <div>
+                    <h2 className="font-bold text-lg text-foreground">Sez AI</h2>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-success"></span>
+                        Online
+                    </p>
+                </div>
+            </header>
+
+            <main ref={chatContainerRef} className="overflow-y-auto thin-scrollbar p-4 md:p-6 space-y-6">
+                {messages.map((msg, idx) => (
+                    <div key={idx} className={`flex gap-3 items-end ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        {msg.role === 'model' && (
+                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                <RobotIcon className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                        )}
+                        <div className={`max-w-md lg:max-w-xl rounded-2xl px-4 py-2.5 shadow-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-br-lg' : 'bg-card border border-border rounded-bl-lg'}`}>
+                            {renderMessageContent(msg, idx === messages.length - 1)}
                         </div>
-                        {msg.role === 'user' && <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0"><UserCircleIcon className="h-6 w-6 text-gray-500 dark:text-gray-300" /></div>}
+                        {msg.role === 'user' && (
+                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                {student.avatarUrl ? <img src={student.avatarUrl} alt="You" className="w-full h-full object-cover" /> : <PlaceholderAvatar />}
+                            </div>
+                        )}
                     </div>
                 ))}
-            </div>
-            
-            <footer className="flex-shrink-0 p-4 pt-0">
-                <form onSubmit={handleSend} className="flex items-center gap-3">
-                    <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(e); } }} placeholder={`Ask about your schedule, tests, doubts...`} className="flex-grow p-3 rounded-lg border bg-transparent focus:ring-2 focus:ring-brand-blue resize-none max-h-32" rows={1} disabled={isLoading} />
-                    <button type="submit" disabled={isLoading || !input.trim()} className="p-3 rounded-full bg-brand-blue text-white disabled:bg-gray-400 hover:bg-blue-600 transition-colors flex-shrink-0"><SendIcon className="h-6 w-6" /></button>
+                {messages.length === 0 && !isLoading && (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                            <RobotIcon className="h-10 w-10 text-primary"/>
+                        </div>
+                        <h1 className="text-2xl font-bold text-foreground">Hi {student.name.split(' ')[0]}!</h1>
+                        <p className="text-muted-foreground mt-2 max-w-md">I'm your personal AI assistant. Ask me anything about your schedule, tests, or doubts.</p>
+                    </div>
+                )}
+            </main>
+
+            <footer className="p-2 sm:p-4 border-t border-border bg-card">
+                <form onSubmit={handleSend} className="flex items-end gap-2 bg-muted p-2 rounded-2xl">
+                    <textarea 
+                        ref={textareaRef}
+                        value={input} 
+                        onChange={(e) => setInput(e.target.value)} 
+                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(e); } }} 
+                        placeholder="Ask a question..."
+                        className="flex-grow py-2.5 px-3 bg-transparent focus:outline-none resize-none text-foreground" 
+                        rows={1} 
+                        disabled={isLoading}
+                    />
+                    <button 
+                        type="submit" 
+                        disabled={isLoading || !input.trim()} 
+                        className="h-10 w-10 flex-shrink-0 rounded-full bg-primary text-primary-foreground disabled:bg-primary/50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors flex items-center justify-center"
+                        aria-label="Send message"
+                    >
+                        <SendIcon className="h-5 w-5"/>
+                    </button>
                 </form>
             </footer>
         </div>

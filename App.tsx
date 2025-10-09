@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo, useCallback } from 'react';
 import { useData } from './context/DataContext';
 import { Student, AttendanceStatus } from './types';
@@ -22,8 +20,10 @@ import SkeletonCard from './components/loading/SkeletonCard';
 import SkeletonFilterBar from './components/loading/SkeletonFilterBar';
 import ProfileDropdown from './components/layout/ProfileDropdown';
 import VideoLibraryPage from './components/VideoLibraryPage';
+import StudentSheetPage from './components/StudentSheetPage';
+import SimpleStudentCard from './components/SimpleStudentCard';
 
-type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'attendance' | 'settings' | 'ai-assistant' | 'video-library';
+type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'sheets' | 'attendance' | 'ai-assistant' | 'settings' | 'video-library';
 
 const FloatingActionButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
     <button
@@ -51,6 +51,7 @@ const App: React.FC = () => {
     // Local UI state
     const [editingStudent, setEditingStudent] = useState<Partial<Student> | null>(null);
     const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
+    const [viewingSheetForStudent, setViewingSheetForStudent] = useState<Student | null>(null);
     const [showArchived, setShowArchived] = useState<boolean>(false);
     const [filters, setFilters] = useState({
         board: '',
@@ -71,6 +72,18 @@ const App: React.FC = () => {
             return true;
         });
     }, [students, showArchived, filters, searchQuery]);
+
+    const activeStudents = useMemo(() => students.filter(student => !student.isArchived), [students]);
+
+    const filteredSheetStudents = useMemo(() => {
+        return activeStudents.filter(student => {
+            if (filters.board && student.board !== filters.board) return false;
+            if (filters.grade && student.grade.toString() !== filters.grade) return false;
+            if (filters.batch && student.batch !== filters.batch) return false;
+            if (searchQuery && !student.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+            return true;
+        });
+    }, [activeStudents, filters, searchQuery]);
     
     const todaysAttendance = useMemo(() => {
         const todayStr = new Date().toISOString().split('T')[0];
@@ -103,6 +116,7 @@ const App: React.FC = () => {
         'work-pool': 'Work Pool',
         'doubts': 'Doubt Box',
         'reports': 'Reports & Tests',
+        'sheets': 'Sheets',
         'attendance': 'Attendance',
         'ai-assistant': 'AI Assistant',
         'settings': 'Settings',
@@ -148,6 +162,40 @@ const App: React.FC = () => {
                             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {filteredStudents.map(student => (
                                     <StudentCard key={student.id} student={student} onClick={setViewingStudent} attendanceStatus={getStudentAttendance(student.id)} />
+                                ))}
+                            </div>
+                        ) : (
+                             <div className="text-center py-16 text-muted-foreground">
+                                <h3 className="text-xl font-bold">No students found.</h3>
+                                <p>Try adjusting your search or filters.</p>
+                            </div>
+                        )}
+                    </>
+                );
+            case 'sheets':
+                if (viewingSheetForStudent) {
+                    return <StudentSheetPage student={viewingSheetForStudent} onBack={() => setViewingSheetForStudent(null)} />;
+                }
+                return (
+                    <>
+                        <p className="mt-2 mb-6 text-muted-foreground max-w-3xl">
+                            Click on a student's card to view and manage their progress sheet.
+                        </p>
+                        <FilterBar
+                            filters={filters}
+                            onFilterChange={handleFilterChange}
+                            onClearFilters={clearFilters}
+                            searchQuery={searchQuery}
+                            onSearchChange={handleSearchChange}
+                        />
+                        {filteredSheetStudents.length > 0 ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                                {filteredSheetStudents.map(student => (
+                                    <SimpleStudentCard
+                                        key={student.id}
+                                        student={student}
+                                        onClick={setViewingSheetForStudent}
+                                    />
                                 ))}
                             </div>
                         ) : (
