@@ -1,22 +1,21 @@
-
-
 import React from 'react';
 import { BOARDS, GRADES, BATCHES } from '../constants';
 import SelectField from './form/SelectField';
 
 interface FilterBarProps {
-    filters: { board: string; grade?: string; batch: string; status?: string; };
+    filters: { board: string; grade?: string; batch: string; status?: string; branch: string; };
     onFilterChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
     onClearFilters: () => void;
     searchQuery: string;
     onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     statusOptions?: readonly string[];
+    branchOptions?: readonly string[];
 }
 
-const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange, onClearFilters, searchQuery, onSearchChange, statusOptions }) => (
-    <div className="bg-card p-4 rounded-2xl shadow-soft border border-border mb-6 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange, onClearFilters, searchQuery, onSearchChange, statusOptions, branchOptions }) => (
+    <div className="bg-card p-4 rounded-2xl shadow-soft border border-border mb-6 grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4 items-end">
         {/* Search Bar */}
-        <div className="relative md:col-span-3 lg:col-span-2">
+        <div className="relative md:col-span-4 lg:col-span-2">
             <label htmlFor="search" className="block text-sm font-medium text-muted-foreground">
                 Search by Name
             </label>
@@ -41,6 +40,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange, onClearF
         {/* Filters */}
         <SelectField name="board" value={filters.board} onChange={onFilterChange} options={BOARDS} label="Board" />
         {filters.grade !== undefined && <SelectField name="grade" value={filters.grade} onChange={onFilterChange} options={GRADES} label="Grade" />}
+        {branchOptions && <SelectField name="branch" value={filters.branch} onChange={onFilterChange} options={branchOptions} label="Branch" />}
         <SelectField name="batch" value={filters.batch} onChange={onFilterChange} options={BATCHES} label="Batch" />
         {filters.status !== undefined && statusOptions && (
             <SelectField name="status" value={filters.status} onChange={onFilterChange} options={statusOptions} label="Status" />

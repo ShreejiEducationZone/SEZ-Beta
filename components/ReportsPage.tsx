@@ -1,7 +1,5 @@
-
-
 import React, { useState, useMemo, useCallback } from 'react';
-import { Student, SubjectData, Test, MistakeTypeDefinition, AreaDefinition } from '../types';
+import { Student, SubjectData, Test, MistakeTypeDefinition, AreaDefinition, WorkItem } from '../types';
 import TestForm from './TestForm';
 import TestDetailModal from './TestDetailModal';
 import ScoreTrendChart from './ScoreTrendChart';
@@ -16,28 +14,40 @@ import CheckCircleIcon from './icons/CheckCircleIcon';
 import CalendarIcon from './icons/CalendarIcon';
 import XCircleIcon from './icons/XCircleIcon';
 import OverallStrengthsWeaknesses from './OverallStrengthsWeaknesses';
+// FIX: Import specific context hooks
 import { useData } from '../context/DataContext';
+import { useSyllabus } from '../context/SyllabusContext';
+import { useReports } from '../context/ReportsContext';
+// FIX: Import useStudent to get students data
+import { useStudent } from '../context/StudentContext';
+import { FaPlus } from 'react-icons/fa';
+import { useWorkPool } from '../context/WorkPoolContext';
 
 const getScoreColor = (score: number) => {
-    if (score >= 80) return '#10B981';
-    if (score >= 60) return '#F59E0B';
-    return '#EF4444';
+    if (score >= 80) return 'hsl(var(--success))';
+    if (score >= 60) return 'hsl(var(--warning))';
+    return 'hsl(var(--danger))';
 };
 
-const StatCard: React.FC<{icon: React.ElementType, iconColor: string, bgColor: string, darkBgColor: string, title: string, value: string | number}> = ({ icon: Icon, iconColor, bgColor, darkBgColor, title, value }) => (
-    <div className={`flex items-center gap-4 p-4 bg-light-bg dark:bg-dark-bg/50 rounded-lg`}>
-        <div className={`p-2 ${bgColor} ${darkBgColor} rounded-full`}>
-            <Icon className={`h-6 w-6 ${iconColor}`} />
+const StatCard: React.FC<{icon: React.ElementType, iconBgClass: string, iconClass: string, title: string, value: string | number}> = ({ icon: Icon, iconBgClass, iconClass, title, value }) => (
+    <div className="flex items-center gap-4 p-4 bg-muted rounded-xl">
+        <div className={`p-3 rounded-full ${iconBgClass}`}>
+            <Icon className={`h-6 w-6 ${iconClass}`} />
         </div>
         <div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{title}</p>
-            <p className="text-lg font-bold text-gray-800 dark:text-white truncate" title={String(value)}>{value}</p>
+            <p className="text-sm text-muted-foreground">{title}</p>
+            <p className="text-2xl font-bold text-foreground truncate" title={String(value)}>{value}</p>
         </div>
     </div>
 );
 
 const ReportsPage: React.FC = () => {
-    const { students, allStudentSubjects, tests, handleSaveTest, handleDeleteTest, allMistakeTypes, subjectAreas } = useData();
+    // FIX: Get `subjectAreas` from `useSyllabus` instead of `useData` to fix a runtime error.
+    const { allStudentSubjects, subjectAreas } = useSyllabus();
+    const { tests, handleSaveTest, handleDeleteTest } = useReports();
+    const { allMistakeTypes, showToast } = useData();
+    const { students } = useStudent();
+    const { workItems, handleSaveWorkItem } = useWorkPool();
     
     const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
     const [isTestFormOpen, setIsTestFormOpen] = useState(false);
@@ -78,6 +88,32 @@ const ReportsPage: React.FC = () => {
     const completedAndAbsentTests = useMemo(() => testsForSelectedStudent.filter(t => t.status === 'Completed' || t.status === 'Absent'), [testsForSelectedStudent]);
     const stats = useMemo(() => (selectedStudentId && studentPerformanceData.has(selectedStudentId)) ? studentPerformanceData.get(selectedStudentId)! : { avgScore: 0, completedTests: 0, upcomingTests: 0, absentTests: 0 }, [selectedStudentId, studentPerformanceData]);
 
+    const handleAssignTestAsWork = async (test: Test) => {
+        const alreadyExists = workItems.some(w => w.source === 'test' && w.linkedTestId === test.id);
+        if (alreadyExists) {
+            showToast("A work item for this test has already been created.", "info");
+            return;
+        }
+
+        const newWorkItem: WorkItem = {
+            id: `w_${Date.now()}`,
+            studentId: test.studentId,
+            title: `Test Prep: ${test.title}`,
+            subject: test.subject,
+            chapterNo: test.chapters[0]?.no || 'N/A',
+            chapterName: test.chapters[0]?.name || 'Multiple',
+            description: `Prepare for the test "${test.title}" scheduled on ${test.testDate}. Syllabus includes: ${test.chapters.map(c => c.name).join(', ')}.`,
+            dueDate: test.testDate,
+            status: 'Assign',
+            priority: test.priority,
+            dateCreated: new Date().toISOString().split('T')[0],
+            source: 'test',
+            linkedTestId: test.id,
+        };
+        
+        await handleSaveWorkItem(newWorkItem);
+    };
+
     const handleAddTest = () => { setEditingTest(null); setIsTestFormOpen(true); };
     const handleEditTest = (test: Test) => { setViewingTest(null); setEditingTest(test); setIsTestFormOpen(true); };
     const handleAddMarking = (test: Test) => { setViewingTest(null); setEditingTest(test); setIsTestFormOpen(true); };
@@ -91,7 +127,7 @@ const ReportsPage: React.FC = () => {
         <div>
             {!selectedStudent ? (
                 <>
-                    <p className="mt-2 mb-6 text-gray-600 dark:text-gray-400 max-w-4xl">Analyze student test performance, track trends, and manage upcoming assessments. Select a student to begin.</p>
+                    <p className="mt-2 mb-6 text-muted-foreground max-w-4xl">Analyze student test performance, track trends, and manage upcoming assessments. Select a student to begin.</p>
                     <ReportsFilterBar filters={studentFilters} onFilterChange={handleFilterChange} onClearFilters={clearFilters} />
                     {filteredStudents.length > 0 ? (
                         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -102,35 +138,56 @@ const ReportsPage: React.FC = () => {
                             })}
                         </div>
                     ) : (
-                        <div className="text-center py-16 text-gray-500 dark:text-gray-400"><h3 className="text-xl font-semibold">No students match your filters.</h3><p>Try clearing the filters to see all students.</p></div>
+                        <div className="text-center py-16 text-muted-foreground"><h3 className="text-xl font-semibold">No students match your filters.</h3><p>Try clearing the filters to see all students.</p></div>
                     )}
                 </>
             ) : (
                 <div>
                     <div className="mb-8 flex justify-between items-center">
-                        <button onClick={handleBackToList} className="flex items-center gap-2 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:text-brand-blue dark:hover:text-brand-blue transition-colors"><ChevronLeftIcon className="h-5 w-5" />Back to All Students</button>
-                        <button onClick={handleAddTest} className="bg-brand-blue text-white h-10 px-4 rounded-md hover:bg-blue-600 transition-colors text-sm font-semibold flex-shrink-0">+ Add Test Record</button>
+                        <button onClick={handleBackToList} className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors">
+                            <ChevronLeftIcon className="h-5 w-5" />Back to All Students
+                        </button>
+                        <button 
+                            onClick={handleAddTest} 
+                            className="flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold"
+                        >
+                           <FaPlus className="h-4 w-4" /> Add Test Record
+                        </button>
                     </div>
                     <div className="space-y-12">
-                        <div className="text-center"><h2 className="text-3xl font-bold">Detailed Report for <span className="text-brand-blue">{selectedStudent.name}</span></h2></div>
-                        <div className="bg-light-card dark:bg-dark-card p-6 rounded-2xl shadow-sm flex flex-col md:flex-row items-center gap-8">
+                        <div className="text-center">
+                            <h2 className="text-3xl font-bold">Detailed Report for <span className="text-primary">{selectedStudent.name}</span></h2>
+                        </div>
+                        <div className="bg-card p-6 rounded-2xl shadow-soft border border-border flex flex-col md:flex-row items-center gap-8">
                             <div className="relative w-48 h-48 flex-shrink-0">
-                                <ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={scoreData} dataKey="value" cx="50%" cy="50%" innerRadius="70%" outerRadius="100%" startAngle={90} endAngle={450} stroke="none"><Cell fill={getScoreColor(stats.avgScore)} /><Cell fill="var(--light-bg)" className="dark:!fill-[var(--dark-bg)]" /></Pie></PieChart></ResponsiveContainer>
-                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"><p className="text-4xl font-bold text-gray-800 dark:text-white">{stats.avgScore}<span className="text-xl">%</span></p><p className="text-sm text-gray-500 dark:text-gray-400">Avg Score</p></div>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie data={scoreData} dataKey="value" cx="50%" cy="50%" innerRadius="70%" outerRadius="100%" startAngle={90} endAngle={450} stroke="none">
+                                            <Cell fill={getScoreColor(stats.avgScore)} />
+                                            <Cell fill="hsl(var(--muted))" />
+                                        </Pie>
+                                    </PieChart>
+                                </ResponsiveContainer>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                    <p className="text-4xl font-bold text-foreground">{stats.avgScore}<span className="text-xl">%</span></p>
+                                    <p className="text-sm text-muted-foreground">Avg Score</p>
+                                </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full">
-                                <StatCard icon={CheckCircleIcon} iconColor="text-green-500" bgColor="bg-green-100" darkBgColor="dark:bg-green-500/20" title="Completed Tests" value={stats.completedTests} />
-                                <StatCard icon={CalendarIcon} iconColor="text-blue-500" bgColor="bg-blue-100" darkBgColor="dark:bg-blue-500/20" title="Upcoming Tests" value={stats.upcomingTests} />
-                                <StatCard icon={XCircleIcon} iconColor="text-red-500" bgColor="bg-red-100" darkBgColor="dark:bg-red-500/20" title="Absent Tests" value={stats.absentTests} />
+                                <StatCard icon={CheckCircleIcon} iconBgClass="bg-success-muted" iconClass="text-success" title="Completed Tests" value={stats.completedTests} />
+                                <StatCard icon={CalendarIcon} iconBgClass="bg-primary/10" iconClass="text-primary" title="Upcoming Tests" value={stats.upcomingTests} />
+                                <StatCard icon={XCircleIcon} iconBgClass="bg-danger-muted" iconClass="text-danger" title="Absent Tests" value={stats.absentTests} />
                             </div>
                         </div>
                         <OverallStrengthsWeaknesses tests={completedAndAbsentTests.filter(t => t.status === 'Completed')} />
                         <TestSchedule 
                             tests={testsForSelectedStudent}
+                            workItems={workItems}
                             onTestSelect={setViewingTest}
                             onEditTest={handleEditTest}
                             onDeleteTest={handleDeleteTest}
                             onAddMarking={handleAddMarking}
+                            onAssignTestAsWork={handleAssignTestAsWork}
                         />
                         <ScoreTrendChart completedTests={completedAndAbsentTests.filter(t => t.status === 'Completed')} onTestSelect={setViewingTest} />
                         <MistakeAnalytics tests={completedAndAbsentTests.filter(t => t.status === 'Completed')} />

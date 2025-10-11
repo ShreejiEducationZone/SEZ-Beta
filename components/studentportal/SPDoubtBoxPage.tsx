@@ -1,6 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { Student, Doubt } from '../../types';
-import { useData } from '../../context/DataContext';
+// FIX: Import specific context hooks
+import { useDoubtBox } from '../../context/DoubtBoxContext';
+import { useSyllabus } from '../../context/SyllabusContext';
+import { useWorkPool } from '../../context/WorkPoolContext';
 import SPDoubtCard from './SPDoubtCard';
 import DoubtForm from '../DoubtForm';
 import PlusIcon from '../icons/PlusIcon';
@@ -11,7 +14,10 @@ interface SPDoubtBoxPageProps {
 }
 
 const SPDoubtBoxPage: React.FC<SPDoubtBoxPageProps> = ({ student }) => {
-    const { doubts, allStudentSubjects, handleSaveDoubt, workItems } = useData();
+    // FIX: Get data from specific context hooks
+    const { doubts, handleSaveDoubt } = useDoubtBox();
+    const { allStudentSubjects } = useSyllabus();
+    const { workItems } = useWorkPool();
     const [activeTab, setActiveTab] = useState<'Open' | 'Resolved'>('Open');
     const [isFormOpen, setIsFormOpen] = useState(false);
 

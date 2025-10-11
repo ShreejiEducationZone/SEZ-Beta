@@ -1,16 +1,19 @@
 import React, { useMemo, useState } from 'react';
-import { Test, TestPriority, TestStatus } from '../types';
+import { Test, TestPriority, TestStatus, WorkItem } from '../types';
 import EditIcon from './icons/EditIcon';
 import DeleteIcon from './icons/DeleteIcon';
 import WrenchScrewdriverIcon from './icons/WrenchScrewdriverIcon';
 import TestIcon from './icons/TestIcon';
+import ConvertToTaskIcon from './icons/ConvertToTaskIcon';
 
 interface TestManagementSectionProps {
     tests: Test[];
+    workItems: WorkItem[];
     onTestSelect: (test: Test) => void;
     onEditTest: (test: Test) => void;
     onDeleteTest: (testId: string) => void;
     onAddMarking: (test: Test) => void;
+    onAssignTestAsWork: (test: Test) => void;
 }
 
 const PRIORITY_STYLES: Record<TestPriority, string> = {
@@ -19,7 +22,7 @@ const PRIORITY_STYLES: Record<TestPriority, string> = {
     Low: 'bg-info-muted text-info-muted-foreground',
 };
 
-const TestRow: React.FC<{ test: Test; onSelect: () => void; onEdit: () => void; onDelete: () => void; onAddMarking?: () => void; }> = ({ test, onSelect, onEdit, onDelete, onAddMarking }) => {
+const TestRow: React.FC<{ test: Test; isAssigned: boolean; onSelect: () => void; onEdit: () => void; onDelete: () => void; onAssignTestAsWork: () => void; onAddMarking?: () => void; }> = ({ test, isAssigned, onSelect, onEdit, onDelete, onAddMarking, onAssignTestAsWork }) => {
     const score = (test.marksObtained != null && test.totalMarks != null && test.totalMarks > 0)
         ? Math.round((test.marksObtained / test.totalMarks) * 100)
         : null;
@@ -47,6 +50,14 @@ const TestRow: React.FC<{ test: Test; onSelect: () => void; onEdit: () => void; 
             <td className="px-4 py-3 text-right">
                 <div className="flex items-center justify-end gap-1">
                     {onAddMarking && <button onClick={(e) => { e.stopPropagation(); onAddMarking(); }} title="Add Marking" className="p-2 text-muted-foreground hover:text-success hover:bg-success/10 rounded-md"><EditIcon className="h-4 w-4" /></button>}
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onAssignTestAsWork(); }} 
+                        title={isAssigned ? "Already assigned as a task" : "Assign as a work item"}
+                        disabled={isAssigned}
+                        className="p-2 text-muted-foreground rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:text-accent hover:bg-accent/10"
+                    >
+                        <ConvertToTaskIcon className="h-4 w-4" />
+                    </button>
                     <button onClick={(e) => { e.stopPropagation(); onEdit(); }} title="Edit Test Details" className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md"><WrenchScrewdriverIcon className="h-4 w-4" /></button>
                     <button onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Delete Test" className="p-2 text-muted-foreground hover:text-danger hover:bg-danger/10 rounded-md"><DeleteIcon className="h-4 w-4" /></button>
                 </div>
@@ -55,7 +66,7 @@ const TestRow: React.FC<{ test: Test; onSelect: () => void; onEdit: () => void; 
     );
 };
 
-const TestSchedule: React.FC<TestManagementSectionProps> = ({ tests, onTestSelect, onEditTest, onDeleteTest, onAddMarking }) => {
+const TestSchedule: React.FC<TestManagementSectionProps> = ({ tests, workItems, onTestSelect, onEditTest, onDeleteTest, onAddMarking, onAssignTestAsWork }) => {
     const [activeTab, setActiveTab] = useState<'upcoming' | 'pending' | 'completed'>('upcoming');
 
     const { upcomingTests, pendingMarkingTests, completedTests } = useMemo(() => {
@@ -126,16 +137,20 @@ const TestSchedule: React.FC<TestManagementSectionProps> = ({ tests, onTestSelec
                             </tr>
                         </thead>
                         <tbody>
-                            {testsToDisplay.map(test => (
+                            {testsToDisplay.map(test => {
+                                const isAssigned = workItems.some(w => w.source === 'test' && w.linkedTestId === test.id);
+                                return (
                                 <TestRow 
                                     key={test.id}
                                     test={test}
+                                    isAssigned={isAssigned}
                                     onSelect={() => onTestSelect(test)}
                                     onEdit={() => onEditTest(test)}
                                     onDelete={() => onDeleteTest(test.id)}
+                                    onAssignTestAsWork={() => onAssignTestAsWork(test)}
                                     onAddMarking={activeTab === 'pending' ? () => onAddMarking(test) : undefined}
                                 />
-                            ))}
+                            )})}
                         </tbody>
                     </table>
                 ) : (

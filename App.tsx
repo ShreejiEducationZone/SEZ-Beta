@@ -1,6 +1,8 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useData } from './context/DataContext';
-import { Student, AttendanceStatus } from './types';
+import { useStudent } from './context/StudentContext';
+import { useAttendance } from './context/AttendanceContext';
+import { Student, AttendanceStatus, WorkItem, Doubt } from './types';
 import StudentCard from './components/StudentCard';
 import StudentDrawer from './components/StudentDrawer';
 import StudentForm from './components/StudentForm';
@@ -15,15 +17,20 @@ import SettingsPage from './components/SettingsPage';
 import Sidebar from './components/layout/Sidebar';
 import { ToastContainer } from './components/Toast';
 import AiAssistantPage from './components/AiAssistantPage';
-import { FaBars, FaPlus } from 'react-icons/fa';
-import SkeletonCard from './components/loading/SkeletonCard';
-import SkeletonFilterBar from './components/loading/SkeletonFilterBar';
+import { FaBars, FaPlus, FaBell } from 'react-icons/fa';
 import ProfileDropdown from './components/layout/ProfileDropdown';
 import VideoLibraryPage from './components/VideoLibraryPage';
 import StudentSheetPage from './components/StudentSheetPage';
 import SimpleStudentCard from './components/SimpleStudentCard';
+import SkeletonCard from './components/loading/SkeletonCard';
+import SkeletonFilterBar from './components/loading/SkeletonFilterBar';
+import AnalyticsPage from './components/AnalyticsPage';
+import { useWorkPool } from './context/WorkPoolContext';
+import { useSyllabus } from './context/SyllabusContext';
+import { useSheet } from './context/SheetContext';
+import NotificationDrawer from './components/NotificationDrawer';
 
-type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'sheets' | 'attendance' | 'ai-assistant' | 'settings' | 'video-library';
+type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'sheets' | 'attendance' | 'ai-assistant' | 'settings' | 'video-library' | 'analytics';
 
 const FloatingActionButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
     <button
@@ -35,43 +42,179 @@ const FloatingActionButton: React.FC<{ onClick: () => void }> = ({ onClick }) =>
     </button>
 );
 
+const STUDENTS_PER_PAGE = 12;
 
 const App: React.FC = () => {
     const { 
-        students, 
-        isLoading,
-        toasts,
-        removeToast,
+        students,
+        isLoadingStudents, 
         handleSaveStudent,
         handleArchiveStudent,
-        handleDeleteStudent,
-        attendanceRecords,
-    } = useData();
-
-    // Local UI state
+        handleDeleteStudent: rawDeleteHandler,
+    } = useStudent();
+    
+    const { toasts, removeToast, branches } = useData();
+    const { attendanceRecords, faceDescriptors } = useAttendance();
+    const { workItems, doubts, tests } = useWorkPool();
+    const { syllabusProgress, allStudentSubjects } = useSyllabus();
+    const { sheetProgress } = useSheet();
+    
+    const [currentPage, setCurrentPage] = useState<Page>('students');
     const [editingStudent, setEditingStudent] = useState<Partial<Student> | null>(null);
     const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
     const [viewingSheetForStudent, setViewingSheetForStudent] = useState<Student | null>(null);
     const [showArchived, setShowArchived] = useState<boolean>(false);
-    const [filters, setFilters] = useState({
-        board: '',
-        grade: '',
-        batch: '',
-    });
+    const [filters, setFilters] = useState({ board: '', grade: '', batch: '', branch: '' });
     const [searchQuery, setSearchQuery] = useState('');
-    const [currentPage, setCurrentPage] = useState<Page>('students');
     const [isSidebarExpanded, setSidebarExpanded] = useState(() => window.innerWidth >= 768);
+    const [isNotificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
 
+    const [numVisibleStudents, setNumVisibleStudents] = useState(STUDENTS_PER_PAGE);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const loaderRef = useRef(null);
+    
+    // --- Notification Logic ---
+    const [dismissedNotificationIds, setDismissedNotificationIds] = useState(() => {
+        try {
+            const item = window.localStorage.getItem('sez-dismissed-notifications');
+            return item ? new Set(JSON.parse(item)) : new Set<string>();
+        } catch (error) {
+            console.error("Error reading dismissed notifications from localStorage", error);
+            return new Set<string>();
+        }
+    });
+
+    const studentMap = useMemo(() => new Map(students.map(s => [s.id, s])), [students]);
+
+    const allNotifications = useMemo(() => {
+        const overdueTasks = workItems
+            .filter(item => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return new Date(item.dueDate) < today && item.status !== 'Completed' && !dismissedNotificationIds.has(item.id);
+            })
+            .map(item => ({
+                id: item.id,
+                type: 'work-pool' as Page,
+                item,
+                student: studentMap.get(item.studentId),
+                date: new Date(item.dateCreated),
+                text: 'has an overdue task:'
+            }));
+
+        const openDoubts = doubts
+            .filter(item => item.status === 'Open' && !dismissedNotificationIds.has(item.id))
+            .map(item => ({
+                id: item.id,
+                type: 'doubts' as Page,
+                item,
+                student: studentMap.get(item.studentId),
+                date: new Date(item.createdAt),
+                text: 'has a new doubt:'
+            }));
+        
+        return [...overdueTasks, ...openDoubts]
+            .filter(n => n.student) // Ensure student exists and is not archived
+            .sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    }, [workItems, doubts, studentMap, dismissedNotificationIds]);
+
+    const notificationCount = allNotifications.length;
+
+    const handleNavigateFromNotification = (page: Page, student: Student) => {
+        setCurrentPage(page);
+        setSearchQuery(student.name);
+        setFilters({ board: '', grade: '', batch: '', branch: '' }); // Clear other filters
+        setNotificationDrawerOpen(false);
+    };
+    
+    const handleDismissNotification = (id: string) => {
+        setDismissedNotificationIds(prev => {
+            const newSet = new Set(prev).add(id);
+            try {
+                window.localStorage.setItem('sez-dismissed-notifications', JSON.stringify(Array.from(newSet)));
+            } catch (error) {
+                console.error("Error saving dismissed notifications to localStorage", error);
+            }
+            return newSet;
+        });
+    };
+    
+    const handleDismissAllNotifications = () => {
+        if (allNotifications.length === 0) return;
+        
+        const allCurrentIds = allNotifications.map(n => n.id);
+        const newSet = new Set([...dismissedNotificationIds, ...allCurrentIds]);
+        
+        setDismissedNotificationIds(newSet);
+        try {
+            window.localStorage.setItem('sez-dismissed-notifications', JSON.stringify(Array.from(newSet)));
+        } catch (error) {
+            console.error("Error saving dismissed notifications to localStorage", error);
+        }
+    };
+
+
+    const handleDeleteStudent = (id: string) => {
+        const student = students.find(s => s.id === id);
+        if (!student) return;
+
+        const relatedData = {
+            workItems: workItems.filter((i: any) => i.studentId === id),
+            doubts: doubts.filter((i: any) => i.studentId === id),
+            tests: tests.filter((i: any) => i.studentId === id),
+            syllabusProgress: syllabusProgress.filter((i: any) => i.studentId === id),
+            sheetProgress: sheetProgress.filter((i: any) => i.studentId === id),
+            attendance: attendanceRecords.filter((i: any) => i.studentId === id),
+            faceDescriptors: faceDescriptors.filter((i: any) => i.id === id),
+            studentSubjects: allStudentSubjects[id] ? [{ id }] : [],
+        };
+        rawDeleteHandler(student, relatedData);
+    };
+    
+    const resetVisibleStudents = useCallback(() => {
+        setNumVisibleStudents(STUDENTS_PER_PAGE);
+    }, []);
+    
     const filteredStudents = useMemo(() => {
         return students.filter(student => {
             if (student.isArchived !== showArchived) return false;
             if (filters.board && student.board !== filters.board) return false;
             if (filters.grade && student.grade.toString() !== filters.grade) return false;
             if (filters.batch && student.batch !== filters.batch) return false;
+            if (filters.branch && student.branch !== filters.branch) return false;
             if (searchQuery && !student.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
             return true;
         });
     }, [students, showArchived, filters, searchQuery]);
+
+    const studentsToDisplay = useMemo(() => {
+        return filteredStudents.slice(0, numVisibleStudents);
+    }, [filteredStudents, numVisibleStudents]);
+
+    const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
+        const target = entries[0];
+        if (target.isIntersecting && !isLoadingMore && numVisibleStudents < filteredStudents.length) {
+            setIsLoadingMore(true);
+            setTimeout(() => {
+                setNumVisibleStudents(prev => prev + STUDENTS_PER_PAGE);
+                setIsLoadingMore(false);
+            }, 500);
+        }
+    }, [isLoadingMore, numVisibleStudents, filteredStudents.length]);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(handleObserver, { rootMargin: "200px" });
+        const currentLoader = loaderRef.current;
+        if (currentLoader) {
+            observer.observe(currentLoader);
+        }
+        return () => {
+            if (currentLoader) {
+                observer.unobserve(currentLoader);
+            }
+        };
+    }, [handleObserver]);
 
     const activeStudents = useMemo(() => students.filter(student => !student.isArchived), [students]);
 
@@ -80,6 +223,7 @@ const App: React.FC = () => {
             if (filters.board && student.board !== filters.board) return false;
             if (filters.grade && student.grade.toString() !== filters.grade) return false;
             if (filters.batch && student.batch !== filters.batch) return false;
+            if (filters.branch && student.branch !== filters.branch) return false;
             if (searchQuery && !student.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
             return true;
         });
@@ -98,16 +242,24 @@ const App: React.FC = () => {
     const handleFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFilters(prev => ({ ...prev, [name]: value }));
-    }, []);
+        resetVisibleStudents();
+    }, [resetVisibleStudents]);
 
     const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchQuery(e.target.value);
-    }, []);
+        resetVisibleStudents();
+    }, [resetVisibleStudents]);
 
     const clearFilters = useCallback(() => {
-        setFilters({ board: '', grade: '', batch: '' });
+        setFilters({ board: '', grade: '', batch: '', branch: '' });
         setSearchQuery('');
-    }, []);
+        resetVisibleStudents();
+    }, [resetVisibleStudents]);
+
+    const handleShowArchivedChange = useCallback(() => {
+        setShowArchived(prev => !prev);
+        resetVisibleStudents();
+    }, [resetVisibleStudents]);
 
     const pageTitles: Record<Page, string> = {
         'students': 'Student Directory',
@@ -121,22 +273,22 @@ const App: React.FC = () => {
         'ai-assistant': 'AI Assistant',
         'settings': 'Settings',
         'video-library': 'Video Library',
+        'analytics': 'Performance Analytics'
     };
 
     const renderContent = () => {
-        if (isLoading) {
-             return (
-                <>
-                    <SkeletonFilterBar />
-                    <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
-                    </div>
-                </>
-            );
-        }
-
         switch (currentPage) {
             case 'students':
+                if (isLoadingStudents) {
+                     return (
+                        <>
+                            <SkeletonFilterBar />
+                            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
+                            </div>
+                        </>
+                    );
+                }
                 return (
                     <>
                         <FilterBar
@@ -145,13 +297,14 @@ const App: React.FC = () => {
                             onClearFilters={clearFilters}
                             searchQuery={searchQuery}
                             onSearchChange={handleSearchChange}
+                            branchOptions={branches}
                         />
                         <div className="flex items-center mb-6">
                             <input
                                 type="checkbox"
                                 id="showArchived"
                                 checked={showArchived}
-                                onChange={() => setShowArchived(!showArchived)}
+                                onChange={handleShowArchivedChange}
                                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                             />
                             <label htmlFor="showArchived" className="ml-2 block text-sm text-muted-foreground">
@@ -159,11 +312,23 @@ const App: React.FC = () => {
                             </label>
                         </div>
                         {filteredStudents.length > 0 ? (
-                            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                {filteredStudents.map(student => (
-                                    <StudentCard key={student.id} student={student} onClick={setViewingStudent} attendanceStatus={getStudentAttendance(student.id)} />
-                                ))}
-                            </div>
+                            <>
+                                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                    {studentsToDisplay.map(student => (
+                                        <StudentCard key={student.id} student={student} onClick={setViewingStudent} attendanceStatus={getStudentAttendance(student.id)} />
+                                    ))}
+                                    {isLoadingMore && Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={`loading-${i}`} />)}
+                                </div>
+                                
+                                <div ref={loaderRef} style={{ height: '1px' }} />
+
+                                {!isLoadingMore && numVisibleStudents >= filteredStudents.length && filteredStudents.length > STUDENTS_PER_PAGE && (
+                                     <div className="text-center py-16 text-muted-foreground">
+                                        <h3 className="text-xl font-bold">You've reached the end.</h3>
+                                        <p>All {filteredStudents.length} matching students are shown.</p>
+                                    </div>
+                                )}
+                            </>
                         ) : (
                              <div className="text-center py-16 text-muted-foreground">
                                 <h3 className="text-xl font-bold">No students found.</h3>
@@ -176,6 +341,13 @@ const App: React.FC = () => {
                 if (viewingSheetForStudent) {
                     return <StudentSheetPage student={viewingSheetForStudent} onBack={() => setViewingSheetForStudent(null)} />;
                 }
+                 if (isLoadingStudents) {
+                     return (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                            {Array.from({ length: 12 }).map((_, i) => <div key={i} className="bg-muted rounded-2xl h-40 animate-pulse" />)}
+                        </div>
+                    );
+                }
                 return (
                     <>
                         <p className="mt-2 mb-6 text-muted-foreground max-w-3xl">
@@ -187,6 +359,7 @@ const App: React.FC = () => {
                             onClearFilters={clearFilters}
                             searchQuery={searchQuery}
                             onSearchChange={handleSearchChange}
+                            branchOptions={branches}
                         />
                         {filteredSheetStudents.length > 0 ? (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -211,6 +384,7 @@ const App: React.FC = () => {
             case 'work-pool': return <WorkPoolPage />;
             case 'doubts': return <DoubtBoxPage />;
             case 'reports': return <ReportsPage />;
+            case 'analytics': return <AnalyticsPage />;
             case 'attendance': return <AttendancePage />;
             case 'ai-assistant': return <AiAssistantPage />;
             case 'settings': return <SettingsPage />;
@@ -246,7 +420,19 @@ const App: React.FC = () => {
                             </button>
                             <h1 className="text-2xl font-bold text-foreground">{pageTitles[currentPage]}</h1>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                             <button
+                                onClick={() => setNotificationDrawerOpen(true)}
+                                className="relative p-2 rounded-full text-muted-foreground hover:bg-muted focus:outline-none"
+                                aria-label={`Notifications (${notificationCount})`}
+                            >
+                                <FaBell className="h-6 w-6" />
+                                {notificationCount > 0 && (
+                                    <span className="absolute top-1 right-1 h-5 w-5 flex items-center justify-center rounded-full bg-danger text-danger-foreground text-xs font-bold ring-2 ring-card">
+                                        {notificationCount}
+                                    </span>
+                                )}
+                            </button>
                             <ProfileDropdown />
                         </div>
                      </div>
@@ -256,6 +442,15 @@ const App: React.FC = () => {
                     {renderContent()}
                 </main>
             </div>
+
+            <NotificationDrawer
+                isOpen={isNotificationDrawerOpen}
+                onClose={() => setNotificationDrawerOpen(false)}
+                notifications={allNotifications}
+                onNavigate={handleNavigateFromNotification}
+                onDismiss={handleDismissNotification}
+                onDismissAll={handleDismissAllNotifications}
+            />
 
             {viewingStudent && <StudentDrawer student={viewingStudent} onClose={() => setViewingStudent(null)} onEdit={(s) => { setViewingStudent(null); setEditingStudent(s); }} onArchive={handleArchiveStudent} onDelete={handleDeleteStudent}/>}
             {editingStudent && <StudentForm student={editingStudent} onSave={handleSaveStudent} onCancel={() => setEditingStudent(null)} />}

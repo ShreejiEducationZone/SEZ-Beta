@@ -1,11 +1,13 @@
-
-
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Student, FaceDescriptorData, AttendanceRecord, AttendanceStatus } from '../../types';
 import AttendanceStudentCard from '../AttendanceStudentCard';
 import StudentAttendanceDetailView from '../StudentAttendanceDetailView';
 import { speak } from '../../utils/voiceService';
+// FIX: Import specific context hooks
 import { useData } from '../../context/DataContext';
+import { useAttendance } from '../../context/AttendanceContext';
+// FIX: Import useStudent to get students data
+import { useStudent } from '../../context/StudentContext';
 import PlaceholderAvatar from '../PlaceholderAvatar';
 import CheckCircleIcon from '../icons/CheckCircleIcon';
 
@@ -72,7 +74,11 @@ const getHeadPose = (landmarks: any) => {
 
 
 export const StudentRoster: React.FC = () => {
-    const { students, faceDescriptors, attendanceRecords, handleSaveFaceDescriptor, showToast } = useData();
+    // FIX: Get data from specific context hooks
+    const { faceDescriptors, attendanceRecords, handleSaveFaceDescriptor } = useAttendance();
+    const { showToast } = useData();
+    // FIX: Get students from useStudent hook
+    const { students } = useStudent();
     
     const [studentRoster, setStudentRoster] = useState<StudentAttendanceData[]>([]);
     const [viewingStudentId, setViewingStudentId] = useState<string | null>(null);

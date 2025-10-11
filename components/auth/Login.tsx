@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useData } from '../../context/DataContext';
+import { useStudent } from '../../context/StudentContext';
 import { FaBookOpen, FaUserShield, FaUserGraduate } from 'react-icons/fa';
 
 const Login: React.FC = () => {
     const { login } = useData();
+    const { students } = useStudent();
     const [loginAs, setLoginAs] = useState<'student' | 'admin'>('student');
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
@@ -17,9 +19,9 @@ const Login: React.FC = () => {
 
         try {
             if (loginAs === 'admin') {
-                await login('sez@admin.com', 'pass12345');
+                await login('sez@admin.com', 'pass12345', students);
             } else {
-                await login(name, password);
+                await login(name, password, students);
             }
         } catch (err: any) {
             setError(err.message || 'An unknown error occurred.');

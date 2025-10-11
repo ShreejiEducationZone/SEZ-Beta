@@ -2,10 +2,16 @@ import React, { useState, useMemo } from 'react';
 import { Student } from '../types';
 import StudentSubjectCard from './StudentSubjectCard';
 import SubjectManagerDrawer from './SubjectManagerDrawer';
-import { useData } from '../context/DataContext';
+// FIX: Import useSyllabus to get syllabus data
+import { useSyllabus } from '../context/SyllabusContext';
+// FIX: Import useStudent to get students data
+import { useStudent } from '../context/StudentContext';
 
 const SubjectManagerPage: React.FC = () => {
-    const { students, allStudentSubjects, handleSaveSubjects } = useData();
+    // FIX: Get syllabus data from useSyllabus hook
+    const { allStudentSubjects, handleSaveSubjects } = useSyllabus();
+    // FIX: Get students from useStudent hook
+    const { students } = useStudent();
     const [showArchived, setShowArchived] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 

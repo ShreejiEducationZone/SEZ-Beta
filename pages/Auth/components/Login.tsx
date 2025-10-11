@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { useData } from '../../../context/DataContext';
 import { FaBookOpen, FaUserShield, FaUserGraduate } from 'react-icons/fa';
+// FIX: Import useStudent hook to get students data for login function.
+import { useStudent } from '../../../context/StudentContext';
 
 const Login: React.FC = () => {
     const { login } = useData();
+    // FIX: Get students from useStudent hook.
+    const { students } = useStudent();
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -14,7 +18,8 @@ const Login: React.FC = () => {
         setError('');
         setIsAdminLoading(true);
         try {
-            await login('sez@admin.com', 'pass12345');
+            // FIX: Pass students array to login function.
+            await login('sez@admin.com', 'pass12345', students);
         } catch (err: any) {
             setError(err.message || 'An unknown error occurred.');
             setIsAdminLoading(false);
@@ -26,7 +31,8 @@ const Login: React.FC = () => {
         setError('');
         setIsStudentLoading(true);
         try {
-            await login(name, password);
+            // FIX: Pass students array to login function.
+            await login(name, password, students);
         } catch (err: any) {
             setError(err.message || 'An unknown error occurred.');
             setIsStudentLoading(false);

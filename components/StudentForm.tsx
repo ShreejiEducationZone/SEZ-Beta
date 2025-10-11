@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { Student, Board, Gender } from '../types';
 import { BOARDS, GRADES, TIME_SLOTS, GENDERS } from '../constants';
@@ -8,6 +6,7 @@ import InputField from './form/InputField';
 import SelectField from './form/SelectField';
 import TextareaField from './form/TextareaField';
 import PlaceholderAvatar from './PlaceholderAvatar';
+import { useData } from '../context/DataContext';
 
 interface StudentFormProps {
     student: Partial<Student> | null;
@@ -50,9 +49,10 @@ const resizeImage = (file: File, options: { maxSize: number; targetByteSize: num
 };
 
 const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onCancel }) => {
+    const { branches } = useData();
     const isEditMode = !!student?.id;
     const [formData, setFormData] = useState({
-        id: student?.id || null, name: student?.name || '', school: student?.school || '', board: student?.board || '', grade: student?.grade || '', timeSlot: student?.timeSlot || '', avatarUrl: student?.avatarUrl || null, personalPhone: student?.personalPhone || '', fatherPhone: student?.fatherPhone || '', motherPhone: student?.motherPhone || '', address: student?.address || '', isArchived: student?.isArchived || false, programStage: student?.programStage || '', batch: student?.batch || '', notes: student?.notes || '', fatherName: student?.fatherName || '', motherName: student?.motherName || '', occupation: student?.occupation || '', gender: student?.gender || '', email: student?.email || '', dob: student?.dob || '',
+        id: student?.id || null, name: student?.name || '', school: student?.school || '', board: student?.board || '', grade: student?.grade || '', timeSlot: student?.timeSlot || '', avatarUrl: student?.avatarUrl || null, personalPhone: student?.personalPhone || '', fatherPhone: student?.fatherPhone || '', motherPhone: student?.motherPhone || '', address: student?.address || '', isArchived: student?.isArchived || false, programStage: student?.programStage || '', batch: student?.batch || '', notes: student?.notes || '', fatherName: student?.fatherName || '', motherName: student?.motherName || '', occupation: student?.occupation || '', gender: student?.gender || '', email: student?.email || '', dob: student?.dob || '', branch: student?.branch || '',
     });
     const [age, setAge] = useState<string>('');
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -98,8 +98,14 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onCancel }) 
         e.preventDefault();
         if (isSaving || !validate()) return;
         setIsSaving(true);
-        try { await onSave({ ...formData, id: formData.id || `s_${Date.now()}`, gender: formData.gender as Gender } as Student);
-        } catch (error) { console.error("Save failed, re-enabling form."); } finally { setIsSaving(false); }
+        try {
+            await onSave({ ...formData, id: formData.id || `s_${Date.now()}`, gender: formData.gender as Gender } as Student);
+            onCancel(); // Close form on successful save
+        } catch (error) {
+            console.error("Save failed, re-enabling form.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -134,7 +140,10 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onCancel }) 
                    </div>
                     <div className="border-t border-border pt-6">
                         <h3 className="text-lg font-semibold text-card-foreground mb-4">Academic Details</h3>
-                        <InputField label="School" name="school" value={formData.school} onChange={handleChange} error={errors.school} required />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <InputField label="School" name="school" value={formData.school} onChange={handleChange} error={errors.school} required />
+                           <SelectField label="Branch" name="branch" value={formData.branch} onChange={handleChange} options={branches} />
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                             <SelectField label="Board" name="board" value={formData.board} onChange={handleChange} options={BOARDS} error={errors.board} required />
                             <SelectField label="Grade" name="grade" value={formData.grade} onChange={handleChange} options={GRADES} error={errors.grade} required />
@@ -166,7 +175,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onCancel }) 
                     <div className="flex justify-end space-x-4 pt-6">
                        <button type="button" onClick={onCancel} className="h-10 px-5 rounded-lg bg-muted text-muted-foreground hover:bg-border font-semibold">Cancel</button>
                        <button type="submit" disabled={isSaving} className="h-10 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold disabled:bg-muted disabled:cursor-not-allowed flex items-center justify-center min-w-[110px]">
-                            {isSaving ? <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : 'Save Student'}
+                            {isSaving ? <><svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>Saving...</span></> : 'Save Student'}
                         </button>
                    </div>
                </form>

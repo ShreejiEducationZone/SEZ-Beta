@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { Student, AttendanceRecord, AttendanceStatus } from '../../types';
@@ -7,6 +6,10 @@ import { HolidayManagerModal } from './HolidayManagerModal';
 import FilterBar from '../FilterBar';
 import AttendanceAnalytics from './AttendanceAnalytics';
 import CalendarIcon from '../icons/CalendarIcon';
+// FIX: Import specific context hooks
+import { useAttendance } from '../../context/AttendanceContext';
+// FIX: Import useStudent to get students data
+import { useStudent } from '../../context/StudentContext';
 
 const DonutChart: React.FC<{ value: number; total: number; label: string; colorClass: string; trackColorClass?: string; }> = ({ value, total, label, colorClass, trackColorClass = 'text-gray-200 dark:text-gray-700' }) => {
     const percentage = total > 0 ? (value / total) * 100 : 0;
@@ -34,7 +37,11 @@ const STATUS_OPTIONS = ['Present', 'Absent', 'Leave', 'Holiday', 'Unmarked', 'Re
 
 
 export const ManualAttendance: React.FC = () => {
-    const { students, attendanceRecords, handleBatchSaveAttendanceRecords, showToast, faceDescriptors } = useData();
+    // FIX: Get data from specific context hooks
+    const { attendanceRecords, handleBatchSaveAttendanceRecords, faceDescriptors } = useAttendance();
+    const { showToast, branches } = useData();
+    // FIX: Get students from useStudent hook
+    const { students } = useStudent();
     const [selectedDate, setSelectedDate] = useState(() => {
         const today = new Date();
         const y = today.getFullYear();
@@ -44,7 +51,8 @@ export const ManualAttendance: React.FC = () => {
     });
     const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
     
-    const [filters, setFilters] = useState({ board: '', batch: '', status: '' });
+    // FIX: Added `branch` property to the filters state to match FilterBar's expected props.
+    const [filters, setFilters] = useState({ board: '', batch: '', status: '', branch: '' });
     const [searchQuery, setSearchQuery] = useState('');
     
     const [pendingChanges, setPendingChanges] = useState<Map<string, AttendanceStatus>>(new Map());
@@ -68,6 +76,8 @@ export const ManualAttendance: React.FC = () => {
         return activeStudents.filter(student => {
             if (filters.board && student.board !== filters.board) return false;
             if (filters.batch && student.batch !== filters.batch) return false;
+            // FIX: Added filtering by branch.
+            if (filters.branch && student.branch !== filters.branch) return false;
             if (searchQuery && !student.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
             
             if (filters.status) {
@@ -86,7 +96,8 @@ export const ManualAttendance: React.FC = () => {
 
     const handleFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => setFilters(prev => ({ ...prev, [e.target.name]: e.target.value })), []);
     const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value), []);
-    const clearFilters = useCallback(() => { setFilters({ board: '', batch: '', status: '' }); setSearchQuery(''); }, []);
+    // FIX: Added `branch` to the clearFilters function.
+    const clearFilters = useCallback(() => { setFilters({ board: '', batch: '', status: '', branch: '' }); setSearchQuery(''); }, []);
 
     const handleStatusCycle = (studentId: string) => {
         const currentStatus = pendingChanges.get(studentId) || attendanceMap.get(studentId) || 'None';
@@ -223,6 +234,8 @@ export const ManualAttendance: React.FC = () => {
                 searchQuery={searchQuery} 
                 onSearchChange={handleSearchChange}
                 statusOptions={STATUS_OPTIONS}
+                // FIX: Pass branchOptions to the FilterBar.
+                branchOptions={branches}
             />
             
             <div className="max-h-[60vh] overflow-y-auto thin-scrollbar pr-2 -mr-2 grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>

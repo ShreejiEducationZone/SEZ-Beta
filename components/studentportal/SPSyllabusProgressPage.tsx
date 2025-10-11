@@ -1,9 +1,8 @@
 import React, { useState, useMemo, FC, useCallback } from 'react';
-import { Student, SubjectData, SyllabusNode, ProgressEntry, SyllabusProgress } from '../../types';
-import { useData } from '../../context/DataContext';
-import SelectField from '../form/SelectField';
-import SPMilestoneItem from './SPMilestoneItem';
+import { Student, SubjectData, SyllabusProgress, SyllabusNode, ProgressEntry } from '../../types';
+import { useSyllabus } from '../../context/SyllabusContext';
 import AddNoteModal from '../AddNoteModal';
+import SPMilestoneItem from './SPMilestoneItem';
 import { VscChecklist } from 'react-icons/vsc';
 
 const flattenSyllabus = (subjects: SubjectData[]): { subject: string, nodes: (SyllabusNode & { level: number })[] }[] => {
@@ -27,15 +26,12 @@ interface SPSyllabusProgressPageProps {
 }
 
 const SPSyllabusProgressPage: FC<SPSyllabusProgressPageProps> = ({ student }) => {
-    const { allStudentSubjects, syllabusProgress, handleUpdateSyllabusNode, showToast } = useData();
+    const { allStudentSubjects, syllabusProgress, handleUpdateSyllabusNode } = useSyllabus();
+    
     const studentSubjects = useMemo(() => allStudentSubjects[student.id]?.subjects || [], [allStudentSubjects, student.id]);
     
     const [activeSubject, setActiveSubject] = useState<string>(studentSubjects[0]?.subject || '');
-    const [pendingChanges, setPendingChanges] = useState<Map<string, boolean>>(new Map());
-    const [isSaving, setIsSaving] = useState(false);
     const [nodeForNote, setNodeForNote] = useState<(SyllabusNode & { level: number }) | null>(null);
-
-    const flattenedSyllabusBySubject = useMemo(() => flattenSyllabus(studentSubjects), [studentSubjects]);
 
     const progressMap = useMemo(() => {
         const map = new Map<string, SyllabusProgress>();
@@ -47,104 +43,70 @@ const SPSyllabusProgressPage: FC<SPSyllabusProgressPageProps> = ({ student }) =>
         return map;
     }, [syllabusProgress, student.id]);
 
-    const handleToggleCompletion = (node: SyllabusNode, isCompleted: boolean) => {
-        const changeKey = `${activeSubject}-${node.no}`;
-        setPendingChanges(prev => new Map(prev).set(changeKey, isCompleted));
-    };
+    const flattenedSyllabusBySubject = useMemo(() => flattenSyllabus(studentSubjects), [studentSubjects]);
 
-    const handleSaveChanges = async () => {
-        if (pendingChanges.size === 0) {
-            showToast("No changes to save.", "info");
-            return;
-        }
-        setIsSaving(true);
+    const handleToggleCompletion = useCallback(async (node: SyllabusNode, isCompleted: boolean) => {
         const today = new Date().toISOString().split('T')[0];
-        
-        const updates = Array.from(pendingChanges.entries()).map(([key, isCompleted]) => {
-            const [subject, nodeNo] = key.split('-');
-            const note = isCompleted ? `Marked as completed.` : `Marked as incomplete.`;
-            return handleUpdateSyllabusNode(student.id, subject, nodeNo, { isCompleted, notesToAdd: [{ date: today, note }] });
-        });
+        const note = isCompleted ? `Marked as completed.` : `Marked as incomplete.`;
+        await handleUpdateSyllabusNode(student.id, activeSubject, node.no, { isCompleted, notesToAdd: [{ date: today, note }] });
+    }, [student.id, activeSubject, handleUpdateSyllabusNode]);
 
-        try {
-            await Promise.all(updates);
-            showToast(`Saved ${updates.length} progress update(s)!`, 'success');
-            setPendingChanges(new Map());
-        } catch (error) {
-            showToast("An error occurred while saving.", "error");
-        } finally {
-            setIsSaving(false);
-        }
-    };
-    
     const handleSaveNote = useCallback(async (note: string) => {
         if (!nodeForNote) return;
         const today = new Date().toISOString().split('T')[0];
         await handleUpdateSyllabusNode(student.id, activeSubject, nodeForNote.no, { notesToAdd: [{ date: today, note }] });
         setNodeForNote(null);
-        showToast("Note added!", 'success');
-    }, [student.id, activeSubject, nodeForNote, handleUpdateSyllabusNode, showToast]);
+    }, [student.id, activeSubject, nodeForNote, handleUpdateSyllabusNode]);
     
     const handleDeleteNote = useCallback(async (node: SyllabusNode, noteIndex: number) => {
         await handleUpdateSyllabusNode(student.id, activeSubject, node.no, { noteIndicesToDelete: [noteIndex] });
-        showToast("Note deleted.", 'success');
-    }, [student.id, activeSubject, handleUpdateSyllabusNode, showToast]);
-    
+    }, [student.id, activeSubject, handleUpdateSyllabusNode]);
+
     const subjectData = flattenedSyllabusBySubject.find(s => s.subject === activeSubject);
 
     return (
         <>
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold mb-2">My Syllabus Progress</h1>
-                    <p className="text-muted-foreground">Track your chapter-wise learning journey.</p>
-                </div>
-                 <button 
-                    onClick={handleSaveChanges}
-                    disabled={pendingChanges.size === 0 || isSaving}
-                    className="h-10 px-6 rounded-lg bg-primary text-primary-foreground font-semibold disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed hover:bg-primary/90 transition-colors self-end sm:self-center"
-                >
-                    {isSaving ? 'Saving...' : `Save (${pendingChanges.size})`}
-                </button>
+            <h1 className="text-3xl font-bold mb-2">My Syllabus</h1>
+            <p className="text-muted-foreground mb-6">Track your progress through each subject.</p>
+
+            <div className="border-b border-border mb-6">
+                <nav className="-mb-px flex space-x-6 overflow-x-auto">
+                    {studentSubjects.map(subject => (
+                        <button key={subject.subject} onClick={() => setActiveSubject(subject.subject)} className={`whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm ${activeSubject === subject.subject ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+                            {subject.subject}
+                        </button>
+                    ))}
+                </nav>
             </div>
-            
-            <div className="bg-card rounded-2xl shadow-soft border border-border p-4 sm:p-6">
-                <div className="max-w-xs mb-6">
-                    <SelectField
-                        label="Select Subject"
-                        name="subject"
-                        value={activeSubject}
-                        onChange={e => setActiveSubject(e.target.value)}
-                        options={studentSubjects.map(s => s.subject)}
-                    />
-                </div>
-                <div className="relative max-h-[60vh] overflow-y-auto thin-scrollbar pr-2 -mr-4">
-                    {subjectData && subjectData.nodes.length > 0 && <div className="absolute top-0 left-[9px] w-0.5 h-full bg-border -z-10"></div>}
-                    
-                    {subjectData?.nodes.map(node => {
-                        const changeKey = `${activeSubject}-${node.no}`;
-                        const progress = progressMap.get(changeKey);
-                        const isCompleted = pendingChanges.has(changeKey) ? pendingChanges.get(changeKey)! : (progress?.isCompleted || false);
-                        return (
-                           <SPMilestoneItem 
-                                key={node.no}
-                                node={node}
-                                isCompleted={isCompleted}
-                                progress={progress}
-                                onToggle={handleToggleCompletion}
-                                onOpenNoteModal={setNodeForNote}
-                                onDeleteNote={handleDeleteNote}
-                           />
-                        );
-                    })}
-                    {(!subjectData || subjectData.nodes.length === 0) && (
-                         <div className="text-center py-16 text-muted-foreground flex flex-col items-center justify-center">
-                            <VscChecklist className="h-16 w-16 mb-4 opacity-50"/>
-                            <h3 className="text-lg font-semibold">No syllabus defined for {activeSubject}.</h3>
-                        </div>
-                    )}
-                </div>
+
+            <div className="relative max-h-[calc(100vh-20rem)] overflow-y-auto thin-scrollbar pr-2 -mr-2">
+                 {/* Vertical Timeline Line */}
+                <div className="absolute top-0 left-[12px] w-0.5 h-full bg-border -z-10"></div>
+                
+                {subjectData?.nodes.map(node => {
+                    const progress = progressMap.get(`${activeSubject}-${node.no}`);
+                    const isCompleted = progress?.isCompleted || false;
+                    return (
+                        <SPMilestoneItem 
+                            key={`${node.no}-${node.name}`} 
+                            node={node} 
+                            isCompleted={isCompleted} 
+                            progress={progress}
+                            onToggle={handleToggleCompletion}
+                            onOpenNoteModal={setNodeForNote}
+                            onDeleteNote={handleDeleteNote}
+                        />
+                    );
+                })}
+                {(!subjectData || subjectData.nodes.length === 0) && (
+                     <div className="text-center py-20 text-muted-foreground bg-muted/30 rounded-2xl flex flex-col items-center justify-center">
+                        <VscChecklist className="h-16 w-16 mb-4 opacity-50"/>
+                        <h3 className="text-xl font-semibold">No syllabus defined</h3>
+                        <p>Ask your mentor to add a syllabus for {activeSubject || 'this subject'}.</p>
+                    </div>
+                )}
             </div>
+
             {nodeForNote && (
                 <AddNoteModal 
                     node={nodeForNote} 

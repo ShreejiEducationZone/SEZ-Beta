@@ -74,6 +74,7 @@ const StudentDrawer: React.FC<StudentDrawerProps> = ({ student, onClose, onEdit,
                             <div><strong className="text-muted-foreground w-28 inline-block">Grade:</strong> {student.grade}</div>
                             {student.programStage && <div><strong className="text-muted-foreground w-28 inline-block">Program:</strong> {student.programStage}</div>}
                             <div><strong className="text-muted-foreground w-28 inline-block">School:</strong> {student.school}</div>
+                            {student.branch && <div><strong className="text-muted-foreground w-28 inline-block">Branch:</strong> {student.branch}</div>}
                             <div><strong className="text-muted-foreground w-28 inline-block">Batch:</strong> {student.batch}</div>
                             <div><strong className="text-muted-foreground w-28 inline-block">Time Slot:</strong> {student.timeSlot}</div>
                         </div>

@@ -1,7 +1,6 @@
-
-
 import React, { useState } from 'react';
-import { useData } from '../../context/DataContext';
+// FIX: Import useAttendance to get holiday data
+import { useAttendance } from '../../context/AttendanceContext';
 import { Holiday } from '../../types';
 import DeleteIcon from '../icons/DeleteIcon';
 
@@ -10,7 +9,8 @@ interface HolidayManagerModalProps {
 }
 
 export const HolidayManagerModal: React.FC<HolidayManagerModalProps> = ({ onClose }) => {
-    const { holidays, handleSaveHoliday, handleDeleteHoliday } = useData();
+    // FIX: Get holiday data from useAttendance hook
+    const { holidays, handleSaveHoliday, handleDeleteHoliday } = useAttendance();
     
     const [date, setDate] = useState('');
     const [reason, setReason] = useState('');

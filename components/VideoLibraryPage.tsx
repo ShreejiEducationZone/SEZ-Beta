@@ -1,10 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { useData } from '../context/DataContext';
+// FIX: Import useSyllabus to get allStudentSubjects
+import { useSyllabus } from '../context/SyllabusContext';
 import { Student, SubjectData, Board } from '../types';
 import VideoLibraryDrawer from './VideoLibraryDrawer'; // This component is now a full page
 import { FaChevronLeft } from 'react-icons/fa';
 import FolderCard from './FolderCard';
 import FolderIcon from './icons/FolderIcon';
+// FIX: Import useStudent to get students data
+import { useStudent } from '../context/StudentContext';
 
 
 export interface GroupData {
@@ -32,7 +35,10 @@ const boardColorClasses: Record<Board, string> = {
 };
 
 const VideoLibraryPage: React.FC = () => {
-    const { students, allStudentSubjects } = useData();
+    // FIX: Get syllabus data from useSyllabus hook
+    const { allStudentSubjects } = useSyllabus();
+    // FIX: Get students from useStudent hook
+    const { students } = useStudent();
     const [selectedGroup, setSelectedGroup] = useState<GroupData | 'universal' | null>(null);
     const [selectedSchool, setSelectedSchool] = useState<SchoolGroup | null>(null);
 

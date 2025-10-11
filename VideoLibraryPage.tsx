@@ -1,10 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { useData } from '../context/DataContext';
-import { Student, SubjectData, Board } from '../types';
+// FIX: Import useSyllabus to get allStudentSubjects
+import { useSyllabus } from './context/SyllabusContext';
+import { useStudent } from './context/StudentContext';
+import { Student, SubjectData, Board } from './types';
 import VideoLibraryDrawer from './VideoLibraryDrawer'; // This component is now a full page
 import { FaChevronLeft } from 'react-icons/fa';
-import SchoolCard from './SchoolCard';
-import LibraryCard from './LibraryCard';
+import FolderCard from './FolderCard';
+import FolderIcon from './icons/FolderIcon';
+
 
 export interface GroupData {
     id: string;
@@ -22,8 +25,18 @@ interface SchoolGroup {
     boardCount: number;
 }
 
+const boardColorClasses: Record<Board, string> = {
+    CBSE: 'text-orange-500',
+    ICSE: 'text-green-600',
+    GSEB: 'text-gray-500',
+    Cambridge: 'text-blue-600',
+    IB: 'text-pink-600',
+};
+
 const VideoLibraryPage: React.FC = () => {
-    const { students, allStudentSubjects } = useData();
+    // FIX: Get syllabus data from useSyllabus hook instead of useData.
+    const { allStudentSubjects } = useSyllabus();
+    const { students } = useStudent();
     const [selectedGroup, setSelectedGroup] = useState<GroupData | 'universal' | null>(null);
     const [selectedSchool, setSelectedSchool] = useState<SchoolGroup | null>(null);
 
@@ -102,18 +115,20 @@ const VideoLibraryPage: React.FC = () => {
             <div>
                 <button onClick={() => setSelectedSchool(null)} className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors mb-6">
                     <FaChevronLeft className="h-4 w-4" />
-                    Back to All Schools
+                    Back to All Libraries
                 </button>
-                <h2 className="text-3xl font-bold text-foreground mb-6">{selectedSchool.school}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="flex items-center gap-4 mb-6">
+                    <FolderIcon className="w-12 h-12 text-primary" />
+                    <h2 className="text-3xl font-bold text-foreground">{selectedSchool.school}</h2>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-6">
                     {selectedSchool.groups.map(group => (
-                        <LibraryCard 
+                        <FolderCard 
                             key={group.id}
-                            board={group.board}
-                            grade={group.grade}
-                            studentCount={group.studentCount}
-                            subjectCount={group.subjects.length}
+                            name={`${group.board} - G${group.grade}`}
+                            details={`${group.studentCount} student(s)`}
                             onClick={() => setSelectedGroup(group)}
+                            colorClass={boardColorClasses[group.board]}
                         />
                     ))}
                 </div>
@@ -125,35 +140,30 @@ const VideoLibraryPage: React.FC = () => {
     return (
         <div>
             <p className="mt-2 mb-6 text-muted-foreground max-w-3xl">
-                A shared library of educational videos organized by curriculum. Select a school or the universal library to begin.
+                A shared library of educational videos organized by curriculum. Select a library to begin.
             </p>
-            <div className="space-y-8">
-                <LibraryCard
-                    isUniversal
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-6">
+                <FolderCard
+                    name="Universal Library"
+                    details="General videos"
                     onClick={() => setSelectedGroup('universal')}
+                    colorClass="text-accent"
                 />
-                <div>
-                    <h2 className="text-2xl font-bold text-foreground mb-4">School Libraries</h2>
-                    {schoolLibraryGroups.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {schoolLibraryGroups.map(schoolGroup => (
-                                <SchoolCard
-                                    key={schoolGroup.school}
-                                    schoolName={schoolGroup.school}
-                                    studentCount={schoolGroup.studentCount}
-                                    boardCount={schoolGroup.boardCount}
-                                    onClick={() => setSelectedSchool(schoolGroup)}
-                                />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-16 text-muted-foreground bg-muted/50 rounded-lg">
-                            <h3 className="text-xl font-semibold">No schools found.</h3>
-                            <p>Add students to see their school libraries here.</p>
-                        </div>
-                    )}
-                </div>
+                {schoolLibraryGroups.map(schoolGroup => (
+                    <FolderCard
+                        key={schoolGroup.school}
+                        name={schoolGroup.school}
+                        details={`${schoolGroup.studentCount} student(s)`}
+                        onClick={() => setSelectedSchool(schoolGroup)}
+                    />
+                ))}
             </div>
+            {schoolLibraryGroups.length === 0 && (
+                <div className="mt-8 text-center py-16 text-muted-foreground bg-muted/50 rounded-lg">
+                    <h3 className="text-xl font-semibold">No schools found.</h3>
+                    <p>Add students to see their school libraries here.</p>
+                </div>
+            )}
         </div>
     );
 };

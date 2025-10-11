@@ -1,10 +1,14 @@
 import React, { useState, useMemo, FC } from 'react';
 import { useData } from '../context/DataContext';
+// FIX: Import specific context hooks
+import { useWorkPool } from '../context/WorkPoolContext';
 import { Student, VideoLink, SyllabusNode, WorkPriority, WorkItem } from '../types';
 import { WORK_PRIORITIES } from '../constants';
 import SelectField from './form/SelectField';
 import InputField from './form/InputField';
 import { FaTimes, FaYoutube } from 'react-icons/fa';
+// FIX: Import useStudent to get students data
+import { useStudent } from '../context/StudentContext';
 
 interface AssignVideoModalProps {
     info: {
@@ -17,7 +21,11 @@ interface AssignVideoModalProps {
 }
 
 const AssignVideoModal: FC<AssignVideoModalProps> = ({ info, onClose }) => {
-    const { students, handleSaveWorkItem, showToast } = useData();
+    // FIX: Get data from specific context hooks
+    const { handleSaveWorkItem } = useWorkPool();
+    const { showToast } = useData();
+    // FIX: Get students from useStudent hook
+    const { students } = useStudent();
     const [selectedStudents, setSelectedStudents] = useState<Student[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [dueDate, setDueDate] = useState('');

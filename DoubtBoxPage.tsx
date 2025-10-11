@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useMemo, useCallback } from 'react';
 import { Student, SubjectData, WorkItem, Doubt } from './types';
 import StudentDoubtCard from './components/StudentDoubtCard';
@@ -14,7 +11,12 @@ import CardsIcon from './components/icons/CardsIcon';
 import WorkItemDetailModal from './components/WorkItemDetailModal';
 import DoubtDetailModal from './components/DoubtDetailModal';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { useData } from './context/DataContext';
+// FIX: Import specific context hooks
+import { useSyllabus } from './context/SyllabusContext';
+import { useWorkPool } from './context/WorkPoolContext';
+import { useDoubtBox } from './context/DoubtBoxContext';
+// FIX: Import useStudent to get students data
+import { useStudent } from './context/StudentContext';
 
 const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -40,7 +42,12 @@ const CustomActiveDot = (props: any) => {
 };
 
 const DoubtBoxPage: React.FC = () => {
-    const { students, allStudentSubjects, workItems, doubts, handleSaveDoubt, handleDeleteDoubt, handleSaveWorkItem } = useData();
+    // FIX: Get data from specific context hooks
+    const { allStudentSubjects } = useSyllabus();
+    const { workItems, handleSaveWorkItem } = useWorkPool();
+    const { doubts, handleSaveDoubt, handleDeleteDoubt } = useDoubtBox();
+    // FIX: Get students from useStudent hook
+    const { students } = useStudent();
 
     const [showArchived, setShowArchived] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);

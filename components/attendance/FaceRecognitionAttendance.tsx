@@ -1,9 +1,11 @@
-
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Student, FaceDescriptorData, AttendanceRecord } from '../../types';
 import { speak } from '../../utils/voiceService';
 import { useData } from '../../context/DataContext';
+// FIX: Import specific context hooks
+import { useAttendance } from '../../context/AttendanceContext';
+// FIX: Import useStudent to get students data
+import { useStudent } from '../../context/StudentContext';
 import { FaCamera, FaStopCircle } from 'react-icons/fa';
 
 declare const faceapi: any;
@@ -18,7 +20,11 @@ const VOTE_THRESHOLD = 5;           // How many confident matches are needed for
 const DISTANCE_THRESHOLD = 0.55;    // Stricter matching threshold (lower is stricter)
 
 export const FaceRecognitionAttendance: React.FC = () => {
-    const { students, faceDescriptors, attendanceRecords, handleSaveAttendanceRecord, showToast } = useData();
+    // FIX: Get data from specific context hooks
+    const { faceDescriptors, attendanceRecords, handleSaveAttendanceRecord } = useAttendance();
+    const { showToast } = useData();
+    // FIX: Get students from useStudent hook
+    const { students } = useStudent();
     
     const [loadingStatus, setLoadingStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
     const [isCameraOn, setIsCameraOn] = useState(false);
@@ -215,7 +221,7 @@ export const FaceRecognitionAttendance: React.FC = () => {
                 context.beginPath(); context.arc(centerX, centerY, radius + 5, 0, 2 * Math.PI); context.stroke();
                 break;
         }
-    }, [faceMatcher, students, attendanceRecords, handleSaveAttendanceRecord, showToast, welcomedStudentIds, detectionPhase, stabilizationInfo, recognizedInfo, speak, stabilizationVotes]);
+    }, [faceMatcher, students, attendanceRecords, handleSaveAttendanceRecord, showToast, welcomedStudentIds, detectionPhase, stabilizationInfo, recognizedInfo, stabilizationVotes]);
 
     useEffect(() => {
         if (isCameraOn && videoRef.current) {

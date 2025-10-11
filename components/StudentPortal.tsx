@@ -9,12 +9,17 @@ import SPAiAssistantPage from './studentportal/SPAiAssistantPage';
 import SPVideoLibraryPage from './studentportal/SPVideoLibraryPage';
 import SplashScreenLoader from './auth/SplashScreenLoader';
 import SPBottomNav from './studentportal/SPBottomNav';
+// FIX: Import useStudent to get students data
+import { useStudent } from '../context/StudentContext';
 
 
 export type StudentPage = 'dashboard' | 'work-pool' | 'tests' | 'syllabus' | 'doubts' | 'videos' | 'ai-assistant';
 
 const StudentPortal: React.FC = () => {
-    const { currentUser, logout, students, isLoading } = useData();
+    // FIX: Use isLoadingStudents from useStudent and isAppReady from useData
+    const { currentUser, logout, isAppReady } = useData();
+    // FIX: Get students from useStudent hook
+    const { students, isLoadingStudents } = useStudent();
     const [currentPage, setCurrentPage] = useState<StudentPage>('dashboard');
 
     const student = useMemo(() => {
@@ -22,7 +27,7 @@ const StudentPortal: React.FC = () => {
         return students.find(s => s.id === currentUser.studentId);
     }, [currentUser, students]);
 
-    if (isLoading || !student) {
+    if (!isAppReady || isLoadingStudents || !student) {
         return <SplashScreenLoader />;
     }
     

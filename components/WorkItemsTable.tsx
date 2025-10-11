@@ -4,6 +4,7 @@ import EditIcon from './icons/EditIcon';
 import DeleteIcon from './icons/DeleteIcon';
 import { FaYoutube } from 'react-icons/fa';
 import SheetsIcon from './icons/SheetsIcon';
+import TestIcon from './icons/TestIcon';
 
 interface WorkItemsTableProps {
     workItems: WorkItem[];
@@ -209,6 +210,7 @@ const WorkItemsTable: React.FC<WorkItemsTableProps> = ({ workItems, students, wo
                                             {item.source === 'syllabus' && <span title="Auto-generated from Syllabus Progress" className="px-2 py-0.5 text-xs font-semibold rounded-md bg-info-muted text-info-muted-foreground">Syllabus</span>}
                                             {item.source === 'doubt' && <span title="Created via Doubt Box" className="px-2 py-0.5 text-xs font-semibold rounded-md bg-warning-muted text-warning-muted-foreground">Doubt Box</span>}
                                             {item.source === 'sheets' && <span title="Created via Sheets" className="flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-md bg-success-muted text-success-muted-foreground"><SheetsIcon className="h-3 w-3" />Sheets</span>}
+                                            {item.source === 'test' && <span title="Created from Test" className="flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-md bg-accent-muted text-accent-muted-foreground"><TestIcon className="h-3 w-3" />Test</span>}
                                         </div>
                                         <div className="text-xs text-muted-foreground">
                                             {item.subject} - Ch {item.chapterNo}

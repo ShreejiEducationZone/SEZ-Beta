@@ -9,7 +9,8 @@ import UserPlusIcon from './icons/UserPlusIcon';
 import { Student, Board, Gender } from '../types';
 import { GRADES, BOARDS, TIME_SLOTS } from '../constants';
 import { getProgramStage, getBatchFromTime } from '../utils/studentUtils';
-import { useData } from '../context/DataContext';
+// FIX: Import useStudent to get handleSaveStudent
+import { useStudent } from '../context/StudentContext';
 import ChevronLeftIcon from './icons/ChevronLeftIcon';
 import { GEMINI_API_KEY } from '../utils/apiHUB';
 import { toTitleCase } from '../utils/stringUtils';
@@ -77,7 +78,8 @@ const SuggestionChip: React.FC<{ onClick: () => void; children: React.ReactNode;
 
 
 const AdminAiChat: React.FC<AdminAiChatProps> = ({ onBack }) => {
-    const { handleSaveStudent } = useData();
+    // FIX: Get handleSaveStudent from useStudent hook
+    const { handleSaveStudent } = useStudent();
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');

@@ -10,6 +10,7 @@ export interface Student {
   school: string;
   batch: string;
   timeSlot: string;
+  branch?: string;
   personalPhone?: string;
   fatherPhone?: string;
   motherPhone?: string;
@@ -101,9 +102,10 @@ export interface WorkItem {
   mentorNote?: string;
   dateCreated: string; // YYYY-MM-DD
   linkedDoubtId?: string;
-  source?: 'syllabus' | 'doubt' | 'sheets';
+  source?: 'syllabus' | 'doubt' | 'sheets' | 'test';
   sheetTasks?: string[]; // Array of task names, e.g., ["Reading", "Videos"]
   sheetTaskIds?: string[]; // Array of task IDs, e.g., ["reading", "videos_123"]
+  linkedTestId?: string;
 }
 
 export type DoubtStatus = 'Open' | 'Resolved' | 'Tasked';

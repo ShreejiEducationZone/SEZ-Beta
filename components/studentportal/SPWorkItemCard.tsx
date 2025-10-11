@@ -2,6 +2,7 @@ import React from 'react';
 import { WorkItem, WorkPriority } from '../../types';
 import { FaYoutube } from 'react-icons/fa';
 import SheetsIcon from '../icons/SheetsIcon';
+import TestIcon from '../icons/TestIcon';
 
 const PRIORITY_STYLES: Record<WorkPriority, string> = {
     High: 'bg-danger-muted text-danger-muted-foreground',
@@ -25,6 +26,11 @@ const SPWorkItemCard: React.FC<{ item: WorkItem }> = ({ item }) => {
                          {item.source === 'sheets' && (
                             <span title="From Sheets" className="flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-md bg-success-muted text-success-muted-foreground">
                                 <SheetsIcon className="h-3 w-3" /> Sheets
+                            </span>
+                        )}
+                        {item.source === 'test' && (
+                            <span title="From Test" className="flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-md bg-accent-muted text-accent-muted-foreground">
+                                <TestIcon className="h-3 w-3" /> Test
                             </span>
                         )}
                     </div>

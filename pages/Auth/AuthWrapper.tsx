@@ -6,9 +6,10 @@ import StudentPortal from '../../components/StudentPortal';
 import SplashScreenLoader from './components/SplashScreenLoader';
 
 const AuthWrapper: React.FC = () => {
-    const { currentUser, isLoading } = useData();
+    // FIX: Use isAppReady instead of isLoading
+    const { currentUser, isAppReady } = useData();
 
-    if (isLoading) {
+    if (!isAppReady) {
         return <SplashScreenLoader />;
     }
 

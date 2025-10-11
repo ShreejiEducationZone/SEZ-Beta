@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Student } from '../../types';
-import { useData } from '../../context/DataContext';
+// FIX: Import useWorkPool hook
+import { useWorkPool } from '../../context/WorkPoolContext';
 import SPWorkItemCard from './SPWorkItemCard';
 import { HiOutlineCollection } from 'react-icons/hi';
 
@@ -9,7 +10,8 @@ interface SPWorkPoolPageProps {
 }
 
 const SPWorkPoolPage: React.FC<SPWorkPoolPageProps> = ({ student }) => {
-    const { workItems } = useData();
+    // FIX: Get work items from useWorkPool hook
+    const { workItems } = useWorkPool();
     const [activeTab, setActiveTab] = useState<'Pending' | 'Completed'>('Pending');
 
     const studentWork = useMemo(() => {

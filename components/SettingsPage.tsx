@@ -12,9 +12,15 @@ import WrenchScrewdriverIcon from './icons/WrenchScrewdriverIcon';
 import SunIcon from './icons/SunIcon';
 import ShieldCheckIcon from './icons/ShieldCheckIcon';
 import TagIcon from './icons/TagIcon';
+import PinIcon from './icons/PinIcon';
+import BranchSettings from './settings/BranchSettings';
 import { useData } from '../context/DataContext';
+// FIX: Import useSyllabus to get allStudentSubjects, subjectAreas, and handleSaveSubjectAreas
+import { useSyllabus } from '../context/SyllabusContext';
+// FIX: Import useStudent to get students data and save handlers
+import { useStudent } from '../context/StudentContext';
 
-type SettingsTab = 'administrator' | 'passwords' | 'mistakes' | 'manage-subject-areas' | 'appearance' | 'permissions';
+type SettingsTab = 'administrator' | 'passwords' | 'mistakes' | 'manage-subject-areas' | 'branches' | 'appearance' | 'permissions';
 
 const SettingsPage: React.FC = () => {
     const { 
@@ -22,18 +28,20 @@ const SettingsPage: React.FC = () => {
         setDarkMode, 
         customMistakeTypes, 
         handleSaveCustomMistakeTypes,
-        students,
-        handleSaveStudent,
-        subjectAreas,
-        handleSaveSubjectAreas,
-        allStudentSubjects
+        branches,
+        handleSaveBranches
     } = useData();
+    // FIX: Get syllabus data including subjectAreas from useSyllabus hook
+    const { allStudentSubjects, subjectAreas, handleSaveSubjectAreas } = useSyllabus();
+    // FIX: Get student data from useStudent hook
+    const { students, handleSaveStudent } = useStudent();
 
     const [activeTab, setActiveTab] = useState<SettingsTab>('administrator');
 
     const tabs = [
         { id: 'administrator', label: 'Administrator', icon: UserCircleIcon },
         { id: 'passwords', label: 'Student Passwords', icon: KeyIcon },
+        { id: 'branches', label: 'Branches', icon: PinIcon },
         { id: 'mistakes', label: 'Mistake Types', icon: WrenchScrewdriverIcon },
         { id: 'manage-subject-areas', label: 'Subject Areas', icon: TagIcon },
         { id: 'appearance', label: 'Appearance', icon: SunIcon },
@@ -46,6 +54,8 @@ const SettingsPage: React.FC = () => {
                 return <AdministratorSettings />;
             case 'passwords':
                 return <StudentPasswordSettings students={students.filter(s => !s.isArchived)} onSaveStudent={handleSaveStudent} />;
+            case 'branches':
+                return <BranchSettings branches={branches} onSaveBranches={handleSaveBranches} />;
             case 'mistakes':
                 return <MistakeTypeSettings customMistakeTypes={customMistakeTypes} onSaveMistakeTypes={handleSaveCustomMistakeTypes} />;
             case 'manage-subject-areas':
@@ -76,8 +86,8 @@ const SettingsPage: React.FC = () => {
                             }}
                             className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors text-left ${
                                 activeTab === id
-                                    ? 'bg-brand-blue/10 text-brand-blue'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'text-muted-foreground hover:bg-muted dark:hover:bg-muted/50'
                             }`}
                         >
                             <Icon className="h-5 w-5 flex-shrink-0" />

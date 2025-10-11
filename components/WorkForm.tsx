@@ -10,7 +10,7 @@ interface WorkFormProps {
     subjects: SubjectData[];
     workItems: WorkItem[];
     workItem?: WorkItem;
-    onSave: (item: WorkItem) => void;
+    onSave: (item: WorkItem) => Promise<void>;
     onCancel: () => void;
 }
 
@@ -47,6 +47,7 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
     
     const [files, setFiles] = useState<{ name: string; dataUrl: string }[]>(workItem?.files || []);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
+    const [isSaving, setIsSaving] = useState(false);
 
     const chapterOptions = useMemo(() => {
         if (!formData.subject) return [];
@@ -139,9 +140,10 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!validate()) return;
+        if (isSaving || !validate()) return;
+        setIsSaving(true);
     
         const [chapterNo, chapterName] = formData.chapter.split('::');
         
@@ -152,23 +154,20 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
         else if (selectedTopicNo) node = topicOptions.find(o => String(o.no) === selectedTopicNo);
         topicName = node ? node.name : '';
     
-        // Create a base object from the original work item (if editing) or a new object.
-        // This preserves all properties not on the form, like source, sheetTaskIds, etc.
         const baseItem = workItem ? { ...workItem } : {
             id: `w_${Date.now()}`,
             dateCreated: new Date().toISOString().split('T')[0],
         };
     
         const finalWorkItem: WorkItem = {
-            ...(baseItem as WorkItem), // Cast to WorkItem
+            ...(baseItem as WorkItem),
     
-            // Overwrite with form data
             studentId: student.id,
             title: formData.title.trim(),
             subject: formData.subject,
             chapterNo,
             chapterName,
-            topic: topicName || undefined, // Ensure topic is undefined if empty
+            topic: topicName || undefined,
             description: formData.description.trim(),
             dueDate: formData.dueDate,
             status: formData.status as WorkStatus,
@@ -178,8 +177,14 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
             mentorNote: formData.mentorNote.trim(),
         };
     
-        onSave(finalWorkItem);
-        onCancel();
+        try {
+            await onSave(finalWorkItem);
+            onCancel();
+        } catch (error) {
+            console.error("Save failed:", error);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -231,7 +236,9 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
                     <TextareaField label="Mentor Note (Optional)" name="mentorNote" value={formData.mentorNote} onChange={handleChange} />
                     <div className="flex justify-end space-x-4 pt-6">
                        <button type="button" onClick={onCancel} className="h-10 px-5 rounded-lg bg-muted text-muted-foreground hover:bg-border font-semibold">Cancel</button>
-                       <button type="submit" className="h-10 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold">Save Work</button>
+                        <button type="submit" disabled={isSaving} className="h-10 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold disabled:bg-muted disabled:cursor-not-allowed flex items-center justify-center min-w-[110px]">
+                            {isSaving ? <><svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>Saving...</span></> : 'Save Work'}
+                        </button>
                    </div>
                </form>
            </div>

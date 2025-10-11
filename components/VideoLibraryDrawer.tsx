@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, FC } from 'react';
-import { useData } from '../context/DataContext';
+// FIX: Import useVideoLibrary hook
+import { useVideoLibrary } from '../context/VideoLibraryContext';
 import { SyllabusNode, VideoLink } from '../types';
 import AddVideoModal from './AddVideoModal';
 import AssignVideoModal from './AssignVideoModal';
@@ -89,7 +90,8 @@ const VideoCard: FC<{ video: VideoLink; onAssign: () => void; onDelete: () => vo
 };
 
 const VideoFocusPage: React.FC<VideoFocusPageProps> = ({ group, onClose }) => {
-    const { videoLibrary, handleSaveVideo, handleDeleteVideo } = useData();
+    // FIX: Get video library data from useVideoLibrary hook
+    const { videoLibrary, handleSaveVideo, handleDeleteVideo } = useVideoLibrary();
     const [activeSubject, setActiveSubject] = useState(group !== 'universal' ? group.subjects[0]?.subject || '' : 'universal');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedNode, setSelectedNode] = useState<SyllabusNode & { level: number } | null>(null);

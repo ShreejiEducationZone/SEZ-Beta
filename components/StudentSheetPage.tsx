@@ -1,6 +1,9 @@
 import React, { useState, useMemo, FC, useEffect } from 'react';
-import { Student, SubjectData, SyllabusNode, SheetProgress, SheetColumn } from '../types';
-import { useData } from '../context/DataContext';
+import { Student, SubjectData, SyllabusNode, SheetProgress, SheetColumn, WorkItem } from '../types';
+// FIX: Import specific context hooks
+import { useSyllabus } from '../context/SyllabusContext';
+import { useSheet } from '../context/SheetContext';
+import { useWorkPool } from '../context/WorkPoolContext';
 import { FaChevronLeft, FaPlus } from 'react-icons/fa';
 import ManageSheetColumnsModal from './ManageSheetColumnsModal';
 import WrenchScrewdriverIcon from './icons/WrenchScrewdriverIcon';
@@ -21,7 +24,10 @@ const DEFAULT_COLUMNS: SheetColumn[] = [
 ];
 
 const StudentSheetPage: FC<StudentSheetPageProps> = ({ student, onBack }) => {
-    const { allStudentSubjects, sheetProgress, handleSaveSheetProgress, handleSaveSubjects } = useData();
+    // FIX: Get data from specific context hooks
+    const { allStudentSubjects, handleSaveSubjects } = useSyllabus();
+    const { sheetProgress, handleSaveSheetProgress } = useSheet();
+    const { workItems } = useWorkPool();
     const studentSubjects = useMemo(() => allStudentSubjects[student.id]?.subjects || [], [allStudentSubjects, student.id]);
     
     const [selectedSubject, setSelectedSubject] = useState<string>('');
@@ -223,6 +229,7 @@ const StudentSheetPage: FC<StudentSheetPageProps> = ({ student, onBack }) => {
                     subject={selectedSubjectData.subject}
                     chapter={assigningTaskForChapter}
                     columns={columnsToRender}
+                    workItems={workItems}
                 />
             )}
         </div>

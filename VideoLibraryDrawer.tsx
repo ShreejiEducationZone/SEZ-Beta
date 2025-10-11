@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { useData } from '../context/DataContext';
+// FIX: Import useVideoLibrary hook instead of useData.
+import { useVideoLibrary } from '../context/VideoLibraryContext';
 import { SubjectData, SyllabusNode, VideoLink } from '../types';
 import AddVideoModal from './AddVideoModal';
 import { FaChevronLeft, FaPlus, FaTrash, FaYoutube, FaChevronDown } from 'react-icons/fa';
@@ -12,7 +13,8 @@ interface VideoLibraryPageProps {
 }
 
 const VideoLibraryPage: React.FC<VideoLibraryPageProps> = ({ group, onClose }) => {
-    const { videoLibrary, handleSaveVideo, handleDeleteVideo } = useData();
+    // FIX: Get video library data from useVideoLibrary hook.
+    const { videoLibrary, handleSaveVideo, handleDeleteVideo } = useVideoLibrary();
     const [activeSubject, setActiveSubject] = useState(group !== 'universal' ? group.subjects[0]?.subject : '');
     const [searchQuery, setSearchQuery] = useState('');
     const [nodeForVideo, setNodeForVideo] = useState<SyllabusNode | null>(null);

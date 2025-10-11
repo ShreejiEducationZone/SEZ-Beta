@@ -5,6 +5,8 @@ import { FaChevronLeft } from 'react-icons/fa';
 import SPVideoFocusPage from './SPVideoFocusPage';
 import FolderCard from '../FolderCard';
 import FolderIcon from '../icons/FolderIcon';
+// FIX: Import useStudent to get students data
+import { useStudent } from '../../context/StudentContext';
 
 
 export interface GroupData {
@@ -32,7 +34,9 @@ const boardColorClasses: Record<Board, string> = {
 };
 
 const SPVideoLibraryPage: React.FC<{ student: Student }> = ({ student }) => {
-    const { students, allStudentSubjects } = useData();
+    const { allStudentSubjects } = useData();
+    // FIX: Get students from useStudent hook
+    const { students } = useStudent();
     const [selectedGroup, setSelectedGroup] = useState<GroupData | 'universal' | null>(null);
     const [selectedSchool, setSelectedSchool] = useState<SchoolGroup | null>(null);
 

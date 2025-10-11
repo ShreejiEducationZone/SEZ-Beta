@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback, createContext, useContext, ReactNode, useMemo } from 'react';
-import { getCollection, setDocument, deleteDocument, runBatch, getDocument } from '../firebase';
-import { Student, SubjectData, SyllabusProgress, WorkItem, Doubt, Test, FaceDescriptorData, AttendanceRecord, MistakeTypeDefinition, AreaDefinition, Holiday, AttendanceStatus, ProgressEntry, VideoLibraryEntry, VideoLink, SheetProgress, SheetTaskType, SheetColumn } from '../types';
-import { updateDoubtStatusFromWorkItems } from '../services/workPoolService';
+import { getDocument, setDocument } from '../firebase';
+import { Student, MistakeTypeDefinition, AreaDefinition } from '../types';
 import { Toast } from '../components/Toast';
-import { MISTAKE_TYPES, initialStudents } from '../constants';
+import { MISTAKE_TYPES } from '../constants';
 
 // User type for authentication
 export interface User {
@@ -18,51 +17,20 @@ export interface User {
 
 // Define context shape
 interface DataContextType {
-    students: Student[];
-    allStudentSubjects: { [key: string]: { studentId: string; subjects: SubjectData[] } };
-    syllabusProgress: SyllabusProgress[];
-    workItems: WorkItem[];
-    doubts: Doubt[];
-    tests: Test[];
     customMistakeTypes: MistakeTypeDefinition[];
-    subjectAreas: { [key: string]: AreaDefinition[] };
-    faceDescriptors: FaceDescriptorData[];
-    attendanceRecords: AttendanceRecord[];
-    holidays: Holiday[];
-    videoLibrary: VideoLibraryEntry[];
-    sheetProgress: SheetProgress[];
-    isLoading: boolean;
+    branches: string[];
+    isAppReady: boolean;
     darkMode: boolean;
     toasts: Toast[];
     currentUser: User | null;
 
     // Auth Handlers
-    login: (identifier: string, pass: string) => Promise<void>;
+    login: (identifier: string, pass: string, students: Student[]) => Promise<void>;
     logout: () => void;
     
-    // Data Handlers
-    handleSaveStudent: (studentData: Student) => Promise<void>;
-    handleSaveSubjects: (studentId: string, subjects: SubjectData[]) => Promise<void>;
-    handleUpdateSyllabusNode: (studentId: string, subject: string, nodeNo: string | number, updates: { isCompleted?: boolean; notesToAdd?: ProgressEntry[]; noteIndicesToDelete?: number[] }) => Promise<void>;
-    handleSaveWorkItem: (workItem: WorkItem, showToastNotification?: boolean) => Promise<void>;
-    handleDeleteWorkItem: (workItemId: string) => Promise<void>;
-    handleSaveDoubt: (doubt: Doubt) => Promise<void>;
-    handleDeleteDoubt: (doubtId: string) => Promise<void>;
-    handleSaveTest: (test: Test) => Promise<void>;
-    handleDeleteTest: (testId: string) => Promise<void>;
-    handleSaveFaceDescriptor: (descriptorData: FaceDescriptorData) => Promise<void>;
-    handleSaveAttendanceRecord: (record: AttendanceRecord) => Promise<void>;
+    // Config Handlers
     handleSaveCustomMistakeTypes: (types: MistakeTypeDefinition[]) => Promise<void>;
-    handleSaveSubjectAreas: (areas: { [key: string]: AreaDefinition[] }) => Promise<void>;
-    handleArchiveStudent: (id: string) => Promise<void>;
-    handleDeleteStudent: (id: string) => Promise<void>;
-    handleSaveHoliday: (holiday: Holiday) => Promise<void>;
-    handleDeleteHoliday: (holidayId: string) => Promise<void>;
-    handleBatchUpdateAttendance: (studentIds: string[], date: string, status: AttendanceStatus, reason?: string) => Promise<void>;
-    handleBatchSaveAttendanceRecords: (records: AttendanceRecord[]) => Promise<void>;
-    handleSaveVideo: (entry: VideoLibraryEntry) => Promise<void>;
-    handleDeleteVideo: (entryId: string, videoId: string) => Promise<void>;
-    handleSaveSheetProgress: (changes: Map<string, Record<string, boolean>>) => Promise<void>;
+    handleSaveBranches: (branches: string[]) => Promise<void>;
     
     setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
     showToast: (message: string, type?: Toast['type']) => void;
@@ -74,33 +42,14 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-const DEFAULT_SHEET_COLUMNS: SheetColumn[] = [
-    { id: 'reading', name: 'Reading' },
-    { id: 'videos', name: 'Videos' },
-    { id: 'notes', name: 'Notes' },
-    { id: 'exercise', name: 'Exercise' },
-    { id: 'test', name: 'Test' },
-];
-
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [students, setStudents] = useState<Student[]>([]);
-    const [allStudentSubjects, setAllStudentSubjects] = useState<{ [key: string]: { studentId: string; subjects: SubjectData[] } }>({});
-    const [syllabusProgress, setSyllabusProgress] = useState<SyllabusProgress[]>([]);
-    const [workItems, setWorkItems] = useState<WorkItem[]>([]);
-    const [doubts, setDoubts] = useState<Doubt[]>([]);
-    const [tests, setTests] = useState<Test[]>([]);
     const [customMistakeTypes, setCustomMistakeTypes] = useState<MistakeTypeDefinition[]>([]);
-    const [subjectAreas, setSubjectAreas] = useState<{ [key: string]: AreaDefinition[] }>({});
-    const [faceDescriptors, setFaceDescriptors] = useState<FaceDescriptorData[]>([]);
-    const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-    const [holidays, setHolidays] = useState<Holiday[]>([]);
-    const [videoLibrary, setVideoLibrary] = useState<VideoLibraryEntry[]>([]);
-    const [sheetProgress, setSheetProgress] = useState<SheetProgress[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [branches, setBranches] = useState<string[]>([]);
+    
+    const [isAppReady, setIsAppReady] = useState(false);
     const [darkMode, setDarkMode] = useState<boolean>(false);
     const [toasts, setToasts] = useState<Toast[]>([]);
     
-    // Auth state
     const [currentUser, setCurrentUser] = useState<User | null>(() => {
         try {
             const item = window.localStorage.getItem('sez-currentUser');
@@ -110,7 +59,12 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     });
 
-    const login = useCallback(async (identifier: string, pass: string) => {
+    const showToast = useCallback((message: string, type: Toast['type'] = 'info') => {
+        const newToast: Toast = { id: Date.now(), message, type };
+        setToasts(prev => [...prev, newToast]);
+    }, []);
+
+    const login = useCallback(async (identifier: string, pass: string, students: Student[]) => {
         const adminUser: User & { password?: string } = {
             id: 'admin01',
             email: 'sez@admin.com',
@@ -120,19 +74,17 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             avatarUrl: 'https://i.pravatar.cc/150?u=admin'
         };
 
-        // 1. Check for Admin by email
         if (identifier.toLowerCase() === adminUser.email.toLowerCase()) {
             if (adminUser.password === pass) {
                 const { password, ...userSessionData } = adminUser;
                 setCurrentUser(userSessionData);
                 window.localStorage.setItem('sez-currentUser', JSON.stringify(userSessionData));
-                return; // Login successful
+                return;
             } else {
                 throw new Error('Invalid password for administrator.');
             }
         }
 
-        // 2. Check for Student by name (case-insensitive)
         const studentToLogin = students.find(s => s.name.toLowerCase() === identifier.toLowerCase());
 
         if (studentToLogin) {
@@ -147,496 +99,59 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 };
                 setCurrentUser(userSessionData);
                 window.localStorage.setItem('sez-currentUser', JSON.stringify(userSessionData));
-                return; // Login successful
+                return;
             } else {
                 throw new Error('Invalid password for this student.');
             }
         }
         
-        // 3. If no match found
         throw new Error('User not found. Please check the name or email.');
 
-    }, [students]);
+    }, []);
     
     const logout = useCallback(() => {
         setCurrentUser(null);
         window.localStorage.removeItem('sez-currentUser');
-    }, []);
-
-    const showToast = useCallback((message: string, type: Toast['type'] = 'info') => {
-        const newToast: Toast = { id: Date.now(), message, type };
-        setToasts(prev => [...prev, newToast]);
+        // Child contexts will clear their own data upon seeing currentUser is null
     }, []);
 
     const removeToast = useCallback((id: number) => {
         setToasts(prev => prev.filter(t => t.id !== id));
     }, []);
 
+    // Effect 1: Initial App Load (fetches config, not user-specific data)
     useEffect(() => {
-        const fetchAllData = async () => {
+        const loadInitialData = async () => {
             try {
-                const [
-                    studentsData, subjectsData, syllabusProgressData, workData, doubtsData, testsData,
-                    mistakeTypesDoc, subjectAreasDoc, descriptorsData, attendanceData, holidaysData, videoLibraryData,
-                    sheetProgressData
-                ] = await Promise.all([
-                    getCollection("students"), getCollection("studentSubjects"), getCollection("syllabusProgress"),
-                    getCollection("workItems"), getCollection("doubts"), getCollection("tests"),
-                    getDocument("configuration", "mistakeTypes"), getDocument("configuration", "subjectAreas"),
-                    getCollection("faceDescriptors"), getCollection("attendance"), getCollection("holidays"),
-                    getCollection("videoLibrary"), getCollection("sheetProgress")
+                const [mistakeTypesDoc, branchesDoc] = await Promise.all([
+                    getDocument("configuration", "mistakeTypes"),
+                    getDocument("configuration", "branches"),
                 ]);
-
-                setStudents(studentsData as Student[]);
-                const subjectsMap = (subjectsData as any[]).reduce((acc, doc) => {
-                    acc[doc.id] = { studentId: doc.id, subjects: doc.subjects || [] };
-                    return acc;
-                }, {});
-                setAllStudentSubjects(subjectsMap);
-
-                setSyllabusProgress(syllabusProgressData as SyllabusProgress[]);
-                setWorkItems(workData as WorkItem[]);
-                setDoubts(doubtsData as Doubt[]);
-                setTests(testsData as Test[]);
-                setFaceDescriptors(descriptorsData as FaceDescriptorData[]);
-                setAttendanceRecords(attendanceData as AttendanceRecord[]);
-                setVideoLibrary(videoLibraryData as VideoLibraryEntry[]);
-                setSheetProgress(sheetProgressData as SheetProgress[]);
                 
-                // --- Holiday Cleanup ---
-                const today = new Date();
-                today.setHours(0, 0, 0, 0); // Normalize to start of day for accurate comparison
-
-                const allHolidays = holidaysData as Holiday[];
-                // Use replace to avoid timezone issues with 'YYYY-MM-DD' format
-                const pastHolidays = allHolidays.filter(h => new Date(h.date.replace(/-/g, '/')) < today);
-                const futureHolidays = allHolidays.filter(h => new Date(h.date.replace(/-/g, '/')) >= today);
-
-                // Update local state immediately with only valid holidays
-                setHolidays(futureHolidays);
-
-                // If there are past holidays, delete them from the database in the background
-                if (pastHolidays.length > 0) {
-                    console.log(`Auto-deleting ${pastHolidays.length} past holiday(s).`);
-                    const deleteWrites = pastHolidays.map(h => ({
-                        type: 'delete' as const,
-                        path: `holidays/${h.id}`
-                    }));
-                    // Run this without awaiting to not block UI rendering
-                    runBatch(deleteWrites).catch(error => {
-                        console.error("Failed to auto-delete past holidays:", error);
-                    });
-                }
-
                 if (mistakeTypesDoc && Array.isArray((mistakeTypesDoc as any).types)) {
-                    const fetchedTypes = (mistakeTypesDoc as any).types;
-                    const migratedTypes = fetchedTypes.map((type: any) => {
-                        if (typeof type === 'string') return { title: type, description: 'Custom mistake type (migrated).' };
-                        if (typeof type === 'object' && type !== null && typeof type.title === 'string') return { title: type.title, description: type.description || '' };
-                        return null;
-                    }).filter((type: MistakeTypeDefinition | null): type is MistakeTypeDefinition => type !== null);
-                    setCustomMistakeTypes(migratedTypes);
+                    setCustomMistakeTypes((mistakeTypesDoc as any).types);
                 } else setCustomMistakeTypes([]);
-                if (subjectAreasDoc && (subjectAreasDoc as any).areasBySubject) {
-                    const areasBySubject = (subjectAreasDoc as any).areasBySubject;
-                    const migratedAreas: { [key: string]: AreaDefinition[] } = {};
-                    for (const subject in areasBySubject) {
-                        if (Array.isArray(areasBySubject[subject])) {
-                            migratedAreas[subject] = areasBySubject[subject].map((area: any) => {
-                                if (typeof area === 'string') return { title: area, description: '' };
-                                if (typeof area === 'object' && area !== null && typeof area.title === 'string') return { title: area.title, description: area.description || '' };
-                                return null;
-                            }).filter((area: AreaDefinition | null): area is AreaDefinition => area !== null);
-                        }
-                    }
-                    setSubjectAreas(migratedAreas);
-                } else setSubjectAreas({});
+
+                if (branchesDoc && Array.isArray((branchesDoc as any).names)) {
+                    setBranches((branchesDoc as any).names);
+                } else setBranches([]);
+
             } catch (error) {
-                console.error("Failed to fetch initial data from Firestore:", error);
-                showToast("Could not load data. Please check your connection.", 'error');
+                console.error("Failed to load initial app config:", error);
+                showToast("Could not connect to the server.", 'error');
             } finally {
-                setIsLoading(false);
+                setIsAppReady(true);
             }
         };
-        fetchAllData();
-    }, [showToast]);
-
-    useEffect(() => {
-        const createDefaultAttendanceRecords = async () => {
-            if (isLoading || students.length === 0) return;
-            
-            const today = new Date();
-            const y = today.getFullYear();
-            const m = String(today.getMonth() + 1).padStart(2, '0');
-            const d = String(today.getDate()).padStart(2, '0');
-            const todayStr = `${y}-${m}-${d}`;
-            
-            const activeStudents = students.filter(s => !s.isArchived);
-            const recordsForToday = new Set(attendanceRecords.filter(r => r.date === todayStr).map(r => r.studentId));
-            const studentsWithoutRecords = activeStudents.filter(s => !recordsForToday.has(s.id));
-            const todayIsHoliday = holidays.find(h => h.date === todayStr);
-
-            if (studentsWithoutRecords.length > 0) {
-                const newStatus: AttendanceStatus = todayIsHoliday ? 'Holiday' : 'None';
-                const reason = todayIsHoliday ? todayIsHoliday.reason : undefined;
-
-                const writes = studentsWithoutRecords.map(student => {
-                    const recordId = `${student.id}_${todayStr}`;
-                    const newRecord: AttendanceRecord = { id: recordId, studentId: student.id, date: todayStr, status: newStatus, reason };
-                    return { type: 'set' as const, path: `attendance/${recordId}`, data: newRecord };
-                });
-                try {
-                    await runBatch(writes);
-                    setAttendanceRecords(prev => [...prev, ...writes.map(w => w.data)]);
-                } catch (error) {
-                    console.error("Failed to create default attendance records:", error);
-                    showToast("Error setting up today's attendance.", 'error');
-                }
-            }
-        };
-        createDefaultAttendanceRecords();
-    }, [students, attendanceRecords, holidays, showToast, isLoading]);
-
-    useEffect(() => {
-        const updateDoubtsInFirestore = async (doubtsToUpdate: Doubt[]) => {
-            if (doubtsToUpdate.length === 0) return;
-            try {
-                const writes = doubtsToUpdate.map(doubt => ({ type: 'set' as const, path: `doubts/${doubt.id}`, data: doubt }));
-                await runBatch(writes);
-            } catch (error) {
-                console.error("Failed to auto-update doubt status in Firestore:", error);
-            }
-        };
-        if (doubts.length > 0 && workItems.length > 0) {
-            const changedDoubts: Doubt[] = [];
-            const newLocalDoubts = doubts.map(doubt => {
-                const updatedDoubt = updateDoubtStatusFromWorkItems(doubt, workItems);
-                if (updatedDoubt.status !== doubt.status) changedDoubts.push(updatedDoubt);
-                return updatedDoubt;
-            });
-            if (changedDoubts.length > 0) {
-                updateDoubtsInFirestore(changedDoubts);
-                setDoubts(newLocalDoubts);
-            }
-        }
-    }, [workItems, doubts]);
+        
+        loadInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         if (darkMode) document.documentElement.classList.add('dark');
         else document.documentElement.classList.remove('dark');
     }, [darkMode]);
-
-    const handleSaveStudent = useCallback(async (studentData: Student): Promise<void> => {
-        try {
-            await setDocument("students", studentData.id, studentData);
-            setStudents(prev => {
-                const exists = prev.some(s => s.id === studentData.id);
-                if (exists) return prev.map(s => s.id === studentData.id ? studentData : s);
-                return [...prev, studentData];
-            });
-            showToast(`Student "${studentData.name}" saved successfully!`, 'success');
-        } catch (error: any) {
-            console.error("Error saving student:", error);
-            showToast(`Failed to save student: ${error.message}`, 'error');
-            throw error;
-        }
-    }, [showToast]);
-    
-    const handleSaveSubjects = useCallback(async (studentId: string, subjects: SubjectData[]) => {
-        try {
-            await setDocument("studentSubjects", studentId, { studentId, subjects });
-            setAllStudentSubjects(prev => ({ ...prev, [studentId]: { studentId, subjects } }));
-            showToast('Subjects saved successfully!', 'success');
-        } catch (error: any) {
-            console.error("Error saving subjects:", error);
-            showToast(`Failed to save subjects: ${error.message}`, 'error');
-        }
-    }, [showToast]);
-
-    const handleUpdateSyllabusNode = useCallback(async (
-        studentId: string,
-        subject: string,
-        nodeNo: string | number,
-        updates: {
-            isCompleted?: boolean;
-            notesToAdd?: ProgressEntry[];
-            noteIndicesToDelete?: number[];
-        }
-    ) => {
-        const progressId = `${studentId}-${subject}-${nodeNo}`;
-        const existingProgress = syllabusProgress.find(p => p.id === progressId);
-
-        let updatedProgress: SyllabusProgress;
-
-        if (existingProgress) {
-            updatedProgress = JSON.parse(JSON.stringify(existingProgress)); // Deep copy to avoid direct state mutation
-        } else {
-            updatedProgress = {
-                id: progressId,
-                studentId,
-                subject,
-                nodeNo,
-                isCompleted: false,
-                entries: [],
-            };
-        }
-
-        // Apply all updates atomically before saving
-        if (updates.isCompleted !== undefined) {
-            updatedProgress.isCompleted = updates.isCompleted;
-        }
-
-        let currentEntries = updatedProgress.entries || [];
-
-        // Handle deletions first
-        if (updates.noteIndicesToDelete && updates.noteIndicesToDelete.length > 0) {
-            const sortedIndices = [...updates.noteIndicesToDelete].sort((a, b) => b - a);
-            for (const index of sortedIndices) {
-                currentEntries.splice(index, 1);
-            }
-        }
-
-        // Handle additions
-        if (updates.notesToAdd && updates.notesToAdd.length > 0) {
-            currentEntries.push(...updates.notesToAdd);
-        }
-        
-        updatedProgress.entries = currentEntries;
-
-        try {
-            await setDocument("syllabusProgress", updatedProgress.id, updatedProgress);
-            setSyllabusProgress(prev => {
-                const exists = prev.some(p => p.id === updatedProgress.id);
-                if (exists) return prev.map(p => (p.id === updatedProgress.id ? updatedProgress : p));
-                return [...prev, updatedProgress];
-            });
-        } catch (error: any) {
-            console.error("Error saving syllabus progress:", error);
-            showToast(`Failed to save progress: ${error.message}`, 'error');
-            throw error;
-        }
-    }, [syllabusProgress, showToast]);
-
-    const handleSaveWorkItem = useCallback(async (workItem: WorkItem, showToastNotification = true) => {
-        const previousWorkItem = workItems.find(w => w.id === workItem.id);
-        const writes: { type: 'set', path: string, data: any }[] = [];
-        writes.push({ type: 'set', path: `workItems/${workItem.id}`, data: workItem });
-        
-        let updatedSheetProgressItem: SheetProgress | null = null;
-    
-        const isCompletingSheetTask =
-            workItem.status === 'Completed' &&
-            previousWorkItem?.status !== 'Completed' &&
-            workItem.source === 'sheets';
-    
-        if (isCompletingSheetTask) {
-            let taskIdsToComplete: string[] = [];
-    
-            if (workItem.sheetTaskIds && workItem.sheetTaskIds.length > 0) {
-                taskIdsToComplete = workItem.sheetTaskIds;
-            } else if (workItem.sheetTasks && workItem.sheetTasks.length > 0) {
-                const studentSubjectsData = allStudentSubjects[workItem.studentId];
-                const subjectData = studentSubjectsData?.subjects.find(s => s.subject === workItem.subject);
-                const columns = subjectData?.sheetColumns && subjectData.sheetColumns.length > 0
-                    ? subjectData.sheetColumns
-                    : DEFAULT_SHEET_COLUMNS;
-                
-                taskIdsToComplete = columns
-                    .filter(col => workItem.sheetTasks!.includes(col.name))
-                    .map(col => col.id);
-            }
-    
-            if (taskIdsToComplete.length > 0) {
-                const progressId = `${workItem.studentId}__${workItem.subject}__${workItem.chapterNo}`;
-                const existingProgress = sheetProgress.find(p => p.id === progressId);
-                const existingTasks = existingProgress?.tasks || {};
-                
-                const newTasks = { ...existingTasks };
-                taskIdsToComplete.forEach(id => { newTasks[id] = true; });
-                
-                updatedSheetProgressItem = {
-                    id: progressId,
-                    studentId: workItem.studentId,
-                    subject: workItem.subject,
-                    chapterNo: workItem.chapterNo,
-                    tasks: newTasks,
-                };
-                
-                writes.push({ type: 'set', path: `sheetProgress/${progressId}`, data: updatedSheetProgressItem });
-            }
-        }
-        
-        try {
-            await runBatch(writes);
-            
-            setWorkItems(prev => {
-                const exists = prev.some(w => w.id === workItem.id);
-                if (exists) return prev.map(w => w.id === workItem.id ? workItem : w);
-                return [...prev, workItem];
-            });
-    
-            if (updatedSheetProgressItem) {
-                setSheetProgress(prev => {
-                    const exists = prev.some(p => p.id === updatedSheetProgressItem!.id);
-                    if (exists) return prev.map(p => p.id === updatedSheetProgressItem!.id ? updatedSheetProgressItem! : p);
-                    return [...prev, updatedSheetProgressItem!];
-                });
-            }
-    
-            if (showToastNotification) {
-                showToast('Work item saved successfully!', 'success');
-            }
-        } catch (error: any) {
-            console.error("Error saving work item and/or syncing sheet progress:", error);
-            showToast(`Failed to save work item: ${error.message}`, 'error');
-            throw error; 
-        }
-    }, [workItems, allStudentSubjects, sheetProgress, showToast]);
-
-    const handleDeleteWorkItem = useCallback(async (workItemId: string) => {
-        try {
-            await deleteDocument("workItems", workItemId);
-            setWorkItems(prev => prev.filter(w => w.id !== workItemId));
-            showToast('Work item deleted.', 'success');
-        } catch (error: any) {
-            console.error("Error deleting work item:", error);
-            showToast(`Failed to delete work item: ${error.message}`, 'error');
-        }
-    }, [showToast]);
-
-    const handleSaveDoubt = useCallback(async (doubt: Doubt) => {
-        try {
-            await setDocument("doubts", doubt.id, doubt);
-            setDoubts(prev => {
-                const exists = prev.some(d => d.id === doubt.id);
-                if (exists) return prev.map(d => d.id === doubt.id ? doubt : d);
-                return [...prev, doubt];
-            });
-            showToast('Doubt saved successfully!', 'success');
-        } catch (error: any) {
-            console.error("Error saving doubt:", error);
-            showToast(`Failed to save doubt: ${error.message}`, 'error');
-        }
-    }, [showToast]);
-
-    const handleDeleteDoubt = useCallback(async (doubtId: string) => {
-        try {
-            const writes: { type: 'delete', path: string }[] = [];
-            const linkedWorkItem = workItems.find(item => item.linkedDoubtId === doubtId && item.source === 'doubt');
-            if (linkedWorkItem) writes.push({ type: 'delete', path: `workItems/${linkedWorkItem.id}` });
-            writes.push({ type: 'delete', path: `doubts/${doubtId}` });
-            await runBatch(writes);
-            setDoubts(prev => prev.filter(d => d.id !== doubtId));
-            if (linkedWorkItem) setWorkItems(prev => prev.filter(w => w.id !== linkedWorkItem.id));
-            showToast('Doubt deleted successfully.', 'success');
-        } catch (error: any) {
-            console.error("Error deleting doubt:", error);
-            showToast(`Failed to delete doubt: ${error.message}`, 'error');
-        }
-    }, [workItems, showToast]);
-
-    const handleSaveTest = useCallback(async (test: Test) => {
-        try {
-            await setDocument("tests", test.id, test);
-            setTests(prev => {
-                const exists = prev.some(t => t.id === test.id);
-                if (exists) return prev.map(t => t.id === test.id ? test : t);
-                return [...prev, test];
-            });
-            showToast('Test record saved.', 'success');
-        } catch (error: any) {
-            console.error("Error saving test:", error);
-            showToast(`Failed to save test: ${error.message}`, 'error');
-        }
-    }, [showToast]);
-
-    const handleDeleteTest = useCallback(async (testId: string) => {
-        try {
-            await deleteDocument("tests", testId);
-            setTests(prev => prev.filter(t => t.id !== testId));
-            showToast('Test record deleted.', 'success');
-        } catch (error: any) {
-            console.error("Error deleting test:", error);
-            showToast(`Failed to delete test: ${error.message}`, 'error');
-        }
-    }, [showToast]);
-
-    const handleSaveFaceDescriptor = useCallback(async (descriptorData: FaceDescriptorData) => {
-        try {
-            await setDocument("faceDescriptors", descriptorData.id, descriptorData);
-            setFaceDescriptors(prev => {
-                const exists = prev.some(d => d.id === descriptorData.id);
-                if (exists) return prev.map(d => d.id === descriptorData.id ? descriptorData : d);
-                return [...prev, descriptorData];
-            });
-        } catch (error: any) {
-            console.error("Error saving face descriptor:", error);
-            showToast(`Failed to save registration: ${error.message}`, 'error');
-            throw error;
-        }
-    }, [showToast]);
-
-    const handleSaveAttendanceRecord = useCallback(async (record: AttendanceRecord) => {
-        try {
-            await setDocument("attendance", record.id, record);
-            setAttendanceRecords(prev => {
-                const exists = prev.some(r => r.id === record.id);
-                if (exists) return prev.map(r => r.id === record.id ? record : r);
-                return [...prev, record];
-            });
-        } catch (error: any) {
-            console.error("Error saving attendance record:", error);
-            showToast(`Failed to save attendance: ${error.message}`, 'error');
-        }
-    }, [showToast]);
-    
-    const handleBatchUpdateAttendance = useCallback(async (studentIds: string[], date: string, status: AttendanceStatus, reason?: string) => {
-        try {
-            const writes = studentIds.map(studentId => {
-                const recordId = `${studentId}_${date}`;
-                const record: AttendanceRecord = { id: recordId, studentId, date, status, reason };
-                return { type: 'set' as const, path: `attendance/${recordId}`, data: record };
-            });
-            await runBatch(writes);
-            
-            const newRecords = writes.map(w => w.data);
-            const newRecordMap = new Map(newRecords.map(r => [r.id, r]));
-
-            setAttendanceRecords(prev => {
-                // Update existing records for the day or add new ones
-                const otherRecords = prev.filter(r => !newRecordMap.has(r.id));
-                return [...otherRecords, ...newRecords];
-            });
-        } catch (error: any) {
-            console.error("Error batch updating attendance:", error);
-            showToast(`Failed to update attendance: ${error.message}`, 'error');
-        }
-    }, [showToast]);
-    
-    const handleBatchSaveAttendanceRecords = useCallback(async (records: AttendanceRecord[]) => {
-        if (records.length === 0) return;
-        try {
-            const writes = records.map(record => ({
-                type: 'set' as const,
-                path: `attendance/${record.id}`,
-                data: record
-            }));
-            await runBatch(writes);
-            
-            const newRecordsMap = new Map(records.map(r => [r.id, r]));
-            setAttendanceRecords(prev => {
-                const otherRecords = prev.filter(r => !newRecordsMap.has(r.id));
-                return [...otherRecords, ...records];
-            });
-
-            showToast(`${records.length} attendance record(s) saved.`, 'success');
-        } catch (error: any) {
-            console.error("Error batch saving attendance:", error);
-            showToast(`Failed to save attendance: ${error.message}`, 'error');
-            throw error; // re-throw to handle in component
-        }
-    }, [showToast]);
-
 
     const handleSaveCustomMistakeTypes = useCallback(async (types: MistakeTypeDefinition[]) => {
         try {
@@ -645,191 +160,20 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setCustomMistakeTypes(uniqueTypes);
             showToast('Custom mistake types saved.', 'success');
         } catch (error: any) {
-            console.error("Error saving custom mistake types:", error);
             showToast(`Failed to save mistake types: ${error.message}`, 'error');
         }
     }, [showToast]);
-    
-    const handleSaveSubjectAreas = useCallback(async (areas: { [key: string]: AreaDefinition[] }) => {
-        try {
-            await setDocument("configuration", "subjectAreas", { areasBySubject: areas });
-            setSubjectAreas(areas);
-            showToast('Subject areas saved.', 'success');
-        } catch (error: any) {
-            console.error("Error saving subject areas:", error);
-            showToast(`Failed to save subject areas: ${error.message}`, 'error');
-        }
-    }, [showToast]);
-    
-    const handleArchiveStudent = useCallback(async (id: string) => {
-        try {
-            const student = students.find(s => s.id === id);
-            if (student) {
-                const updatedStudent = { ...student, isArchived: !student.isArchived };
-                await setDocument("students", id, updatedStudent);
-                setStudents(prev => prev.map(s => s.id === id ? updatedStudent : s));
-                showToast(`Student "${student.name}" has been ${updatedStudent.isArchived ? 'archived' : 'unarchived'}.`, 'success');
-            }
-        } catch (error: any) {
-            console.error("Error archiving student:", error);
-            showToast(`Failed to update student status: ${error.message}`, 'error');
-        }
-    }, [students, showToast]);
 
-    const handleDeleteStudent = useCallback(async (id: string) => {
-        const studentToDelete = students.find(s => s.id === id);
-        if (!studentToDelete) {
-            showToast("Student not found for deletion.", 'error');
-            return;
-        }
-    
+    const handleSaveBranches = useCallback(async (newBranches: string[]) => {
         try {
-            const writes: { type: 'delete'; path: string; }[] = [];
-            
-            // 1. Student document
-            writes.push({ type: 'delete', path: `students/${id}` });
-    
-            // 2. Associated 1-to-1 documents
-            if (allStudentSubjects[id]) writes.push({ type: 'delete', path: `studentSubjects/${id}` });
-            if (faceDescriptors.some(d => d.id === id)) writes.push({ type: 'delete', path: `faceDescriptors/${id}` });
-            
-            // 3. Associated 1-to-many documents
-            syllabusProgress.filter(p => p.studentId === id).forEach(p => writes.push({ type: 'delete', path: `syllabusProgress/${p.id}` }));
-            workItems.filter(w => w.studentId === id).forEach(w => writes.push({ type: 'delete', path: `workItems/${w.id}` }));
-            doubts.filter(d => d.studentId === id).forEach(d => writes.push({ type: 'delete', path: `doubts/${d.id}` }));
-            tests.filter(t => t.studentId === id).forEach(t => writes.push({ type: 'delete', path: `tests/${t.id}` }));
-            attendanceRecords.filter(a => a.studentId === id).forEach(a => writes.push({ type: 'delete', path: `attendance/${a.id}` }));
-    
-            await runBatch(writes);
-    
-            // Update local state after successful deletion
-            setStudents(prev => prev.filter(s => s.id !== id));
-            setAllStudentSubjects(prev => { const next = {...prev}; delete next[id]; return next; });
-            setFaceDescriptors(prev => prev.filter(d => d.id !== id));
-            setSyllabusProgress(prev => prev.filter(p => p.studentId !== id));
-            setWorkItems(prev => prev.filter(w => w.studentId !== id));
-            setDoubts(prev => prev.filter(d => d.studentId !== id));
-            setTests(prev => prev.filter(t => t.studentId !== id));
-            setAttendanceRecords(prev => prev.filter(a => a.studentId !== id));
-    
-            showToast(`Successfully deleted ${studentToDelete.name} and all their data.`, 'success');
+            await setDocument("configuration", "branches", { names: newBranches });
+            setBranches(newBranches);
+            showToast('Branches updated successfully.', 'success');
         } catch (error: any) {
-            console.error("Error deleting student and their data:", error);
-            showToast(`Failed to delete student: ${error.message}`, 'error');
-        }
-    }, [students, allStudentSubjects, faceDescriptors, syllabusProgress, workItems, doubts, tests, attendanceRecords, showToast]);
-
-    const handleSaveHoliday = useCallback(async (holiday: Holiday) => {
-        try {
-            await setDocument("holidays", holiday.id, holiday);
-            setHolidays(prev => {
-                const exists = prev.some(h => h.id === holiday.id);
-                if (exists) return prev.map(h => h.id === holiday.id ? holiday : h);
-                return [...prev, holiday];
-            });
-            showToast("Holiday saved successfully!", "success");
-        } catch (error: any) {
-            showToast(`Failed to save holiday: ${error.message}`, "error");
-        }
-    }, [showToast]);
-
-    const handleDeleteHoliday = useCallback(async (holidayId: string) => {
-        try {
-            await deleteDocument("holidays", holidayId);
-            setHolidays(prev => prev.filter(h => h.id !== holidayId));
-            showToast("Holiday deleted.", "success");
-        } catch (error: any) {
-            showToast(`Failed to delete holiday: ${error.message}`, "error");
-        }
-    }, [showToast]);
-
-    const handleSaveVideo = useCallback(async (entry: VideoLibraryEntry) => {
-        try {
-            await setDocument("videoLibrary", entry.id, entry);
-            setVideoLibrary(prev => {
-                const exists = prev.some(v => v.id === entry.id);
-                if (exists) return prev.map(v => v.id === entry.id ? entry : v);
-                return [...prev, entry];
-            });
-            showToast('Video library updated!', 'success');
-        } catch (error: any) {
-            showToast(`Failed to save video: ${error.message}`, 'error');
+            showToast(`Failed to save branches: ${error.message}`, 'error');
             throw error;
         }
     }, [showToast]);
-
-    const handleDeleteVideo = useCallback(async (entryId: string, videoId: string) => {
-        const entry = videoLibrary.find(v => v.id === entryId);
-        if (!entry) return;
-
-        const updatedEntry = {
-            ...entry,
-            videos: entry.videos.filter(v => v.id !== videoId)
-        };
-
-        try {
-            if (updatedEntry.videos.length > 0) {
-                await setDocument("videoLibrary", entryId, updatedEntry);
-            } else {
-                await deleteDocument("videoLibrary", entryId);
-            }
-            
-            setVideoLibrary(prev => {
-                if (updatedEntry.videos.length > 0) {
-                    return prev.map(v => v.id === entryId ? updatedEntry : v);
-                } else {
-                    return prev.filter(v => v.id !== entryId);
-                }
-            });
-            showToast('Video deleted.', 'success');
-        } catch (error: any) {
-            showToast(`Failed to delete video: ${error.message}`, 'error');
-            throw error;
-        }
-    }, [videoLibrary, showToast]);
-
-    const handleSaveSheetProgress = useCallback(async (changes: Map<string, Record<string, boolean>>) => {
-        if (changes.size === 0) {
-            showToast("No changes to save.", "info");
-            return;
-        }
-    
-        const writes: { type: 'set', path: string, data: any }[] = [];
-        const updatedProgressItems: SheetProgress[] = [];
-    
-        changes.forEach((tasks, progressId) => {
-            const [studentId, subject, chapterNo] = progressId.split('__');
-
-            // Merge with existing tasks to not lose data from other columns
-            const existingProgress = sheetProgress.find(p => p.id === progressId);
-            const existingTasks = existingProgress?.tasks || {};
-            const newTasks = { ...existingTasks, ...tasks };
-
-            const newProgressItem: SheetProgress = {
-                id: progressId,
-                studentId,
-                subject,
-                chapterNo,
-                tasks: newTasks,
-            };
-            writes.push({ type: 'set', path: `sheetProgress/${progressId}`, data: newProgressItem });
-            updatedProgressItems.push(newProgressItem);
-        });
-    
-        try {
-            await runBatch(writes);
-            setSheetProgress(prev => {
-                const newProgressMap = new Map(updatedProgressItems.map(p => [p.id, p]));
-                const otherProgress = prev.filter(p => !newProgressMap.has(p.id));
-                return [...otherProgress, ...updatedProgressItems];
-            });
-            showToast(`Progress for ${changes.size} item(s) saved!`, 'success');
-        } catch (error: any) {
-            console.error("Error saving sheet progress:", error);
-            showToast(`Failed to save progress: ${error.message}`, 'error');
-            throw error;
-        }
-    }, [showToast, sheetProgress]);
 
     const allMistakeTypes = useMemo(() => {
         const combined = new Map<string, MistakeTypeDefinition>();
@@ -839,15 +183,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, [customMistakeTypes]);
 
     const value = {
-        students, allStudentSubjects, syllabusProgress, workItems, doubts, tests, customMistakeTypes,
-        subjectAreas, faceDescriptors, attendanceRecords, holidays, videoLibrary, sheetProgress, isLoading, darkMode, toasts, allMistakeTypes,
+        customMistakeTypes, branches, isAppReady, darkMode, toasts, allMistakeTypes,
         currentUser, login, logout,
-        handleSaveStudent, handleSaveSubjects, handleUpdateSyllabusNode, handleSaveWorkItem,
-        handleDeleteWorkItem, handleSaveDoubt, handleDeleteDoubt, handleSaveTest, handleDeleteTest,
-        handleSaveFaceDescriptor, handleSaveAttendanceRecord, handleSaveCustomMistakeTypes,
-        handleSaveSubjectAreas, handleArchiveStudent, handleDeleteStudent, handleSaveHoliday,
-        handleDeleteHoliday, handleBatchUpdateAttendance, handleBatchSaveAttendanceRecords,
-        handleSaveVideo, handleDeleteVideo, handleSaveSheetProgress,
+        handleSaveCustomMistakeTypes, handleSaveBranches,
         setDarkMode, showToast, removeToast
     };
 

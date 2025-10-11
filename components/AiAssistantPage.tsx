@@ -1,26 +1,31 @@
-
 import React, { useState, useMemo } from 'react';
-import { useData } from '../context/DataContext';
 import { Student } from '../types';
 import AdminAiChat from './AdminAiChat';
 import StudentAiChat from './StudentAiChat';
 import PlaceholderAvatar from './PlaceholderAvatar';
 import ChevronRightIcon from './icons/ChevronRightIcon';
+// FIX: Import specific context hooks
+import { useSyllabus } from '../context/SyllabusContext';
+import { useWorkPool } from '../context/WorkPoolContext';
+import { useDoubtBox } from '../context/DoubtBoxContext';
+import { useReports } from '../context/ReportsContext';
+import { useAttendance } from '../context/AttendanceContext';
+// FIX: Import useStudent to get students data
+import { useStudent } from '../context/StudentContext';
 
 const AiAssistantPage: React.FC = () => {
     const [mode, setMode] = useState<'selection' | 'admin' | 'student'>('selection');
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
-    const { 
-        students, 
-        allStudentSubjects, 
-        syllabusProgress, 
-        workItems, 
-        doubts, 
-        tests, 
-        attendanceRecords, 
-    } = useData();
+    // FIX: Get data from specific context hooks
+    const { allStudentSubjects, syllabusProgress } = useSyllabus();
+    const { workItems } = useWorkPool();
+    const { doubts } = useDoubtBox();
+    const { tests } = useReports();
+    const { attendanceRecords } = useAttendance();
+    // FIX: Get students from useStudent hook
+    const { students } = useStudent();
 
     const activeStudents = useMemo(() => students.filter(s => !s.isArchived), [students]);
     

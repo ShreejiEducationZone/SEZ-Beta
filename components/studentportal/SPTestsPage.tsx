@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Student, Test, TestPriority } from '../../types';
-import { useData } from '../../context/DataContext';
+// FIX: Import useReports hook
+import { useReports } from '../../context/ReportsContext';
 import { FaChartBar } from 'react-icons/fa';
 
 interface SPTestsPageProps {
@@ -53,7 +54,8 @@ const TestCard: React.FC<{ test: Test }> = ({ test }) => {
 
 
 const SPTestsPage: React.FC<SPTestsPageProps> = ({ student }) => {
-    const { tests } = useData();
+    // FIX: Get tests from useReports hook
+    const { tests } = useReports();
     const [activeTab, setActiveTab] = useState<'Upcoming' | 'Completed'>('Upcoming');
 
     const studentTests = useMemo(() => {

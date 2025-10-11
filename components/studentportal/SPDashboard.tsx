@@ -1,6 +1,10 @@
 import React, { useMemo } from 'react';
 import { Student } from '../../types';
+// FIX: Import specific context hooks
 import { useData } from '../../context/DataContext';
+import { useWorkPool } from '../../context/WorkPoolContext';
+import { useReports } from '../../context/ReportsContext';
+import { useDoubtBox } from '../../context/DoubtBoxContext';
 import { HiOutlineCollection } from 'react-icons/hi';
 import { FaChartBar, FaQuestionCircle, FaChevronRight, FaVideo } from 'react-icons/fa';
 import { StudentPage } from '../StudentPortal';
@@ -47,7 +51,11 @@ interface SPDashboardProps {
 }
 
 const SPDashboard: React.FC<SPDashboardProps> = ({ student, onNavigate }) => {
-    const { workItems, tests, doubts, logout } = useData();
+    // FIX: Get data from specific context hooks
+    const { logout } = useData();
+    const { workItems } = useWorkPool();
+    const { tests } = useReports();
+    const { doubts } = useDoubtBox();
 
     const studentData = useMemo(() => {
         const studentId = student.id;

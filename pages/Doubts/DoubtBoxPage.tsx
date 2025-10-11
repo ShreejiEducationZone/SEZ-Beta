@@ -11,10 +11,19 @@ import CardsIcon from '../../components/icons/CardsIcon';
 import WorkItemDetailModal from '../WorkPool/components/WorkItemDetailModal';
 import DoubtDetailModal from './components/DoubtDetailModal';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Label } from 'recharts';
-import { useData } from '../../context/DataContext';
+// FIX: Removed unused useData hook.
+// FIX: Import specific context hooks.
+import { useSyllabus } from '../../context/SyllabusContext';
+import { useWorkPool } from '../../context/WorkPoolContext';
+import { useDoubtBox } from '../../context/DoubtBoxContext';
+import { useStudent } from '../../context/StudentContext';
 
 const DoubtBoxPage: React.FC = () => {
-    const { students, allStudentSubjects, workItems, doubts, handleSaveDoubt, handleDeleteDoubt, handleSaveWorkItem } = useData();
+    // FIX: Destructure data from specific context hooks instead of the generic useData hook.
+    const { allStudentSubjects } = useSyllabus();
+    const { workItems, handleSaveWorkItem } = useWorkPool();
+    const { doubts, handleSaveDoubt, handleDeleteDoubt } = useDoubtBox();
+    const { students } = useStudent();
 
     const [showArchived, setShowArchived] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
