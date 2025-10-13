@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { useData } from '../../context/DataContext';
+// FIX: Import useSyllabus to get allStudentSubjects
+import { useSyllabus } from '../../context/SyllabusContext';
 import { Student, SubjectData, Board } from '../../types';
 import { FaChevronLeft } from 'react-icons/fa';
 import SPVideoFocusPage from './SPVideoFocusPage';
@@ -34,7 +35,8 @@ const boardColorClasses: Record<Board, string> = {
 };
 
 const SPVideoLibraryPage: React.FC<{ student: Student }> = ({ student }) => {
-    const { allStudentSubjects } = useData();
+    // FIX: Get syllabus data from useSyllabus hook
+    const { allStudentSubjects } = useSyllabus();
     // FIX: Get students from useStudent hook
     const { students } = useStudent();
     const [selectedGroup, setSelectedGroup] = useState<GroupData | 'universal' | null>(null);

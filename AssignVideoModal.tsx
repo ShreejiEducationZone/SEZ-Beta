@@ -12,6 +12,7 @@ import { FaTimes, FaYoutube } from 'react-icons/fa';
 interface AssignVideoModalProps {
     info: {
         video: VideoLink;
+        // FIX: Add `level` to the node type to correctly reflect the data being passed.
         node: Partial<SyllabusNode & { level: number }>;
         subject: string;
     };

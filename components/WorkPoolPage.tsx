@@ -37,6 +37,19 @@ const WorkPoolPage: React.FC = () => {
         priority: '',
     });
 
+    // Automatically update 'Assign' status to 'Pending' for overdue items for display purposes.
+    const processedWorkItems = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        return workItems.map(item => {
+            if (item.status === 'Assign' && new Date(item.dueDate) < today) {
+                return { ...item, status: 'Pending' as 'Pending' };
+            }
+            return item;
+        });
+    }, [workItems]);
+
     const handleFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFilters(prev => ({ ...prev, [name]: value }));
@@ -65,19 +78,19 @@ const WorkPoolPage: React.FC = () => {
     }, [allStudentSubjects]);
 
     const workItemsByStudent = useMemo(() => {
-        return workItems.reduce((acc, item) => {
+        return processedWorkItems.reduce((acc, item) => {
             if (!acc[item.studentId]) {
                 acc[item.studentId] = [];
             }
             acc[item.studentId].push(item);
             return acc;
         }, {} as { [key: string]: WorkItem[] });
-    }, [workItems]);
+    }, [processedWorkItems]);
 
     const filteredWorkItems = useMemo(() => {
         const studentMap = new Map<string, Student>(students.map(s => [s.id, s]));
 
-        return workItems.filter(item => {
+        return processedWorkItems.filter(item => {
             const student = studentMap.get(item.studentId);
             if (!student) return false;
             
@@ -91,7 +104,7 @@ const WorkPoolPage: React.FC = () => {
             
             return true;
         });
-    }, [workItems, students, filters, showArchived]);
+    }, [processedWorkItems, students, filters, showArchived]);
 
     const displayedStudents = useMemo(() => {
         const baseStudents = students.filter(student => student.isArchived === showArchived);
@@ -112,7 +125,7 @@ const WorkPoolPage: React.FC = () => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        workItems.forEach(item => {
+        processedWorkItems.forEach(item => {
             if (!statsByStudent[item.studentId]) {
                 statsByStudent[item.studentId] = { pending: 0, overdue: 0 };
             }
@@ -140,7 +153,7 @@ const WorkPoolPage: React.FC = () => {
             healthMap[studentId] = { health, pending, overdue };
         }
         return healthMap;
-    }, [workItems]);
+    }, [processedWorkItems]);
 
     const handleEditWork = (item: WorkItem) => {
         setViewingStudentWork(null); 

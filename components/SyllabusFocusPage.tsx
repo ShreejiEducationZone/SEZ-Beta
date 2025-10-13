@@ -1,10 +1,10 @@
-
 import React, { useState, useMemo, FC, useCallback } from 'react';
 import { Student, SubjectData, SyllabusProgress, SyllabusNode, ProgressEntry } from '../types';
 import PlaceholderAvatar from './PlaceholderAvatar';
 import ChevronLeftIcon from './icons/ChevronLeftIcon';
 import AddNoteModal from './AddNoteModal';
 import MilestoneItem from './MilestoneItem';
+import { useSyllabus } from '../context/SyllabusContext';
 
 const flattenSyllabus = (subjects: SubjectData[]): { subject: string, nodes: (SyllabusNode & { level: number })[] }[] => {
     return subjects.map(subject => {
@@ -33,6 +33,10 @@ interface SyllabusFocusPageProps {
 const SyllabusFocusPage: FC<SyllabusFocusPageProps> = ({ student, studentSubjects, syllabusProgress, onUpdateNode, onBack }) => {
     const [activeSubject, setActiveSubject] = useState<string>(studentSubjects[0]?.subject || '');
     const [nodeForNote, setNodeForNote] = useState<(SyllabusNode & { level: number }) | null>(null);
+    const [pendingChanges, setPendingChanges] = useState<Map<string, boolean>>(new Map());
+    const [isSaving, setIsSaving] = useState(false);
+
+    const { handleBatchUpdateSyllabusProgress } = useSyllabus();
 
     const progressMap = useMemo(() => {
         const map = new Map<string, SyllabusProgress>();
@@ -42,11 +46,40 @@ const SyllabusFocusPage: FC<SyllabusFocusPageProps> = ({ student, studentSubject
 
     const flattenedSyllabusBySubject = useMemo(() => flattenSyllabus(studentSubjects), [studentSubjects]);
 
-    const handleToggleCompletion = useCallback(async (node: SyllabusNode, isCompleted: boolean) => {
-        const today = new Date().toISOString().split('T')[0];
-        const note = isCompleted ? `Completed on ${today}` : `Marked as incomplete on ${today}`;
-        await onUpdateNode(student.id, activeSubject, node.no, { isCompleted, notesToAdd: [{ date: today, note }] });
-    }, [student.id, activeSubject, onUpdateNode]);
+    const handleToggleCompletion = useCallback((node: SyllabusNode) => {
+        const progressId = `${student.id}-${activeSubject}-${node.no}`;
+        const originalProgress = progressMap.get(`${activeSubject}-${node.no}`);
+        const originalStatus = originalProgress?.isCompleted || false;
+
+        setPendingChanges(prev => {
+            const newChanges = new Map(prev);
+            if (newChanges.has(progressId)) {
+                // If it's already pending, toggling again means we're back to the original state. Remove it.
+                newChanges.delete(progressId);
+            } else {
+                // It's not pending, so add the toggled state.
+                newChanges.set(progressId, !originalStatus);
+            }
+            return newChanges;
+        });
+    }, [student.id, activeSubject, progressMap]);
+
+    const handleSave = async () => {
+        if (pendingChanges.size === 0) return;
+        setIsSaving(true);
+        try {
+            await handleBatchUpdateSyllabusProgress(pendingChanges);
+            setPendingChanges(new Map());
+        } catch (error) {
+            // Error is handled by context's toast
+        } finally {
+            setIsSaving(false);
+        }
+    };
+    
+    const handleDiscard = () => {
+        setPendingChanges(new Map());
+    };
 
     const handleSaveNote = useCallback(async (note: string) => {
         if (!nodeForNote) return;
@@ -92,8 +125,13 @@ const SyllabusFocusPage: FC<SyllabusFocusPageProps> = ({ student, studentSubject
                     <div className="absolute top-0 left-[7px] w-0.5 h-full bg-border -z-10"></div>
                     
                     {subjectData?.nodes.map(node => {
+                        const progressId = `${student.id}-${activeSubject}-${node.no}`;
                         const progress = progressMap.get(`${activeSubject}-${node.no}`);
-                        const isCompleted = progress?.isCompleted || false;
+                        
+                        const isCompleted = pendingChanges.has(progressId)
+                            ? pendingChanges.get(progressId)!
+                            : progress?.isCompleted || false;
+
                         return (
                             <MilestoneItem 
                                 key={node.no} 
@@ -114,6 +152,21 @@ const SyllabusFocusPage: FC<SyllabusFocusPageProps> = ({ student, studentSubject
                     )}
                 </div>
             </div>
+
+            {pendingChanges.size > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4">
+                    <div className="bg-card/80 backdrop-blur-xl border border-border rounded-full shadow-soft-lg p-2 flex items-center justify-between">
+                        <p className="text-sm font-semibold pl-4 text-foreground">{pendingChanges.size} unsaved change{pendingChanges.size > 1 ? 's' : ''}</p>
+                        <div className="flex gap-2">
+                            <button onClick={handleDiscard} className="h-9 px-4 rounded-full text-sm font-semibold text-muted-foreground hover:bg-muted">Discard</button>
+                            <button onClick={handleSave} disabled={isSaving} className="h-9 px-4 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+                                {isSaving ? 'Saving...' : 'Save'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {nodeForNote && (
                 <AddNoteModal 
                     node={nodeForNote} 

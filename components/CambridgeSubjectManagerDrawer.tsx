@@ -131,7 +131,8 @@ const CambridgeSubjectManagerDrawer: React.FC<CambridgeSubjectManagerDrawerProps
     const childLabels = ['Topic', 'Sub-topic', 'Mini-topic'];
     const generateNextNo = (parentNo: string | number, children: CambridgeSyllabusNode[] | undefined, level: number): string => {
         const childCount = children?.length || 0;
-        if (level === 3) { // Level for Mini-topic (parent is Sub-topic)
+        // Parent level: Chapter=1, Topic=2, Sub-Topic=3. Adding a mini-topic if parent is sub-topic.
+        if (level === 3) {
             return `${parentNo}.${String.fromCharCode(97 + childCount)}`;
         }
         return `${parentNo}.${childCount + 1}`;
@@ -169,10 +170,17 @@ const CambridgeSubjectManagerDrawer: React.FC<CambridgeSubjectManagerDrawerProps
             }
             if (!parentNode.children) parentNode.children = [];
             
-            const level = path.length - 1; // Chapter=1, Topic=2, SubTopic=3
+            const level = path.length;
             const newNo = generateNextNo(parentNode.no, parentNode.children, level);
             
-            parentNode.children.push({ no: newNo, name: '', children: [] });
+            const newNode: Partial<CambridgeSyllabusNode> = { no: newNo, name: '' };
+            // A mini-topic is created under a sub-topic. Path to parent sub-topic has length 4.
+            // So, if path length is less than 4, the new node can have children.
+            if (path.length < 4) {
+                newNode.children = [];
+            }
+            
+            parentNode.children.push(newNode);
             return newSubjects;
         });
     };
@@ -218,7 +226,7 @@ const CambridgeSubjectManagerDrawer: React.FC<CambridgeSubjectManagerDrawerProps
                     <button onClick={() => deleteNode(path)} title="Delete Item" className="text-gray-400 hover:text-red-500 p-1 flex-shrink-0"><DeleteIcon /></button>
                 </div>
                 {node.children && node.children.map((child, index) => renderEditableNode(child, [...path, index]))}
-                {level < 3 && <button onClick={() => addChildNode(path)} className="text-brand-blue font-semibold text-sm hover:underline mt-2">+ Add {childLabels[level]}</button>}
+                {level < 2 && <button onClick={() => addChildNode(path)} className="text-brand-blue font-semibold text-sm hover:underline mt-2">+ Add {childLabels[level + 1]}</button>}
             </div>
         );
     };
@@ -335,7 +343,8 @@ function parseCSVToHierarchy(csvText: string): CambridgeSubjectData[] {
         const currentSubject = subjectsMap.get(subjectName)!;
         let parentCollection: CambridgeSyllabusNode[] = currentSubject.chapters;
 
-        for (const level of LEVELS) {
+        for (let levelIndex = 0; levelIndex < LEVELS.length; levelIndex++) {
+            const level = LEVELS[levelIndex];
             const noIndex = headers.indexOf(`${level} No`);
             const nameIndex = headers.indexOf(`${level} Name`);
 
@@ -346,10 +355,17 @@ function parseCSVToHierarchy(csvText: string): CambridgeSubjectData[] {
             
             let node = parentCollection.find(item => item.no == no);
             if (!node) {
-                node = { no, name, children: [] };
+                const newNode: Partial<CambridgeSyllabusNode> = { no, name };
+                if (levelIndex < LEVELS.length - 1) { // If it's not a MiniTopic, it can have children
+                    newNode.children = [];
+                }
+                node = newNode as CambridgeSyllabusNode;
                 parentCollection.push(node);
             }
-            parentCollection = node.children!;
+
+            if (!node.children) break; // Stop descending if the node is terminal
+
+            parentCollection = node.children;
         }
     }
     

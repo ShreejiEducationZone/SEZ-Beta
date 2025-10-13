@@ -1,7 +1,12 @@
 import React, { useMemo } from 'react';
 import { Student } from '../../types';
-import { useData } from '../../context/DataContext';
 import StudentAiChat from '../StudentAiChat';
+// FIX: Import specific context hooks
+import { useSyllabus } from '../../context/SyllabusContext';
+import { useWorkPool } from '../../context/WorkPoolContext';
+import { useDoubtBox } from '../../context/DoubtBoxContext';
+import { useReports } from '../../context/ReportsContext';
+import { useAttendance } from '../../context/AttendanceContext';
 
 interface SPAiAssistantPageProps {
     student: Student;
@@ -9,14 +14,12 @@ interface SPAiAssistantPageProps {
 }
 
 const SPAiAssistantPage: React.FC<SPAiAssistantPageProps> = ({ student, onBack }) => {
-    const { 
-        allStudentSubjects, 
-        syllabusProgress, 
-        workItems, 
-        doubts, 
-        tests, 
-        attendanceRecords, 
-    } = useData();
+    // FIX: Get data from specific context hooks
+    const { allStudentSubjects, syllabusProgress } = useSyllabus();
+    const { workItems } = useWorkPool();
+    const { doubts } = useDoubtBox();
+    const { tests } = useReports();
+    const { attendanceRecords } = useAttendance();
 
     const studentData = useMemo(() => {
         return {

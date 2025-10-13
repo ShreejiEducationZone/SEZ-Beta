@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Student, WorkItem } from '../types';
 import PlaceholderAvatar from './PlaceholderAvatar';
@@ -26,13 +25,11 @@ const Stat: React.FC<{ label: string; value: string | number; icon: React.ReactN
 const StudentWorkCard: React.FC<StudentWorkCardProps> = ({ student, workItems, onViewWork }) => {
     
     const workInsights = useMemo(() => {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const activeItems = workItems.filter(item => item.status === 'Assign' || item.status === 'Pending');
+        // The `workItems` prop is pre-processed in `WorkPoolPage` to change overdue 'Assign' to 'Pending'.
+        const assignedCount = workItems.filter(item => item.status === 'Assign').length;
+        const pendingCount = workItems.filter(item => item.status === 'Pending').length;
         
-        const pendingCount = activeItems.length;
-        const overdueCount = activeItems.filter(item => item.dueDate < todayStr).length;
-            
-        return { pendingCount, overdueCount };
+        return { assignedCount, pendingCount };
     }, [workItems]);
 
     return (
@@ -68,16 +65,16 @@ const StudentWorkCard: React.FC<StudentWorkCardProps> = ({ student, workItems, o
 
                 <div className="w-full bg-muted/80 dark:bg-muted/50 rounded-xl p-2 md:p-3 mt-3 md:mt-4 flex justify-around items-center text-sm">
                     <Stat 
-                        label="Pending" 
-                        value={workInsights.pendingCount} 
+                        label="Assigned" 
+                        value={workInsights.assignedCount} 
                         icon={<ClipboardListIcon className="h-4 w-4" />} 
                     />
                     <div className="h-6 md:h-8 w-px bg-border"></div>
                     <Stat 
-                        label="Overdue" 
-                        value={workInsights.overdueCount} 
+                        label="Pending" 
+                        value={workInsights.pendingCount} 
                         icon={<FlagIcon className="h-4 w-4" />}
-                        valueColor={workInsights.overdueCount > 0 ? 'text-red-500' : 'text-foreground'}
+                        valueColor={workInsights.pendingCount > 0 ? 'text-danger' : 'text-foreground'}
                     />
                 </div>
 

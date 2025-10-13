@@ -9,7 +9,7 @@ interface WorkFormProps {
     student: Student;
     subjects: SubjectData[];
     workItems: WorkItem[];
-    workItem?: WorkItem;
+    workItem?: Partial<WorkItem>;
     onSave: (item: WorkItem) => Promise<void>;
     onCancel: () => void;
 }
@@ -25,11 +25,11 @@ const SyllabusNodeSelect: React.FC<{label: string, value: string, onChange: (e: 
 );
 
 const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workItems, onSave, onCancel }) => {
-    const isEditMode = !!workItem;
+    const isEditMode = !!workItem?.id;
     const [formData, setFormData] = useState({
         title: workItem?.title || '',
         subject: workItem?.subject || '',
-        chapter: workItem ? `${workItem.chapterNo}::${workItem.chapterName}` : '',
+        chapter: (workItem?.chapterNo && workItem?.chapterName) ? `${workItem.chapterNo}::${workItem.chapterName}` : '',
         description: workItem?.description || '',
         dueDate: workItem?.dueDate || '',
         status: workItem?.status || 'Assign',
@@ -154,20 +154,15 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
         else if (selectedTopicNo) node = topicOptions.find(o => String(o.no) === selectedTopicNo);
         topicName = node ? node.name : '';
     
-        const baseItem = workItem ? { ...workItem } : {
-            id: `w_${Date.now()}`,
-            dateCreated: new Date().toISOString().split('T')[0],
-        };
-    
         const finalWorkItem: WorkItem = {
-            ...(baseItem as WorkItem),
-    
+            id: workItem?.id || `w_${Date.now()}`,
+            dateCreated: workItem?.dateCreated || new Date().toISOString().split('T')[0],
             studentId: student.id,
             title: formData.title.trim(),
             subject: formData.subject,
             chapterNo,
             chapterName,
-            topic: topicName || undefined,
+            topic: topicName || workItem?.topic || undefined,
             description: formData.description.trim(),
             dueDate: formData.dueDate,
             status: formData.status as WorkStatus,
@@ -175,6 +170,11 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
             links: formData.links.split(',').map(l => l.trim()).filter(Boolean),
             files: files,
             mentorNote: formData.mentorNote.trim(),
+            linkedDoubtId: workItem?.linkedDoubtId,
+            source: workItem?.source,
+            sheetTasks: workItem?.sheetTasks,
+            sheetTaskIds: workItem?.sheetTaskIds,
+            linkedTestId: workItem?.linkedTestId,
         };
     
         try {
@@ -191,7 +191,7 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4">
            <div className="bg-card/80 backdrop-blur-lg border border-border rounded-2xl shadow-soft-xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto thin-scrollbar" onClick={e => e.stopPropagation()}>
                <h2 className="text-2xl font-bold mb-1">{isEditMode ? 'Edit Work' : 'Add New Work'} for <span className="text-primary">{student.name}</span></h2>
-               <p className="text-sm text-muted-foreground mb-6">Assign a new task or update an existing one.</p>
+               <p className="text-sm text-muted-foreground mb-6">{workItem?.source === 'test' ? 'Assigning a task based on a test record.' : 'Assign a new task or update an existing one.'}</p>
                <form onSubmit={handleSubmit} className="space-y-4">
                     <InputField label="Title" name="title" value={formData.title} onChange={handleChange} error={errors.title} required />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -206,7 +206,7 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
                         </div>
                     </div>
 
-                    {isEditMode && workItem?.topic && <p className="text-xs text-muted-foreground -mt-2">Current Topic: {workItem.topic}. To change, please re-select from the dropdowns below.</p>}
+                    {workItem?.topic && <p className="text-xs text-muted-foreground -mt-2">Current Topic: {workItem.topic}. To change, please re-select from the dropdowns below.</p>}
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                          {topicOptions.length > 0 && <SyllabusNodeSelect label="Topic (Optional)" value={selectedTopicNo} onChange={(e) => setSelectedTopicNo(e.target.value)} options={topicOptions} />}

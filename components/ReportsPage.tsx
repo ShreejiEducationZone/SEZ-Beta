@@ -22,6 +22,7 @@ import { useReports } from '../context/ReportsContext';
 import { useStudent } from '../context/StudentContext';
 import { FaPlus } from 'react-icons/fa';
 import { useWorkPool } from '../context/WorkPoolContext';
+import WorkForm from './WorkForm';
 
 const getScoreColor = (score: number) => {
     if (score >= 80) return 'hsl(var(--success))';
@@ -54,6 +55,7 @@ const ReportsPage: React.FC = () => {
     const [editingTest, setEditingTest] = useState<Test | null>(null);
     const [viewingTest, setViewingTest] = useState<Test | null>(null);
     const [studentFilters, setStudentFilters] = useState({ searchQuery: '' });
+    const [workitemFromTest, setWorkitemFromTest] = useState<Partial<WorkItem> | null>(null);
 
     const activeStudents = useMemo(() => students.filter(s => !s.isArchived), [students]);
 
@@ -88,30 +90,30 @@ const ReportsPage: React.FC = () => {
     const completedAndAbsentTests = useMemo(() => testsForSelectedStudent.filter(t => t.status === 'Completed' || t.status === 'Absent'), [testsForSelectedStudent]);
     const stats = useMemo(() => (selectedStudentId && studentPerformanceData.has(selectedStudentId)) ? studentPerformanceData.get(selectedStudentId)! : { avgScore: 0, completedTests: 0, upcomingTests: 0, absentTests: 0 }, [selectedStudentId, studentPerformanceData]);
 
-    const handleAssignTestAsWork = async (test: Test) => {
+    const handleAssignTestAsWork = (test: Test) => {
         const alreadyExists = workItems.some(w => w.source === 'test' && w.linkedTestId === test.id);
         if (alreadyExists) {
             showToast("A work item for this test has already been created.", "info");
             return;
         }
-
-        const newWorkItem: WorkItem = {
-            id: `w_${Date.now()}`,
-            studentId: test.studentId,
+    
+        const workItemToCreate: Partial<WorkItem> = {
             title: `Test Prep: ${test.title}`,
             subject: test.subject,
             chapterNo: test.chapters[0]?.no || 'N/A',
             chapterName: test.chapters[0]?.name || 'Multiple',
-            description: `Prepare for the test "${test.title}" scheduled on ${test.testDate}. Syllabus includes: ${test.chapters.map(c => c.name).join(', ')}.`,
+            description: `Prepare for the test "${test.title}" scheduled on ${test.testDate}.\nSyllabus includes: ${test.chapters.map(c => c.name).join(', ')}.`,
             dueDate: test.testDate,
-            status: 'Assign',
             priority: test.priority,
-            dateCreated: new Date().toISOString().split('T')[0],
             source: 'test',
             linkedTestId: test.id,
+            status: 'Assign',
         };
         
-        await handleSaveWorkItem(newWorkItem);
+        setViewingTest(null);
+        setEditingTest(null);
+        setIsTestFormOpen(false);
+        setWorkitemFromTest(workItemToCreate);
     };
 
     const handleAddTest = () => { setEditingTest(null); setIsTestFormOpen(true); };
@@ -193,6 +195,16 @@ const ReportsPage: React.FC = () => {
                         <MistakeAnalytics tests={completedAndAbsentTests.filter(t => t.status === 'Completed')} />
                     </div>
                 </div>
+            )}
+            {workitemFromTest && selectedStudent && (
+                <WorkForm
+                    student={selectedStudent}
+                    subjects={allStudentSubjects[selectedStudent.id]?.subjects || []}
+                    workItem={workitemFromTest}
+                    workItems={workItems}
+                    onSave={handleSaveWorkItem}
+                    onCancel={() => setWorkitemFromTest(null)}
+                />
             )}
             {isTestFormOpen && selectedStudent && <TestForm student={selectedStudent} studentSubjects={allStudentSubjects[selectedStudent.id]?.subjects || []} test={editingTest} onSave={handleSaveTest} onCancel={handleCloseForm} allMistakeTypes={allMistakeTypes} subjectAreas={subjectAreas} />}
             {viewingTest && selectedStudent && <TestDetailModal test={viewingTest} student={selectedStudent} onClose={() => setViewingTest(null)} onAddMarking={handleAddMarking} onEdit={handleEditTest} onDelete={handleDeleteAndCloseModal} />}

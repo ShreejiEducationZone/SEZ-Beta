@@ -164,8 +164,8 @@ Answer the student's questions based ONLY on this data. Be conversational and he
     };
 
     return (
-        <div className="grid grid-rows-[auto_1fr_auto] h-full bg-background overflow-hidden">
-            <header className="flex items-center gap-4 p-3 border-b border-border bg-card shadow-sm">
+        <div className="flex flex-col h-full bg-background overflow-hidden">
+            <header className="flex-shrink-0 flex items-center gap-4 p-3 border-b border-border bg-card shadow-sm">
                 {onBack && (
                     <button onClick={onBack} className="p-2 rounded-full text-muted-foreground hover:bg-muted">
                         <ChevronLeftIcon className="h-6 w-6" />
@@ -183,7 +183,7 @@ Answer the student's questions based ONLY on this data. Be conversational and he
                 </div>
             </header>
 
-            <main ref={chatContainerRef} className="overflow-y-auto thin-scrollbar p-4 md:p-6 space-y-6">
+            <main ref={chatContainerRef} className="flex-grow overflow-y-auto thin-scrollbar p-4 md:p-6 space-y-6">
                 {messages.map((msg, idx) => (
                     <div key={idx} className={`flex gap-3 items-end ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         {msg.role === 'model' && (
@@ -212,7 +212,7 @@ Answer the student's questions based ONLY on this data. Be conversational and he
                 )}
             </main>
 
-            <footer className="p-2 sm:p-4 border-t border-border bg-card">
+            <footer className="flex-shrink-0 p-2 sm:p-4 border-t border-border bg-card">
                 <form onSubmit={handleSend} className="flex items-end gap-2 bg-muted p-2 rounded-2xl">
                     <textarea 
                         ref={textareaRef}

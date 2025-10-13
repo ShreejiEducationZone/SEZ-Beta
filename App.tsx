@@ -59,7 +59,18 @@ const App: React.FC = () => {
     const { syllabusProgress, allStudentSubjects } = useSyllabus();
     const { sheetProgress } = useSheet();
     
-    const [currentPage, setCurrentPage] = useState<Page>('students');
+    const [currentPage, setCurrentPage] = useState<Page>(() => {
+        try {
+            const savedPage = window.localStorage.getItem('sez-currentPage');
+            const validPages: Page[] = ['students', 'subjects', 'syllabus', 'work-pool', 'doubts', 'reports', 'sheets', 'attendance', 'ai-assistant', 'settings', 'video-library', 'analytics'];
+            if (savedPage && validPages.includes(savedPage as Page)) {
+                return savedPage as Page;
+            }
+        } catch (error) {
+            console.error("Error reading currentPage from localStorage", error);
+        }
+        return 'students';
+    });
     const [editingStudent, setEditingStudent] = useState<Partial<Student> | null>(null);
     const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
     const [viewingSheetForStudent, setViewingSheetForStudent] = useState<Student | null>(null);
@@ -72,6 +83,14 @@ const App: React.FC = () => {
     const [numVisibleStudents, setNumVisibleStudents] = useState(STUDENTS_PER_PAGE);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const loaderRef = useRef(null);
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem('sez-currentPage', currentPage);
+        } catch (error) {
+            console.error("Error saving currentPage to localStorage", error);
+        }
+    }, [currentPage]);
     
     // --- Notification Logic ---
     const [dismissedNotificationIds, setDismissedNotificationIds] = useState(() => {

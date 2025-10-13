@@ -121,7 +121,7 @@ const DoubtBoxPage: React.FC = () => {
                 return true;
             }).map(d => d.studentId)
         );
-        return (students as Student[]).filter(student => {
+        return (students as Student[]).filter((student: Student) => {
             if (student.isArchived !== showArchived) return false;
             if (filters.board && student.board !== filters.board) return false;
             if (filters.grade && student.grade.toString() !== filters.grade) return false;

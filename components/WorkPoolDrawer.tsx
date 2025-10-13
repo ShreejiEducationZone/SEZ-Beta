@@ -99,7 +99,7 @@ const WorkItemCard: FC<{ item: WorkItem; onEdit: (item: WorkItem) => void; onDel
 
 const WorkPoolDrawer: React.FC<WorkPoolDrawerProps> = ({ student, workItems, onClose, onEditWorkItem, onDeleteWorkItem, onAddWork }) => {
     
-    const [activeTab, setActiveTab] = useState<'Pending' | 'Completed' | 'All'>('Pending');
+    const [activeTab, setActiveTab] = useState<'Assign' | 'Pending' | 'Completed' | 'All'>('Assign');
     const [filters, setFilters] = useState({ subject: '', priority: '', searchQuery: '' });
     const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
     const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -116,6 +116,16 @@ const WorkPoolDrawer: React.FC<WorkPoolDrawerProps> = ({ student, workItems, onC
 
     const uniqueSubjects = useMemo(() => Array.from(new Set(workItems.map(item => item.subject))), [workItems]);
 
+    const workCounts = useMemo(() => {
+        const counts = { Assign: 0, Pending: 0, Completed: 0, All: workItems.length };
+        workItems.forEach(item => {
+            if (item.status === 'Assign') counts.Assign++;
+            else if (item.status === 'Pending') counts.Pending++;
+            else if (item.status === 'Completed') counts.Completed++;
+        });
+        return counts;
+    }, [workItems]);
+
     const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
@@ -131,8 +141,10 @@ const WorkPoolDrawer: React.FC<WorkPoolDrawerProps> = ({ student, workItems, onC
     const filteredWorkItems = useMemo(() => {
         let tempItems = [...workItems];
 
-        if (activeTab === 'Pending') {
-            tempItems = tempItems.filter(item => item.status === 'Assign' || item.status === 'Pending');
+        if (activeTab === 'Assign') {
+            tempItems = tempItems.filter(item => item.status === 'Assign');
+        } else if (activeTab === 'Pending') {
+            tempItems = tempItems.filter(item => item.status === 'Pending');
         } else if (activeTab === 'Completed') {
             tempItems = tempItems.filter(item => item.status === 'Completed');
         }
@@ -262,13 +274,13 @@ const WorkPoolDrawer: React.FC<WorkPoolDrawerProps> = ({ student, workItems, onC
                     </div>
                      <div className="mt-4 border-b border-border">
                         <nav className="-mb-px flex space-x-6 overflow-x-auto">
-                            {(['Pending', 'Completed', 'All'] as const).map(tab => (
+                            {(['Assign', 'Pending', 'Completed', 'All'] as const).map(tab => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
                                     className={`whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm ${activeTab === tab ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
                                 >
-                                    {tab}
+                                    {tab} ({workCounts[tab]})
                                 </button>
                             ))}
                         </nav>

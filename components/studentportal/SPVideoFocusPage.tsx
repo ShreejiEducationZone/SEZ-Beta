@@ -1,5 +1,5 @@
 import React, { useState, useMemo, FC } from 'react';
-import { useData } from '../../context/DataContext';
+import { useVideoLibrary } from '../../context/VideoLibraryContext';
 import { SyllabusNode, VideoLink, Student } from '../../types';
 import { FaChevronLeft, FaSearch } from 'react-icons/fa';
 import { GroupData } from './SPVideoLibraryPage'; 
@@ -14,7 +14,8 @@ interface SPVideoFocusPageProps {
 }
 
 const SPVideoFocusPage: FC<SPVideoFocusPageProps> = ({ student, group, onClose }) => {
-    const { videoLibrary } = useData();
+    // FIX: Get video library data from useVideoLibrary hook.
+    const { videoLibrary } = useVideoLibrary();
     
     const initialSubject = group !== 'universal' && group.subjects.length > 0 ? group.subjects[0].subject : 'All';
     const [activeSubject, setActiveSubject] = useState(initialSubject);

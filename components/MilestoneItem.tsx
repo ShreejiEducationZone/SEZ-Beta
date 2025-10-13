@@ -8,7 +8,7 @@ interface MilestoneItemProps {
     node: SyllabusNode & { level: number };
     isCompleted: boolean;
     progress: SyllabusProgress | undefined;
-    onToggle: (node: SyllabusNode, isCompleted: boolean) => void;
+    onToggle: (node: SyllabusNode) => void;
     onOpenNoteModal: (node: SyllabusNode & { level: number }) => void;
     onDeleteNote: (node: SyllabusNode, noteIndex: number) => void;
 }
@@ -55,7 +55,7 @@ const MilestoneItem: FC<MilestoneItemProps> = ({ node, isCompleted, progress, on
                                 <PlusIcon className="h-5 w-5" />
                             </button>
                            <div onClick={(e) => e.stopPropagation()}>
-                                <Checkbox checked={isCompleted} onChange={(checked) => onToggle(node, checked)} />
+                                <Checkbox checked={isCompleted} onChange={() => onToggle(node)} />
                            </div>
                         </div>
                     </div>

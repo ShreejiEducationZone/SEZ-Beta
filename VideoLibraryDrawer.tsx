@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef, FC } from 'react';
 // FIX: Import useVideoLibrary hook instead of useData.
 import { useVideoLibrary } from '../context/VideoLibraryContext';
 import { SubjectData, SyllabusNode, VideoLink } from '../types';

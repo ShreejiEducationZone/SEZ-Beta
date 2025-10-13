@@ -7,6 +7,9 @@ import AiAssistantChat from './AiAssistantChat';
 import UploadIcon from './icons/UploadIcon';
 import DownloadIcon from './icons/DownloadIcon';
 import { useData } from '../context/DataContext';
+import ChevronDownIcon from './icons/ChevronDownIcon';
+import CsvIcon from './icons/CsvIcon';
+import JsonIcon from './icons/JsonIcon';
 
 
 const SyllabusNodeView: React.FC<{ node: SyllabusNode; level: number }> = ({ node, level }) => {
@@ -55,9 +58,22 @@ const SubjectManagerDrawer: React.FC<SubjectManagerDrawerProps> = ({ student, st
     const [subjects, setSubjects] = useState<SubjectData[]>([]);
     const [errors, setErrors] = useState<any>({});
     const [showAiChat, setShowAiChat] = useState(false);
+    const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const exportMenuRef = useRef<HTMLDivElement>(null);
+
 
     const isArchived = student.isArchived;
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+                setIsExportMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const createCleanDataCopy = (sourceData: SubjectData[] | undefined): SubjectData[] => {
         if (!sourceData) return [];
@@ -108,7 +124,17 @@ const SubjectManagerDrawer: React.FC<SubjectManagerDrawerProps> = ({ student, st
         reader.onload = (e) => {
             const text = e.target?.result as string;
             try {
-                const parsedSubjects = parseCSVToHierarchy(text);
+                let parsedSubjects: SubjectData[];
+                if (file.name.endsWith('.json')) {
+                    const jsonData = JSON.parse(text);
+                    if (!Array.isArray(jsonData) || (jsonData.length > 0 && (!jsonData[0].subject || !jsonData[0].chapters))) {
+                        throw new Error('Invalid JSON format. Expected an array of subjects with chapters.');
+                    }
+                    parsedSubjects = jsonData;
+                } else { // Assume CSV
+                    parsedSubjects = parseCSVToHierarchy(text);
+                }
+
                 setSubjects(prevSubjects => {
                     const newSubjectsState = prevSubjects ? JSON.parse(JSON.stringify(prevSubjects)) : [];
                     const mergeNodes = (existingNodes: SyllabusNode[], newNodes: SyllabusNode[]) => {
@@ -140,7 +166,7 @@ const SubjectManagerDrawer: React.FC<SubjectManagerDrawerProps> = ({ student, st
                 setIsEditMode(true);
                 showToast(`Syllabus from ${file.name} has been merged. Press 'Save' to confirm.`, 'info');
             } catch (error: any) {
-                showToast(`Error parsing CSV: ${error.message}`, 'error');
+                showToast(`Error parsing file: ${error.message}`, 'error');
             }
         };
         reader.readAsText(file);
@@ -166,7 +192,8 @@ const SubjectManagerDrawer: React.FC<SubjectManagerDrawerProps> = ({ student, st
     const childLabels = ['Topic', 'Sub-topic', 'Mini-topic'];
     const generateNextNo = (parentNo: string | number, children: SyllabusNode[] | undefined, level: number): string => {
         const childCount = children?.length || 0;
-        if (level === 3) { // Level for Mini-topic (parent is Sub-topic)
+        // Parent level: Chapter=1, Topic=2, Sub-Topic=3. Adding a mini-topic if parent is sub-topic.
+        if (level === 3) {
             return `${parentNo}.${String.fromCharCode(97 + childCount)}`;
         }
         return `${parentNo}.${childCount + 1}`;
@@ -198,10 +225,18 @@ const SubjectManagerDrawer: React.FC<SubjectManagerDrawerProps> = ({ student, st
             }
             if (!parentNode.children) parentNode.children = [];
             
-            const level = path.length - 1; 
+            const level = path.length; 
             const newNo = generateNextNo(parentNode.no, parentNode.children, level);
             
-            parentNode.children.push({ no: newNo, name: '', children: [] });
+            const newNode: Partial<SyllabusNode> = { no: newNo, name: '' };
+            // A mini-topic is created under a sub-topic.
+            // Path to parent sub-topic is [s, c, t, st], length 4.
+            // So, if path length is less than 4, the new node can have children.
+            if (path.length < 4) {
+                newNode.children = [];
+            }
+            
+            parentNode.children.push(newNode);
             return newSubjects;
         });
     };
@@ -246,7 +281,7 @@ const SubjectManagerDrawer: React.FC<SubjectManagerDrawerProps> = ({ student, st
                     <button onClick={() => deleteNode(path)} title="Delete Item" className="text-muted-foreground hover:text-red-500 p-1 flex-shrink-0"><DeleteIcon /></button>
                 </div>
                 {node.children && node.children.map((child, index) => renderEditableNode(child, [...path, index]))}
-                {level < 3 && <button onClick={() => addChildNode(path)} className="text-primary font-semibold text-sm hover:underline mt-2">+ Add {childLabels[level]}</button>}
+                {level < 2 && <button onClick={() => addChildNode(path)} className="text-primary font-semibold text-sm hover:underline mt-2">+ Add {childLabels[level + 1]}</button>}
             </div>
         );
     };
@@ -254,17 +289,25 @@ const SubjectManagerDrawer: React.FC<SubjectManagerDrawerProps> = ({ student, st
     const noSubjectsContent = () => (
         <div className="text-center py-16 px-4 bg-muted/50 rounded-lg">
             <h4 className="font-semibold text-lg text-foreground">No subjects set for {student.name}.</h4>
-            <p className="text-muted-foreground mt-1">Get started by asking AI, importing a CSV, or entering them manually.</p>
+            <p className="text-muted-foreground mt-1">Get started by asking AI, importing a file, or entering them manually.</p>
             <div className="mt-6 flex justify-center flex-wrap gap-4">
                 <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors">
-                    <UploadIcon className="h-5 w-5" /> Import CSV
-                </button>
-                 <button onClick={() => handleDownloadDemo(student?.name || 'student')} className="flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold bg-muted text-muted-foreground border border-border hover:bg-border transition-colors">
-                    <DownloadIcon className="h-5 w-5" /> Download Demo Format
+                    <UploadIcon className="h-5 w-5" /> Import File
                 </button>
                 <button onClick={handleEnterManually} className="flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold bg-muted text-muted-foreground border border-border hover:bg-border transition-colors">
                     <EditIcon className="h-5 w-5" /> Enter Manually
                 </button>
+            </div>
+             <div className="w-full max-w-md mx-auto border-t border-border mt-6 pt-4">
+                <p className="text-sm text-muted-foreground mb-2">Download a template to get started:</p>
+                <div className="flex justify-center gap-4">
+                    <button onClick={() => handleDownloadDemoCSV(student?.name || 'student')} className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold bg-muted text-muted-foreground border border-border hover:bg-border transition-colors">
+                         <CsvIcon className="h-5 w-5" /> Demo CSV
+                    </button>
+                    <button onClick={handleDownloadDemoJSON} className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold bg-muted text-muted-foreground border border-border hover:bg-border transition-colors">
+                         <JsonIcon className="h-5 w-5" /> Demo JSON
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -301,7 +344,7 @@ const SubjectManagerDrawer: React.FC<SubjectManagerDrawerProps> = ({ student, st
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-end" onClick={onClose}>
             <div className="w-full max-w-2xl h-full bg-card/80 backdrop-blur-lg border-l border-border shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
-                <input type="file" accept=".csv" ref={fileInputRef} onChange={handleFileImport} className="hidden" />
+                <input type="file" accept=".csv,.json" ref={fileInputRef} onChange={handleFileImport} className="hidden" />
                 {isArchived && (
                     <div className="p-2 bg-yellow-400 text-center text-black text-sm font-semibold">
                         Read-only mode for archived student.
@@ -318,9 +361,26 @@ const SubjectManagerDrawer: React.FC<SubjectManagerDrawerProps> = ({ student, st
                                 <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 py-2 px-4 rounded-lg font-semibold bg-primary/10 text-primary text-sm hover:bg-primary/20">
                                     <UploadIcon className="h-4 w-4" /> Import
                                 </button>
-                                <button onClick={() => exportToCSV(subjects, student.name)} className="flex items-center gap-2 py-2 px-4 rounded-lg font-semibold bg-muted text-muted-foreground text-sm hover:bg-border">
-                                    <DownloadIcon className="h-4 w-4" /> Export
-                                </button>
+                                <div className="relative" ref={exportMenuRef}>
+                                    <button
+                                        onClick={() => setIsExportMenuOpen(prev => !prev)}
+                                        className="flex items-center gap-2 py-2 px-4 rounded-lg font-semibold bg-muted text-muted-foreground text-sm hover:bg-border"
+                                    >
+                                        <DownloadIcon className="h-4 w-4" /> Export <ChevronDownIcon className={`h-4 w-4 transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
+                                    </button>
+                                    {isExportMenuOpen && (
+                                        <div className="absolute right-0 mt-2 w-48 bg-card rounded-xl shadow-soft-lg border border-border z-10 py-1">
+                                            <button onClick={() => handleExportCSV(subjects, student.name, setIsExportMenuOpen)} className="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted">
+                                                <CsvIcon className="h-5 w-5 text-muted-foreground"/>
+                                                Export as CSV
+                                            </button>
+                                            <button onClick={() => handleExportJSON(subjects, student.name, setIsExportMenuOpen)} className="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted">
+                                                <JsonIcon className="h-5 w-5 text-muted-foreground"/>
+                                                Export as JSON
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                                 <button onClick={() => setIsEditMode(true)} className="flex items-center gap-2 py-2 px-4 rounded-lg font-semibold bg-background border border-border text-sm hover:bg-muted">
                                     <EditIcon className="h-4 w-4" /> Edit
                                 </button>
@@ -392,7 +452,8 @@ function parseCSVToHierarchy(csvText: string): SubjectData[] {
         const currentSubject = subjectsMap.get(subjectName)!;
         let parentCollection: SyllabusNode[] = currentSubject.chapters;
 
-        for (const level of LEVELS) {
+        for (let levelIndex = 0; levelIndex < LEVELS.length; levelIndex++) {
+            const level = LEVELS[levelIndex];
             const noIndex = headers.indexOf(`${level} No`);
             const nameIndex = headers.indexOf(`${level} Name`);
 
@@ -403,10 +464,17 @@ function parseCSVToHierarchy(csvText: string): SubjectData[] {
             
             let node = parentCollection.find(item => item.no == no);
             if (!node) {
-                node = { no, name, children: [] };
+                const newNode: Partial<SyllabusNode> = { no, name };
+                if (levelIndex < LEVELS.length - 1) { // If it's not a MiniTopic, it can have children
+                    newNode.children = [];
+                }
+                node = newNode as SyllabusNode;
                 parentCollection.push(node);
             }
-            parentCollection = node.children!;
+            
+            if (!node.children) break; // Stop descending if the node is a terminal one (MiniTopic)
+            
+            parentCollection = node.children;
         }
     }
     
@@ -422,7 +490,8 @@ function parseCSVToHierarchy(csvText: string): SubjectData[] {
 }
 
 
-function exportToCSV(subjects: SubjectData[], studentName: string) {
+function handleExportCSV(subjects: SubjectData[], studentName: string, closeMenu: (val: boolean) => void) {
+    closeMenu(false);
     const headers = ['Subject', ...LEVELS.flatMap(l => [`${l} No`, `${l} Name`])];
     const rows: string[][] = [];
 
@@ -459,7 +528,20 @@ function exportToCSV(subjects: SubjectData[], studentName: string) {
     document.body.removeChild(link);
 }
 
-function handleDownloadDemo(studentName: string) {
+function handleExportJSON(subjects: SubjectData[], studentName: string, closeMenu: (val: boolean) => void) {
+    closeMenu(false);
+    const jsonContent = JSON.stringify(subjects, null, 2);
+    const blob = new Blob([jsonContent], { type: "application/json;charset=utf-8," });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `syllabus_${studentName.replace(/\s+/g, '_')}.json`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function handleDownloadDemoCSV(studentName: string) {
     const headers = ["Subject", "Chapter No", "Chapter Name", "Topic No", "Topic Name", "SubTopic No", "SubTopic Name", "MiniTopic No", "MiniTopic Name"];
     const demoRows = [
         ['Biology (Cambridge IGCSE)', '1', 'Characteristics and Classification of Living Organisms', '1.1', 'Characteristics of Living Organisms', '1.1.1', 'Movement', '1.1.1.a', 'Locomotion in animals'],
@@ -475,6 +557,40 @@ function handleDownloadDemo(studentName: string) {
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
     link.setAttribute("download", `demo_syllabus_format.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function handleDownloadDemoJSON() {
+    const demoJSON = [
+      {
+        "subject": "Physics",
+        "chapters": [
+          { "no": "1", "name": "Kinematics" },
+          { 
+            "no": "2", 
+            "name": "Laws of Motion",
+            "children": [
+              { "no": "2.1", "name": "Newton's First Law" },
+              { "no": "2.2", "name": "Newton's Second Law" }
+            ]
+          }
+        ]
+      },
+       {
+        "subject": "Chemistry",
+        "chapters": [
+          { "no": "1", "name": "Structure of Atom" }
+        ]
+      }
+    ];
+    const jsonContent = JSON.stringify(demoJSON, null, 2);
+    const blob = new Blob([jsonContent], { type: "application/json;charset=utf-8," });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `demo_syllabus_format.json`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

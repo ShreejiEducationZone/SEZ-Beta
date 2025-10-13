@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
 // FIX: Import getDocument to fetch subjectAreas configuration.
-import { getCollection, setDocument, getDocument } from '../firebase';
+import { getCollection, setDocument, getDocument, runBatch } from '../firebase';
 // FIX: Import AreaDefinition type.
 import { SubjectData, SyllabusProgress, ProgressEntry, SheetColumn, AreaDefinition } from '../types';
 import { useData } from './DataContext';
@@ -13,6 +13,7 @@ interface SyllabusContextType {
     isLoading: boolean;
     handleSaveSubjects: (studentId: string, subjects: SubjectData[]) => Promise<void>;
     handleUpdateSyllabusNode: (studentId: string, subject: string, nodeNo: string | number, updates: { isCompleted?: boolean; notesToAdd?: ProgressEntry[]; noteIndicesToDelete?: number[] }) => Promise<void>;
+    handleBatchUpdateSyllabusProgress: (changes: Map<string, boolean>) => Promise<void>;
     // FIX: Add handleSaveSubjectAreas to the context type.
     handleSaveSubjectAreas: (areas: { [key: string]: AreaDefinition[] }) => Promise<void>;
 }
@@ -128,6 +129,39 @@ export const SyllabusProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
     }, [syllabusProgress, showToast]);
 
+    const handleBatchUpdateSyllabusProgress = useCallback(async (changes: Map<string, boolean>) => {
+        if (changes.size === 0) return;
+
+        const writes: { type: 'set', path: string, data: SyllabusProgress }[] = [];
+        const updatedItems: SyllabusProgress[] = [];
+
+        for (const [progressId, isCompleted] of changes.entries()) {
+            const [studentId, subject, nodeNo] = progressId.split('-');
+            const existing = syllabusProgress.find(p => p.id === progressId);
+            const updatedItem: SyllabusProgress = {
+                ...(existing || { id: progressId, studentId, subject, nodeNo, entries: [] }),
+                isCompleted,
+            };
+            
+            writes.push({ type: 'set', path: `syllabusProgress/${progressId}`, data: updatedItem });
+            updatedItems.push(updatedItem);
+        }
+
+        try {
+            await runBatch(writes);
+            setSyllabusProgress(prev => {
+                const updatedMap = new Map(updatedItems.map(item => [item.id, item]));
+                const newItems = updatedItems.filter(item => !prev.some(p => p.id === item.id));
+                let newPrev = prev.map(item => updatedMap.get(item.id) || item);
+                return [...newPrev, ...newItems];
+            });
+            showToast(`${writes.length} item(s) updated.`, 'success');
+        } catch (error: any) {
+            showToast(`Error saving changes: ${error.message}`, 'error');
+            throw error;
+        }
+    }, [syllabusProgress, showToast]);
+
     // FIX: Add handler function for saving subject areas.
     const handleSaveSubjectAreas = useCallback(async (areas: { [key: string]: AreaDefinition[] }) => {
         try {
@@ -140,7 +174,7 @@ export const SyllabusProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
     }, [showToast]);
 
-    const value = { allStudentSubjects, syllabusProgress, isLoading, handleSaveSubjects, handleUpdateSyllabusNode, subjectAreas, handleSaveSubjectAreas };
+    const value = { allStudentSubjects, syllabusProgress, isLoading, handleSaveSubjects, handleUpdateSyllabusNode, subjectAreas, handleSaveSubjectAreas, handleBatchUpdateSyllabusProgress };
 
     return <SyllabusContext.Provider value={value}>{children}</SyllabusContext.Provider>;
 };

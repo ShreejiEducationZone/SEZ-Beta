@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Test, TestPriority, TestStatus, WorkItem } from '../types';
 import EditIcon from './icons/EditIcon';
 import DeleteIcon from './icons/DeleteIcon';
 import WrenchScrewdriverIcon from './icons/WrenchScrewdriverIcon';
 import TestIcon from './icons/TestIcon';
 import ConvertToTaskIcon from './icons/ConvertToTaskIcon';
+import DotsVerticalIcon from './icons/DotsVerticalIcon';
 
 interface TestManagementSectionProps {
     tests: Test[];
@@ -23,6 +24,21 @@ const PRIORITY_STYLES: Record<TestPriority, string> = {
 };
 
 const TestRow: React.FC<{ test: Test; isAssigned: boolean; onSelect: () => void; onEdit: () => void; onDelete: () => void; onAssignTestAsWork: () => void; onAddMarking?: () => void; }> = ({ test, isAssigned, onSelect, onEdit, onDelete, onAddMarking, onAssignTestAsWork }) => {
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
     const score = (test.marksObtained != null && test.totalMarks != null && test.totalMarks > 0)
         ? Math.round((test.marksObtained / test.totalMarks) * 100)
         : null;
@@ -48,18 +64,48 @@ const TestRow: React.FC<{ test: Test; isAssigned: boolean; onSelect: () => void;
                 </td>
             )}
             <td className="px-4 py-3 text-right">
-                <div className="flex items-center justify-end gap-1">
-                    {onAddMarking && <button onClick={(e) => { e.stopPropagation(); onAddMarking(); }} title="Add Marking" className="p-2 text-muted-foreground hover:text-success hover:bg-success/10 rounded-md"><EditIcon className="h-4 w-4" /></button>}
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); onAssignTestAsWork(); }} 
-                        title={isAssigned ? "Already assigned as a task" : "Assign as a work item"}
-                        disabled={isAssigned}
-                        className="p-2 text-muted-foreground rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:text-accent hover:bg-accent/10"
+                <div className="relative" ref={menuRef} onClick={e => e.stopPropagation()}>
+                    <button
+                        onClick={() => setIsMenuOpen(prev => !prev)}
+                        className="p-2 rounded-full text-muted-foreground hover:bg-muted"
+                        aria-haspopup="true"
+                        aria-expanded={isMenuOpen}
+                        aria-label="Test options"
                     >
-                        <ConvertToTaskIcon className="h-4 w-4" />
+                        <DotsVerticalIcon className="h-5 w-5" />
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); onEdit(); }} title="Edit Test Details" className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md"><WrenchScrewdriverIcon className="h-4 w-4" /></button>
-                    <button onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Delete Test" className="p-2 text-muted-foreground hover:text-danger hover:bg-danger/10 rounded-md"><DeleteIcon className="h-4 w-4" /></button>
+                    {isMenuOpen && (
+                        <div className="absolute right-0 mt-2 w-48 bg-card rounded-xl shadow-soft-lg border border-border z-10 py-1.5">
+                            {onAddMarking && (
+                                <button
+                                    onClick={() => { onAddMarking(); setIsMenuOpen(false); }}
+                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-muted"
+                                >
+                                    <EditIcon className="h-4 w-4 text-success" /> Add Marking
+                                </button>
+                            )}
+                            <button
+                                onClick={() => { onAssignTestAsWork(); setIsMenuOpen(false); }}
+                                disabled={isAssigned}
+                                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <ConvertToTaskIcon className="h-4 w-4 text-accent" /> Assign
+                            </button>
+                            <button
+                                onClick={() => { onEdit(); setIsMenuOpen(false); }}
+                                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-muted"
+                            >
+                                <WrenchScrewdriverIcon className="h-4 w-4 text-primary" /> Edit
+                            </button>
+                            <div className="h-px bg-border my-1.5"></div>
+                            <button
+                                onClick={() => { onDelete(); setIsMenuOpen(false); }}
+                                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-danger hover:bg-danger/10"
+                            >
+                                <DeleteIcon className="h-4 w-4" /> Delete
+                            </button>
+                        </div>
+                    )}
                 </div>
             </td>
         </tr>
