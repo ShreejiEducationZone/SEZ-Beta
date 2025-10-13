@@ -1,25 +1,33 @@
 {
-  "name": "copy-of-sez---with--sp--10/13/25",
+  "name": "sez-dashboard",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "vercel-build": "yarn install && yarn build"
   },
   "dependencies": {
+    "@google/genai": "latest",
+    "lodash.isequal": "^4.5.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "@google/genai": "latest",
-    "recharts": "^2.12.7",
     "react-icons": "5.0.1",
-    "lodash.isequal": "^4.5.0"
+    "recharts": "^2.12.7"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^5.4.10"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.52.4",
+    "@rollup/rollup-win32-x64-msvc": "^4.52.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

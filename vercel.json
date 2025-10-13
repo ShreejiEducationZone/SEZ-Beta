@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "buildCommand": "yarn vercel-build",
+  "outputDirectory": "dist",
+  "installCommand": "yarn install",
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
