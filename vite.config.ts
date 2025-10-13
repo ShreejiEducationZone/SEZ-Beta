@@ -22,7 +22,15 @@ export default defineConfig(({ mode }) => {
       build: {
         rollupOptions: {
           external: [],
-        }
+          output: {
+            manualChunks: {
+              vendor: ['react', 'react-dom'],
+              recharts: ['recharts'],
+            }
+          }
+        },
+        target: 'esnext',
+        minify: 'esbuild'
       }
     };
 });
