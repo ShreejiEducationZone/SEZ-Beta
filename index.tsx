@@ -20,16 +20,14 @@ root.render(
     <DataProvider>
       <StudentProvider>
         <SyllabusProvider>
-          {/* FIX: Reordered providers to fix dependency chain. SheetProvider must wrap WorkPoolProvider. */}
-          {/* OPTIMIZATION: WorkPool, Doubts, and Reports logic is now consolidated in WorkPoolProvider. */}
           <SheetProvider>
-            <WorkPoolProvider>
-              <AttendanceProvider>
-                <VideoLibraryProvider>
+            <VideoLibraryProvider>
+              <WorkPoolProvider>
+                <AttendanceProvider>
                   <AuthWrapper />
-                </VideoLibraryProvider>
-              </AttendanceProvider>
-            </WorkPoolProvider>
+                </AttendanceProvider>
+              </WorkPoolProvider>
+            </VideoLibraryProvider>
           </SheetProvider>
         </SyllabusProvider>
       </StudentProvider>

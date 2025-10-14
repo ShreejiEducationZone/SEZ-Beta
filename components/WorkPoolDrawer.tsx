@@ -37,8 +37,6 @@ interface WorkPoolDrawerProps {
 }
 
 const WorkItemCard: FC<{ item: WorkItem; onEdit: (item: WorkItem) => void; onDelete: (id: string) => void; }> = ({ item, onEdit, onDelete }) => {
-    const isVideo = item.links && item.links.length > 0 && item.links[0].includes('youtu');
-
     return (
         <div className="bg-muted/50 p-4 rounded-lg">
             <div className="flex justify-between items-start gap-4">
@@ -48,16 +46,7 @@ const WorkItemCard: FC<{ item: WorkItem; onEdit: (item: WorkItem) => void; onDel
                         <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${PRIORITY_STYLES[item.priority]}`}>{item.priority} Priority</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        {isVideo ? (
-                            <a href={item.links![0]} target="_blank" rel="noopener noreferrer" className="group">
-                                <div className="flex items-center gap-2">
-                                    <FaYoutube className="h-5 w-5 text-red-500 flex-shrink-0" />
-                                    <span className="font-semibold text-foreground group-hover:underline group-hover:text-primary">{item.title}</span>
-                                </div>
-                            </a>
-                        ) : (
-                            <p className="font-semibold text-foreground">{item.title}</p>
-                        )}
+                        <p className="font-semibold text-foreground">{item.title}</p>
                         {item.source === 'sheets' && (
                             <span title="Created via Sheets" className="flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-md bg-success-muted text-success-muted-foreground">
                                 <SheetsIcon className="h-3 w-3" />
@@ -90,6 +79,32 @@ const WorkItemCard: FC<{ item: WorkItem; onEdit: (item: WorkItem) => void; onDel
                     <button onClick={() => onDelete(item.id)} className="p-1.5 text-muted-foreground hover:bg-danger-muted hover:text-danger rounded-md" title="Delete Work"><DeleteIcon className="h-4 w-4" /></button>
                 </div>
             </div>
+            
+            {(item.description || (item.links && item.links.length > 0)) &&
+                <div className="mt-3 pt-3 border-t border-border space-y-3">
+                    {item.description && (
+                        <p className="text-sm text-card-foreground whitespace-pre-wrap">{item.description}</p>
+                    )}
+
+                    {item.links && item.links.length > 0 && (
+                        <div className="space-y-2">
+                            {item.links.map((link, index) => (
+                                <a 
+                                    key={index}
+                                    href={link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="group flex items-center gap-2 p-2 bg-background/50 rounded-lg hover:bg-background transition-colors"
+                                >
+                                    <FaYoutube className="h-5 w-5 text-red-500 flex-shrink-0" />
+                                    <span className="text-sm font-medium text-primary group-hover:underline truncate">{link}</span>
+                                </a>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            }
+
             <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
                 Due: {new Date(item.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
             </div>

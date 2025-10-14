@@ -1,163 +1,74 @@
-import React, { useState, useMemo, FC } from 'react';
-import { useData } from '../context/DataContext';
-// FIX: Import specific context hooks
-import { useWorkPool } from '../context/WorkPoolContext';
-import { Student, VideoLink, SyllabusNode, WorkPriority, WorkItem } from '../types';
-import { WORK_PRIORITIES } from '../constants';
-import SelectField from './form/SelectField';
-import InputField from './form/InputField';
-import { FaTimes, FaYoutube } from 'react-icons/fa';
-// FIX: Import useStudent to get students data
+import React, { useState, useMemo } from 'react';
 import { useStudent } from '../context/StudentContext';
+import { Student } from '../types';
+import PlaceholderAvatar from './PlaceholderAvatar';
 
-interface AssignVideoModalProps {
-    info: {
-        video: VideoLink;
-        // FIX: Add `level` to the node type to correctly reflect the data being passed.
-        node: Partial<SyllabusNode & { level: number }>;
-        subject: string;
-    };
+interface AssignVideoStudentSelectModalProps {
     onClose: () => void;
+    onSelectStudent: (student: Student) => void;
 }
 
-const AssignVideoModal: FC<AssignVideoModalProps> = ({ info, onClose }) => {
-    // FIX: Get data from specific context hooks
-    const { handleSaveWorkItem } = useWorkPool();
-    const { showToast } = useData();
-    // FIX: Get students from useStudent hook
+const AssignVideoStudentSelectModal: React.FC<AssignVideoStudentSelectModalProps> = ({ onClose, onSelectStudent }) => {
     const { students } = useStudent();
-    const [selectedStudents, setSelectedStudents] = useState<Student[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [dueDate, setDueDate] = useState('');
-    const [priority, setPriority] = useState<WorkPriority>('Medium');
-    const [isSaving, setIsSaving] = useState(false);
-    const [error, setError] = useState('');
 
     const activeStudents = useMemo(() => students.filter(s => !s.isArchived), [students]);
 
     const filteredStudents = useMemo(() => {
-        const selectedIds = new Set(selectedStudents.map(s => s.id));
-        return activeStudents.filter(student => 
-            !selectedIds.has(student.id) &&
-            student.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-    }, [activeStudents, selectedStudents, searchQuery]);
+        if (!searchQuery) return activeStudents;
+        return activeStudents.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    }, [activeStudents, searchQuery]);
 
-    const addStudent = (student: Student) => {
-        setSelectedStudents(prev => [...prev, student]);
-        setSearchQuery('');
-    };
-
-    const removeStudent = (studentId: string) => {
-        setSelectedStudents(prev => prev.filter(s => s.id !== studentId));
-    };
-
-    const handleAssign = async () => {
-        if (selectedStudents.length === 0) {
-            setError('Please select at least one student.');
-            return;
-        }
-        if (!dueDate) {
-            setError('Please set a due date.');
-            return;
-        }
-        setError('');
-        setIsSaving(true);
-        
-        const workPromises = selectedStudents.map(student => {
-            const newWorkItem: WorkItem = {
-                id: `w_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                studentId: student.id,
-                title: `Watch: ${info.video.title}`,
-                subject: info.subject,
-                chapterNo: info.node.no || '',
-                chapterName: info.node.name || 'General',
-                topic: info.node.level > 1 ? info.node.name : undefined,
-                description: `Please watch the assigned video: "${info.video.title}"`,
-                dueDate: dueDate,
-                status: 'Assign',
-                priority: priority,
-                links: [info.video.url],
-                dateCreated: new Date().toISOString().split('T')[0],
-                source: 'syllabus',
-            };
-            return handleSaveWorkItem(newWorkItem, false);
-        });
-
-        try {
-            await Promise.all(workPromises);
-            showToast(`Assigned video to ${selectedStudents.length} student(s).`, 'success');
-            onClose();
-        } catch (err) {
-            showToast('Failed to assign video. Please try again.', 'error');
-        } finally {
-            setIsSaving(false);
-        }
-    };
+    // Card component for students in the grid
+    const StudentGridCard: React.FC<{ student: Student, onClick: () => void }> = ({ student, onClick }) => (
+        <div 
+            onClick={onClick} 
+            className="group flex flex-col items-center text-center gap-2 p-4 rounded-xl cursor-pointer hover:bg-muted border border-transparent hover:border-border transition-all duration-200"
+            role="button"
+            aria-label={`Select student ${student.name}`}
+        >
+            <div className="w-20 h-20 rounded-full overflow-hidden bg-muted flex-shrink-0 ring-2 ring-offset-2 ring-offset-card ring-transparent group-hover:ring-primary transition-all duration-200">
+                {student.avatarUrl ? <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" /> : <PlaceholderAvatar />}
+            </div>
+            <div className="w-full">
+                <p className="font-semibold text-foreground truncate" title={student.name}>{student.name}</p>
+                <p className="text-xs text-muted-foreground">Grade {student.grade} • {student.board}</p>
+            </div>
+        </div>
+    );
 
     return (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="bg-card/90 backdrop-blur-lg border border-border rounded-2xl shadow-soft-xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                <div className="flex-shrink-0">
-                    <h3 className="text-xl font-bold text-foreground">Assign Video to Student(s)</h3>
-                    <div className="flex items-center gap-3 mt-2 p-3 bg-muted/50 rounded-lg">
-                        <FaYoutube className="h-5 w-5 text-red-500 flex-shrink-0" />
-                        <p className="font-semibold truncate">{info.video.title}</p>
-                    </div>
-                </div>
-
-                <div className="flex-grow overflow-y-auto space-y-4 mt-4 thin-scrollbar pr-2 -mr-4">
-                    <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">Select Students</label>
-                        <div className="p-2 border border-border rounded-lg bg-background">
-                            {selectedStudents.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mb-2">
-                                    {selectedStudents.map(student => (
-                                        <div key={student.id} className="flex items-center gap-2 bg-primary/10 text-primary text-sm font-medium pl-3 pr-1 py-1 rounded-full">
-                                            <span>{student.name}</span>
-                                            <button onClick={() => removeStudent(student.id)} className="w-5 h-5 rounded-full bg-primary/20 hover:bg-primary/40 flex items-center justify-center">
-                                                <FaTimes className="h-3 w-3" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={e => setSearchQuery(e.target.value)}
-                                    placeholder="Search for students to add..."
-                                    className="w-full h-10 px-3 rounded-md border border-border bg-background"
-                                />
-                                {searchQuery && filteredStudents.length > 0 && (
-                                    <ul className="absolute z-10 w-full mt-1 bg-card border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
-                                        {filteredStudents.map(student => (
-                                            <li key={student.id} onClick={() => addStudent(student)} className="px-3 py-2 cursor-pointer hover:bg-muted">
-                                                {student.name} <span className="text-xs text-muted-foreground"> (Grade {student.grade})</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
+            <div 
+                className="bg-card/90 backdrop-blur-lg border border-border rounded-2xl shadow-soft-xl p-6 w-full max-w-4xl h-[80vh] flex flex-col" 
+                onClick={e => e.stopPropagation()}
+            >
+                <h3 className="text-xl font-bold text-foreground mb-4 flex-shrink-0">Select a Student to Assign Video</h3>
+                <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Search for a student..."
+                    className="w-full h-10 px-3 rounded-lg border border-border bg-background mb-4 flex-shrink-0"
+                    autoFocus
+                />
+                <div className="flex-grow overflow-y-auto thin-scrollbar pr-2 -mr-4">
+                    {filteredStudents.length > 0 ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            {filteredStudents.map(student => (
+                                <StudentGridCard key={student.id} student={student} onClick={() => onSelectStudent(student)} />
+                            ))}
                         </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <InputField type="date" label="Due Date" name="dueDate" value={dueDate} onChange={e => setDueDate(e.target.value)} required />
-                        <SelectField label="Priority" name="priority" value={priority} onChange={e => setPriority(e.target.value as WorkPriority)} options={WORK_PRIORITIES} />
-                    </div>
-                    {error && <p className="text-sm text-danger">{error}</p>}
+                    ) : (
+                        <p className="text-center text-muted-foreground py-8">No students found.</p>
+                    )}
                 </div>
-
-                <div className="mt-6 flex justify-end space-x-3 flex-shrink-0">
+                <div className="mt-6 flex justify-end flex-shrink-0">
                     <button onClick={onClose} className="h-10 px-5 rounded-lg bg-muted text-muted-foreground hover:bg-border font-semibold">Cancel</button>
-                    <button onClick={handleAssign} disabled={isSaving} className="h-10 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-semibold disabled:bg-muted disabled:cursor-wait min-w-[120px]">
-                        {isSaving ? 'Assigning...' : 'Assign'}
-                    </button>
                 </div>
             </div>
         </div>
     );
 };
 
-export default AssignVideoModal;
+export default AssignVideoStudentSelectModal;

@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Student, SubjectData, Test, MistakeTypeDefinition, AreaDefinition, WorkItem } from '../types';
-import TestForm from './TestForm';
 import TestDetailModal from './TestDetailModal';
 import ScoreTrendChart from './ScoreTrendChart';
 import TestSchedule from './TestSchedule';
@@ -15,14 +14,11 @@ import CalendarIcon from './icons/CalendarIcon';
 import XCircleIcon from './icons/XCircleIcon';
 import OverallStrengthsWeaknesses from './OverallStrengthsWeaknesses';
 // FIX: Import specific context hooks
-import { useData } from '../context/DataContext';
 import { useSyllabus } from '../context/SyllabusContext';
-import { useReports } from '../context/ReportsContext';
 // FIX: Import useStudent to get students data
 import { useStudent } from '../context/StudentContext';
 import { FaPlus } from 'react-icons/fa';
 import { useWorkPool } from '../context/WorkPoolContext';
-import WorkForm from './WorkForm';
 
 const getScoreColor = (score: number) => {
     if (score >= 80) return 'hsl(var(--success))';
@@ -43,19 +39,13 @@ const StatCard: React.FC<{icon: React.ElementType, iconBgClass: string, iconClas
 );
 
 const ReportsPage: React.FC = () => {
-    // FIX: Get `subjectAreas` from `useSyllabus` instead of `useData` to fix a runtime error.
-    const { allStudentSubjects, subjectAreas } = useSyllabus();
-    const { tests, handleSaveTest, handleDeleteTest } = useReports();
-    const { allMistakeTypes, showToast } = useData();
+    const { allStudentSubjects } = useSyllabus();
     const { students } = useStudent();
-    const { workItems, handleSaveWorkItem } = useWorkPool();
+    const { tests, handleSaveTest, handleDeleteTest, workItems, openWorkForm, openTestForm } = useWorkPool();
     
     const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
-    const [isTestFormOpen, setIsTestFormOpen] = useState(false);
-    const [editingTest, setEditingTest] = useState<Test | null>(null);
     const [viewingTest, setViewingTest] = useState<Test | null>(null);
     const [studentFilters, setStudentFilters] = useState({ searchQuery: '' });
-    const [workitemFromTest, setWorkitemFromTest] = useState<Partial<WorkItem> | null>(null);
 
     const activeStudents = useMemo(() => students.filter(s => !s.isArchived), [students]);
 
@@ -91,9 +81,10 @@ const ReportsPage: React.FC = () => {
     const stats = useMemo(() => (selectedStudentId && studentPerformanceData.has(selectedStudentId)) ? studentPerformanceData.get(selectedStudentId)! : { avgScore: 0, completedTests: 0, upcomingTests: 0, absentTests: 0 }, [selectedStudentId, studentPerformanceData]);
 
     const handleAssignTestAsWork = (test: Test) => {
+        if (!selectedStudent) return;
         const alreadyExists = workItems.some(w => w.source === 'test' && w.linkedTestId === test.id);
         if (alreadyExists) {
-            showToast("A work item for this test has already been created.", "info");
+            alert("A work item for this test has already been created.");
             return;
         }
     
@@ -111,16 +102,13 @@ const ReportsPage: React.FC = () => {
         };
         
         setViewingTest(null);
-        setEditingTest(null);
-        setIsTestFormOpen(false);
-        setWorkitemFromTest(workItemToCreate);
+        openWorkForm(selectedStudent, workItemToCreate);
     };
 
-    const handleAddTest = () => { setEditingTest(null); setIsTestFormOpen(true); };
-    const handleEditTest = (test: Test) => { setViewingTest(null); setEditingTest(test); setIsTestFormOpen(true); };
-    const handleAddMarking = (test: Test) => { setViewingTest(null); setEditingTest(test); setIsTestFormOpen(true); };
+    const handleAddTest = () => { if(selectedStudent) openTestForm(selectedStudent); };
+    const handleEditTest = (test: Test) => { if(selectedStudent) { setViewingTest(null); openTestForm(selectedStudent, test); } };
+    const handleAddMarking = (test: Test) => { if(selectedStudent) { setViewingTest(null); openTestForm(selectedStudent, test); } };
     const handleDeleteAndCloseModal = (testId: string) => { handleDeleteTest(testId); setViewingTest(null); };
-    const handleCloseForm = () => { setIsTestFormOpen(false); setEditingTest(null); };
     const handleSelectStudent = (studentId: string) => setSelectedStudentId(studentId);
     const handleBackToList = () => setSelectedStudentId(null);
     const scoreData = useMemo(() => [{ name: 'Score', value: stats.avgScore }, { name: 'Remaining', value: 100 - stats.avgScore }], [stats.avgScore]);
@@ -196,17 +184,6 @@ const ReportsPage: React.FC = () => {
                     </div>
                 </div>
             )}
-            {workitemFromTest && selectedStudent && (
-                <WorkForm
-                    student={selectedStudent}
-                    subjects={allStudentSubjects[selectedStudent.id]?.subjects || []}
-                    workItem={workitemFromTest}
-                    workItems={workItems}
-                    onSave={handleSaveWorkItem}
-                    onCancel={() => setWorkitemFromTest(null)}
-                />
-            )}
-            {isTestFormOpen && selectedStudent && <TestForm student={selectedStudent} studentSubjects={allStudentSubjects[selectedStudent.id]?.subjects || []} test={editingTest} onSave={handleSaveTest} onCancel={handleCloseForm} allMistakeTypes={allMistakeTypes} subjectAreas={subjectAreas} />}
             {viewingTest && selectedStudent && <TestDetailModal test={viewingTest} student={selectedStudent} onClose={() => setViewingTest(null)} onAddMarking={handleAddMarking} onEdit={handleEditTest} onDelete={handleDeleteAndCloseModal} />}
         </div>
     );

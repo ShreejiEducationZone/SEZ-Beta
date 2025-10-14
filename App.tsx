@@ -292,7 +292,7 @@ const App: React.FC = () => {
         'ai-assistant': 'AI Assistant',
         'settings': 'Settings',
         'video-library': 'Video Library',
-        'analytics': 'Performance Analytics'
+        'analytics': 'Activity Timeline'
     };
 
     const renderContent = () => {

@@ -1,6 +1,5 @@
 import React, { useState, useMemo, FC, useEffect } from 'react';
 import { Student, SubjectData, SyllabusNode, SheetProgress, SheetColumn, WorkItem } from '../types';
-// FIX: Import specific context hooks
 import { useSyllabus } from '../context/SyllabusContext';
 import { useSheet } from '../context/SheetContext';
 import { useWorkPool } from '../context/WorkPoolContext';
@@ -8,7 +7,7 @@ import { FaChevronLeft, FaPlus } from 'react-icons/fa';
 import ManageSheetColumnsModal from './ManageSheetColumnsModal';
 import WrenchScrewdriverIcon from './icons/WrenchScrewdriverIcon';
 import UnsavedChangesAlert from './UnsavedChangesAlert';
-import AssignSheetTaskModal from './AssignSheetTaskModal';
+import SelectSheetTaskModal from './AssignSheetTaskModal';
 
 interface StudentSheetPageProps {
     student: Student;
@@ -24,16 +23,15 @@ const DEFAULT_COLUMNS: SheetColumn[] = [
 ];
 
 const StudentSheetPage: FC<StudentSheetPageProps> = ({ student, onBack }) => {
-    // FIX: Get data from specific context hooks
     const { allStudentSubjects, handleSaveSubjects } = useSyllabus();
     const { sheetProgress, handleSaveSheetProgress } = useSheet();
-    const { workItems } = useWorkPool();
+    const { workItems, openWorkForm } = useWorkPool();
     const studentSubjects = useMemo(() => allStudentSubjects[student.id]?.subjects || [], [allStudentSubjects, student.id]);
     
     const [selectedSubject, setSelectedSubject] = useState<string>('');
     const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
     const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
-    const [assigningTaskForChapter, setAssigningTaskForChapter] = useState<SyllabusNode | null>(null);
+    const [chapterForTaskSelection, setChapterForTaskSelection] = useState<SyllabusNode | null>(null);
 
     useEffect(() => {
         if (studentSubjects.length > 0 && !selectedSubject) {
@@ -104,6 +102,26 @@ const StudentSheetPage: FC<StudentSheetPageProps> = ({ student, onBack }) => {
             console.error("Failed to save custom columns:", error);
         }
     };
+    
+    const handleTaskSelected = (task: SheetColumn) => {
+        if (!chapterForTaskSelection) return;
+
+        const partialWorkItem: Partial<WorkItem> = {
+            title: `Sheet Task: ${task.name} for Ch ${chapterForTaskSelection.no}`,
+            subject: selectedSubject,
+            chapterNo: chapterForTaskSelection.no,
+            chapterName: chapterForTaskSelection.name,
+            description: `Please complete the "${task.name}" task for this chapter.`,
+            source: 'sheets',
+            sheetTasks: [task.name],
+            sheetTaskIds: [task.id],
+            status: 'Assign',
+        };
+        
+        setChapterForTaskSelection(null); 
+        openWorkForm(student, partialWorkItem);
+    };
+
 
     return (
         <div>
@@ -172,7 +190,7 @@ const StudentSheetPage: FC<StudentSheetPageProps> = ({ student, onBack }) => {
                                     return (
                                         <tr 
                                             key={progressId} 
-                                            onDoubleClick={() => setAssigningTaskForChapter(chapter)}
+                                            onDoubleClick={() => setChapterForTaskSelection(chapter)}
                                             className="group hover:bg-muted/30 cursor-pointer"
                                             title="Double-click to assign tasks"
                                         >
@@ -221,13 +239,14 @@ const StudentSheetPage: FC<StudentSheetPageProps> = ({ student, onBack }) => {
                 onClose={() => setShowUnsavedWarning(false)}
             />
 
-            {assigningTaskForChapter && selectedSubjectData && (
-                <AssignSheetTaskModal
-                    isOpen={!!assigningTaskForChapter}
-                    onClose={() => setAssigningTaskForChapter(null)}
+            {chapterForTaskSelection && selectedSubjectData && (
+                <SelectSheetTaskModal
+                    isOpen={!!chapterForTaskSelection}
+                    onClose={() => setChapterForTaskSelection(null)}
+                    onTaskSelect={handleTaskSelected}
                     student={student}
                     subject={selectedSubjectData.subject}
-                    chapter={assigningTaskForChapter}
+                    chapter={chapterForTaskSelection}
                     columns={columnsToRender}
                     workItems={workItems}
                 />

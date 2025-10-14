@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, FC } from 'react';
-// FIX: Import useVideoLibrary hook
 import { useVideoLibrary } from '../context/VideoLibraryContext';
-import { SyllabusNode, VideoLink } from '../types';
+import { SyllabusNode, VideoLink, Student } from '../types';
 import AddVideoModal from './AddVideoModal';
 import AssignVideoModal from './AssignVideoModal';
 import { FaChevronLeft, FaPlus, FaSearch, FaYoutube } from 'react-icons/fa';
@@ -11,6 +10,7 @@ import DotsVerticalIcon from './icons/DotsVerticalIcon';
 import ShareIcon from './icons/ShareIcon';
 import DeleteIcon from './icons/DeleteIcon';
 import VideoIcon from './icons/VideoIcon';
+import { useWorkPool } from '../context/WorkPoolContext';
 
 interface VideoFocusPageProps {
     group: GroupData | 'universal';
@@ -90,18 +90,34 @@ const VideoCard: FC<{ video: VideoLink; onAssign: () => void; onDelete: () => vo
 };
 
 const VideoFocusPage: React.FC<VideoFocusPageProps> = ({ group, onClose }) => {
-    // FIX: Get video library data from useVideoLibrary hook
     const { videoLibrary, handleSaveVideo, handleDeleteVideo } = useVideoLibrary();
+    const { openWorkForm } = useWorkPool();
+
     const [activeSubject, setActiveSubject] = useState(group !== 'universal' ? group.subjects[0]?.subject || '' : 'universal');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedNode, setSelectedNode] = useState<SyllabusNode & { level: number } | null>(null);
     const [nodeForVideoModal, setNodeForVideoModal] = useState<SyllabusNode | null>(null);
-    const [assigningInfo, setAssigningInfo] = useState<{ video: VideoLink; node: Partial<SyllabusNode>; subject: string; } | null>(null);
-
+    const [assigningVideo, setAssigningVideo] = useState<VideoLink | null>(null);
+    
     const generateEntryId = (subject: string, nodeNo: string | number) => {
         if (group === 'universal') return 'universal';
         return `${group.school}_${group.board}_${group.grade}_${subject}_${String(nodeNo)}`.replace(/\s+/g, '-');
     };
+
+    const handleStudentSelectedForVideo = (student: Student) => {
+        if (!assigningVideo) return;
+        
+        const initialWorkData = {
+            title: `Watch: ${assigningVideo.title}`,
+            description: `Please watch the assigned video.`,
+            links: [assigningVideo.url],
+            source: 'syllabus' as const,
+        };
+        
+        openWorkForm(student, initialWorkData);
+        setAssigningVideo(null);
+    };
+
 
     // --- Universal Library View ---
     if (group === 'universal') {
@@ -142,11 +158,7 @@ const VideoFocusPage: React.FC<VideoFocusPageProps> = ({ group, onClose }) => {
                                     key={video.id}
                                     video={video}
                                     onDelete={() => handleDelete(video.id)}
-                                    onAssign={() => setAssigningInfo({
-                                        video,
-                                        node: { name: 'General', no: 'N/A' },
-                                        subject: 'General'
-                                    })}
+                                    onAssign={() => setAssigningVideo(video)}
                                 />
                             ))}
                         </div>
@@ -163,7 +175,7 @@ const VideoFocusPage: React.FC<VideoFocusPageProps> = ({ group, onClose }) => {
                 </main>
 
                 {nodeForVideoModal && <AddVideoModal nodeName="Universal Video" onClose={() => setNodeForVideoModal(null)} onSave={handleSave} />}
-                {assigningInfo && <AssignVideoModal info={assigningInfo} onClose={() => setAssigningInfo(null)} />}
+                {assigningVideo && <AssignVideoModal onClose={() => setAssigningVideo(null)} onSelectStudent={handleStudentSelectedForVideo} />}
             </div>
         );
     }
@@ -278,7 +290,7 @@ const VideoFocusPage: React.FC<VideoFocusPageProps> = ({ group, onClose }) => {
                                 {videosToShow.length > 0 ? (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                                         {videosToShow.map(video => (
-                                            <VideoCard key={video.id} video={video} onDelete={() => handleDelete(video.id)} onAssign={() => setAssigningInfo({ video, node: selectedNode, subject: activeSubject })} />
+                                            <VideoCard key={video.id} video={video} onDelete={() => handleDelete(video.id)} onAssign={() => setAssigningVideo(video)} />
                                         ))}
                                     </div>
                                 ) : (
@@ -304,7 +316,7 @@ const VideoFocusPage: React.FC<VideoFocusPageProps> = ({ group, onClose }) => {
             </div>
             
             {nodeForVideoModal && <AddVideoModal nodeName={nodeForVideoModal.name!} onClose={() => setNodeForVideoModal(null)} onSave={handleSave} />}
-            {assigningInfo && <AssignVideoModal info={assigningInfo} onClose={() => setAssigningInfo(null)} />}
+            {assigningVideo && <AssignVideoModal onClose={() => setAssigningVideo(null)} onSelectStudent={handleStudentSelectedForVideo} />}
         </div>
     );
 }

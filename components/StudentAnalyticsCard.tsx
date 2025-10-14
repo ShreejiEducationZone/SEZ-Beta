@@ -1,12 +1,11 @@
 import React from 'react';
 import { Student } from '../types';
 import PlaceholderAvatar from './PlaceholderAvatar';
-import SparklesIcon from './icons/SparklesIcon';
-import WarningIcon from './icons/WarningIcon';
+import { FaTasks } from 'react-icons/fa';
 
 interface StudentAnalyticsCardProps {
     student: Student;
-    focusAreaCount: number;
+    focusAreaCount: number; // This will now represent totalActivities
     onSelect: () => void;
 }
 
@@ -30,10 +29,10 @@ const StudentAnalyticsCard: React.FC<StudentAnalyticsCardProps> = ({ student, fo
                 <h3 className="text-base md:text-xl font-bold mt-2 md:mt-4 text-foreground truncate w-full" title={student.name}>{student.name}</h3>
                 <p className="text-xs md:text-sm text-muted-foreground">{`Grade ${student.grade} • ${student.board}`}</p>
 
-                <div className={`w-full rounded-xl p-2 md:p-3 mt-3 md:mt-4 flex justify-center items-center gap-2 text-sm ${focusAreaCount > 0 ? 'bg-warning-muted' : 'bg-success-muted'}`}>
-                    {focusAreaCount > 0 ? <WarningIcon className="h-5 w-5 text-warning-muted-foreground" /> : <SparklesIcon className="h-5 w-5 text-success-muted-foreground" />}
-                    <span className={`font-bold ${focusAreaCount > 0 ? 'text-warning-muted-foreground' : 'text-success-muted-foreground'}`}>
-                        {focusAreaCount} Focus Area{focusAreaCount !== 1 ? 's' : ''}
+                <div className={`w-full rounded-xl p-2 md:p-3 mt-3 md:mt-4 flex justify-center items-center gap-2 text-sm bg-info-muted`}>
+                    <FaTasks className="h-5 w-5 text-info-muted-foreground" />
+                    <span className={`font-bold text-info-muted-foreground`}>
+                        {focusAreaCount} Activit{focusAreaCount !== 1 ? 'ies' : 'y'}
                     </span>
                 </div>
             </div>

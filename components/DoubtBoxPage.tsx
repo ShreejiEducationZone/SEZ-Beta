@@ -2,7 +2,6 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Student, SubjectData, WorkItem, Doubt } from '../types';
 import StudentDoubtCard from './StudentDoubtCard';
 import DoubtDrawer from './DoubtDrawer';
-import DoubtForm from './DoubtForm';
 import DoubtFilterBar from './DoubtFilterBar';
 import { BOARDS, GRADES, BATCHES, DOUBT_PRIORITIES, DOUBT_STATUSES } from '../constants';
 import DoubtTableView from './DoubtTableView';
@@ -14,8 +13,6 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tool
 // FIX: Import specific context hooks
 import { useSyllabus } from '../context/SyllabusContext';
 import { useWorkPool } from '../context/WorkPoolContext';
-import { useDoubtBox } from '../context/DoubtBoxContext';
-// FIX: Import useStudent to get students data
 import { useStudent } from '../context/StudentContext';
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -42,19 +39,13 @@ const CustomActiveDot = (props: any) => {
 };
 
 const DoubtBoxPage: React.FC = () => {
-    // FIX: Get data from specific context hooks
     const { allStudentSubjects } = useSyllabus();
-    const { workItems, handleSaveWorkItem } = useWorkPool();
-    const { doubts, handleSaveDoubt, handleDeleteDoubt } = useDoubtBox();
-    // FIX: Get students from useStudent hook
+    const { workItems, handleSaveWorkItem, openWorkForm, doubts, handleSaveDoubt, handleDeleteDoubt, openDoubtForm } = useWorkPool();
     const { students } = useStudent();
 
     const [showArchived, setShowArchived] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-    const [studentForNewDoubt, setStudentForNewDoubt] = useState<Student | null>(null);
     const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-    const [editingDoubt, setEditingDoubt] = useState<Doubt | null>(null);
-    const [studentForEditingDoubt, setStudentForEditingDoubt] = useState<Student | null>(null);
     const [viewingDoubt, setViewingDoubt] = useState<Doubt | null>(null);
     const [viewingWorkItem, setViewingWorkItem] = useState<WorkItem | null>(null);
 
@@ -169,10 +160,9 @@ const DoubtBoxPage: React.FC = () => {
     const handleEditDoubt = useCallback((doubt: Doubt) => {
         const student = students.find(s => s.id === doubt.studentId);
         if (student) {
-            setStudentForEditingDoubt(student);
-            setEditingDoubt(doubt);
+            openDoubtForm(student, doubt);
         }
-    }, [students]);
+    }, [students, openDoubtForm]);
 
     const handleResolveDoubt = useCallback((doubt: Doubt) => {
         const linkedWorkItem = workItems.find(item => item.linkedDoubtId === doubt.id && item.source === 'doubt');
@@ -186,6 +176,11 @@ const DoubtBoxPage: React.FC = () => {
 
     const handleViewTask = useCallback((workItem: WorkItem) => setViewingWorkItem(workItem), []);
     const studentForWorkItemModal = useMemo(() => viewingWorkItem ? students.find(s => s.id === viewingWorkItem.studentId) || null : null, [viewingWorkItem, students]);
+
+    const handleConvertToTask = (student: Student, partialWorkItem: Partial<WorkItem>) => {
+        setSelectedStudent(null);
+        openWorkForm(student, partialWorkItem);
+    };
 
     return (
         <div>
@@ -272,20 +267,17 @@ const DoubtBoxPage: React.FC = () => {
                 <DoubtDrawer 
                     student={selectedStudent}
                     doubts={doubtsByStudent[selectedStudent.id] || []}
-                    subjects={allStudentSubjects[selectedStudent.id]?.subjects || []}
                     workItems={workItems.filter(w => w.studentId === selectedStudent.id)}
                     onClose={() => setSelectedStudent(null)}
-                    onSaveDoubt={handleSaveDoubt}
-                    onDeleteDoubt={handleDeleteDoubt}
-                    onSaveWorkItem={handleSaveWorkItem}
+                    onConvertToTask={handleConvertToTask}
                     onAddDoubt={() => {
                         const studentForNew = selectedStudent;
                         setSelectedStudent(null);
-                        setStudentForNewDoubt(studentForNew);
+                        openDoubtForm(studentForNew);
                     }}
                 />
             )}
-            {(studentForNewDoubt || (editingDoubt && studentForEditingDoubt)) && <DoubtForm student={studentForNewDoubt || studentForEditingDoubt!} subjects={allStudentSubjects[studentForNewDoubt?.id || studentForEditingDoubt!.id]?.subjects || []} workItems={workItems.filter(w => w.studentId === (studentForNewDoubt?.id || studentForEditingDoubt!.id))} doubt={editingDoubt || undefined} onSave={handleSaveDoubt} onCancel={() => { setStudentForNewDoubt(null); setEditingDoubt(null); setStudentForEditingDoubt(null); }} />}
+
             {viewingDoubt && studentForDoubtModal && <DoubtDetailModal doubt={viewingDoubt} student={studentForDoubtModal} linkedWorkItem={linkedWorkItemForDoubtModal} onClose={() => setViewingDoubt(null)} />}
             {viewingWorkItem && studentForWorkItemModal && <WorkItemDetailModal item={viewingWorkItem} student={studentForWorkItemModal} onClose={() => setViewingWorkItem(null)} />}
         </div>

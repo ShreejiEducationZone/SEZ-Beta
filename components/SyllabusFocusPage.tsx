@@ -1,10 +1,11 @@
 import React, { useState, useMemo, FC, useCallback } from 'react';
-import { Student, SubjectData, SyllabusProgress, SyllabusNode, ProgressEntry } from '../types';
+import { Student, SubjectData, SyllabusProgress, SyllabusNode, ProgressEntry, WorkItem, Doubt, Test } from '../types';
 import PlaceholderAvatar from './PlaceholderAvatar';
 import ChevronLeftIcon from './icons/ChevronLeftIcon';
 import AddNoteModal from './AddNoteModal';
 import MilestoneItem from './MilestoneItem';
 import { useSyllabus } from '../context/SyllabusContext';
+import { useWorkPool } from '../context/WorkPoolContext';
 
 const flattenSyllabus = (subjects: SubjectData[]): { subject: string, nodes: (SyllabusNode & { level: number })[] }[] => {
     return subjects.map(subject => {
@@ -37,6 +38,61 @@ const SyllabusFocusPage: FC<SyllabusFocusPageProps> = ({ student, studentSubject
     const [isSaving, setIsSaving] = useState(false);
 
     const { handleBatchUpdateSyllabusProgress } = useSyllabus();
+    const { openWorkForm, openTestForm, openDoubtForm } = useWorkPool();
+
+
+    const getRootChapterForNode = (nodeNo: string | number): SyllabusNode | null => {
+        const subjectData = studentSubjects.find(s => s.subject === activeSubject);
+        if (!subjectData) return null;
+        const rootNo = String(nodeNo).split('.')[0];
+        return subjectData.chapters.find(c => String(c.no) === rootNo) || null;
+    };
+
+
+    // FIX: Update node type to include 'level' property.
+    const handleAssignWork = (node: SyllabusNode & { level: number }) => {
+        const rootChapter = getRootChapterForNode(node.no);
+        if (!rootChapter) return;
+        const partialWorkItem: Partial<WorkItem> = {
+            title: `Work for: ${node.name}`,
+            subject: activeSubject,
+            chapterNo: rootChapter.no,
+            chapterName: rootChapter.name,
+            topic: node.level > 1 ? `${node.no} ${node.name}` : undefined,
+            description: `Complete the work related to "${node.name}".`,
+            source: 'syllabus',
+            status: 'Assign'
+        };
+        openWorkForm(student, partialWorkItem);
+    };
+    
+    // FIX: Update node type to include 'level' property for consistency.
+    const handleScheduleTest = (node: SyllabusNode & { level: number }) => {
+        const rootChapter = getRootChapterForNode(node.no);
+        if (!rootChapter) return;
+        const partialTest: Partial<Test> = {
+            title: `Test on: ${node.name}`,
+            subject: activeSubject,
+            chapters: [{ no: rootChapter.no, name: rootChapter.name }],
+            status: 'Upcoming'
+        };
+        openTestForm(student, partialTest);
+    };
+
+    // FIX: Update node type to include 'level' property.
+    const handleLogDoubt = (node: SyllabusNode & { level: number }) => {
+        const rootChapter = getRootChapterForNode(node.no);
+        if (!rootChapter) return;
+        const partialDoubt: Partial<Doubt> = {
+            subject: activeSubject,
+            chapterNo: rootChapter.no,
+            chapterName: rootChapter.name,
+            topic: node.level > 1 ? `${node.no} ${node.name}` : undefined,
+            origin: 'During Reading'
+        };
+        openDoubtForm(student, partialDoubt);
+    };
+
 
     const progressMap = useMemo(() => {
         const map = new Map<string, SyllabusProgress>();
@@ -54,10 +110,8 @@ const SyllabusFocusPage: FC<SyllabusFocusPageProps> = ({ student, studentSubject
         setPendingChanges(prev => {
             const newChanges = new Map(prev);
             if (newChanges.has(progressId)) {
-                // If it's already pending, toggling again means we're back to the original state. Remove it.
                 newChanges.delete(progressId);
             } else {
-                // It's not pending, so add the toggled state.
                 newChanges.set(progressId, !originalStatus);
             }
             return newChanges;
@@ -141,6 +195,9 @@ const SyllabusFocusPage: FC<SyllabusFocusPageProps> = ({ student, studentSubject
                                 onToggle={handleToggleCompletion}
                                 onOpenNoteModal={setNodeForNote}
                                 onDeleteNote={handleDeleteNote}
+                                onAssignWork={handleAssignWork}
+                                onScheduleTest={handleScheduleTest}
+                                onLogDoubt={handleLogDoubt}
                             />
                         );
                     })}

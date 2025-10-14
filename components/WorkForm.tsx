@@ -4,6 +4,8 @@ import { WORK_STATUSES, WORK_PRIORITIES } from '../constants';
 import InputField from './form/InputField';
 import SelectField from './form/SelectField';
 import TextareaField from './form/TextareaField';
+import VideoIcon from './icons/VideoIcon';
+import SelectVideoModal from './SelectVideoModal';
 
 interface WorkFormProps {
     student: Student;
@@ -48,6 +50,7 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
     const [files, setFiles] = useState<{ name: string; dataUrl: string }[]>(workItem?.files || []);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [isSaving, setIsSaving] = useState(false);
+    const [isSelectVideoModalOpen, setIsSelectVideoModalOpen] = useState(false);
 
     const chapterOptions = useMemo(() => {
         if (!formData.subject) return [];
@@ -104,6 +107,15 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
             };
             reader.readAsDataURL(file);
         });
+    };
+    
+    const handleVideosSelected = (selectedUrls: string[]) => {
+        setFormData(prev => {
+            const existingLinks = prev.links ? prev.links.split(',').map(l => l.trim()).filter(Boolean) : [];
+            const newLinks = new Set([...existingLinks, ...selectedUrls]);
+            return { ...prev, links: Array.from(newLinks).join(', ') };
+        });
+        setIsSelectVideoModalOpen(false);
     };
 
     const removeFile = (index: number) => {
@@ -220,7 +232,17 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
                         <SelectField label="Status" name="status" value={formData.status} onChange={handleChange} options={WORK_STATUSES} />
                         <SelectField label="Priority" name="priority" value={formData.priority} onChange={handleChange} options={WORK_PRIORITIES} />
                     </div>
-                    <TextareaField label="Links (comma-separated)" name="links" value={formData.links} onChange={handleChange} />
+                    <div>
+                        <TextareaField label="Links (comma-separated)" name="links" value={formData.links} onChange={handleChange} />
+                         <button
+                            type="button"
+                            onClick={() => setIsSelectVideoModalOpen(true)}
+                            className="mt-2 flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
+                        >
+                            <VideoIcon className="h-4 w-4" />
+                            Select from Video Library
+                        </button>
+                    </div>
                     <div>
                         <label className="block text-sm font-medium text-muted-foreground">Files</label>
                         <input type="file" multiple onChange={handleFileChange} className="mt-1 block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20" />
@@ -242,6 +264,12 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
                    </div>
                </form>
            </div>
+            {isSelectVideoModalOpen && (
+                <SelectVideoModal
+                    onClose={() => setIsSelectVideoModalOpen(false)}
+                    onSelect={handleVideosSelected}
+                />
+            )}
        </div>
     );
 };

@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Student, SubjectData, WorkItem, WorkHealthStatus } from '../types';
 import StudentWorkCard from './StudentWorkCard';
-import WorkForm from './WorkForm';
 import WorkItemsTable from './WorkItemsTable';
 import WorkPoolFilterBar from './WorkPoolFilterBar';
 import WorkCalendarView from './WorkCalendarView';
@@ -18,13 +17,11 @@ import { useStudent } from '../context/StudentContext';
 const WorkPoolPage: React.FC = () => {
     // FIX: Get data from specific context hooks
     const { allStudentSubjects } = useSyllabus();
-    const { workItems, handleSaveWorkItem, handleDeleteWorkItem } = useWorkPool();
+    const { workItems, handleSaveWorkItem, handleDeleteWorkItem, openWorkForm } = useWorkPool();
     // FIX: Get students from useStudent hook
     const { students } = useStudent();
 
     const [showArchived, setShowArchived] = useState(false);
-    const [studentForNewWork, setStudentForNewWork] = useState<Student | null>(null);
-    const [editingWorkItem, setEditingWorkItem] = useState<WorkItem | null>(null);
     const [viewingStudentWork, setViewingStudentWork] = useState<Student | null>(null);
     const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table');
     const [selectedWorkItem, setSelectedWorkItem] = useState<WorkItem | null>(null);
@@ -156,22 +153,16 @@ const WorkPoolPage: React.FC = () => {
     }, [processedWorkItems]);
 
     const handleEditWork = (item: WorkItem) => {
-        setViewingStudentWork(null); 
-        setEditingWorkItem(item);
-    };
-    
-    const handleCloseForm = () => {
-        setStudentForNewWork(null);
-        setEditingWorkItem(null);
+        const student = students.find(s => s.id === item.studentId);
+        if (student) {
+            setViewingStudentWork(null); 
+            openWorkForm(student, item);
+        }
     };
     
     const handleViewWorkDetails = useCallback((item: WorkItem) => {
         setSelectedWorkItem(item);
     }, []);
-
-    const studentForForm = editingWorkItem 
-        ? students.find(s => s.id === editingWorkItem.studentId) 
-        : studentForNewWork;
 
     const selectedStudentForModal = useMemo(() => {
         if (!selectedWorkItem) return null;
@@ -266,20 +257,9 @@ const WorkPoolPage: React.FC = () => {
                     onEditWorkItem={handleEditWork}
                     onDeleteWorkItem={handleDeleteWorkItem}
                     onAddWork={() => {
+                        openWorkForm(viewingStudentWork);
                         setViewingStudentWork(null);
-                        setStudentForNewWork(viewingStudentWork);
                     }}
-                />
-            )}
-
-            {(studentForNewWork || editingWorkItem) && studentForForm && (
-                <WorkForm
-                    student={studentForForm}
-                    subjects={allStudentSubjects[studentForForm.id]?.subjects || []}
-                    workItem={editingWorkItem || undefined}
-                    workItems={workItems}
-                    onSave={handleSaveWorkItem}
-                    onCancel={handleCloseForm}
                 />
             )}
 

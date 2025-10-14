@@ -1,11 +1,10 @@
 import React from 'react';
 import { FaBookOpen, FaQuestionCircle, FaChartBar, FaCog, FaChevronLeft, FaChevronRight, FaVideo, FaTimes } from 'react-icons/fa';
 import { HiUsers, HiOutlineCollection } from 'react-icons/hi';
-import { MdSubject } from 'react-icons/md';
+import { MdSubject, MdTimeline } from 'react-icons/md';
 import { VscChecklist } from 'react-icons/vsc';
 import { BsCalendar2Check, BsChatDots } from 'react-icons/bs';
 import SheetsIcon from '../icons/SheetsIcon';
-import SparklesIcon from '../icons/SparklesIcon';
 
 
 type Page = 'students' | 'subjects' | 'syllabus' | 'work-pool' | 'doubts' | 'reports' | 'sheets' | 'attendance' | 'settings' | 'ai-assistant' | 'video-library' | 'analytics';
@@ -54,20 +53,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle, currentPage, on
                 <div className="flex items-center justify-center h-20 flex-shrink-0">
                     <FaBookOpen className={`h-8 w-8 text-primary transition-transform duration-500 ${isExpanded ? 'rotate-0' : 'rotate-12'}`} />
                 </div>
-                <nav className="flex-grow flex flex-col space-y-2 p-3 overflow-y-auto thin-scrollbar">
-                    <NavLink to="students" icon={HiUsers} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Students</NavLink>
-                    <NavLink to="subjects" icon={MdSubject} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Subjects</NavLink>
-                    <NavLink to="syllabus" icon={VscChecklist} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Syllabus</NavLink>
-                    <NavLink to="work-pool" icon={HiOutlineCollection} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Work Pool</NavLink>
-                    <NavLink to="doubts" icon={FaQuestionCircle} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Doubt Box</NavLink>
-                    <NavLink to="reports" icon={FaChartBar} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Reports</NavLink>
-                    <NavLink to="analytics" icon={SparklesIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Analytics</NavLink>
-                    <NavLink to="sheets" icon={SheetsIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Sheets</NavLink>
-                    <NavLink to="attendance" icon={BsCalendar2Check} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Attendance</NavLink>
-                    <NavLink to="video-library" icon={FaVideo} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Video Library</NavLink>
-                    <NavLink to="ai-assistant" icon={BsChatDots} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>AI Assistant</NavLink>
-                    <div className="flex-grow" />
-                    <NavLink to="settings" icon={FaCog} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Settings</NavLink>
+                <nav className="flex-grow flex flex-col p-3 overflow-y-hidden">
+                    <div className="flex-grow space-y-2 overflow-y-auto thin-scrollbar pr-1">
+                        <NavLink to="students" icon={HiUsers} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Students</NavLink>
+                        <NavLink to="subjects" icon={MdSubject} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Subjects</NavLink>
+                        <NavLink to="syllabus" icon={VscChecklist} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Syllabus</NavLink>
+                        <NavLink to="work-pool" icon={HiOutlineCollection} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Work Pool</NavLink>
+                        <NavLink to="doubts" icon={FaQuestionCircle} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Doubt Box</NavLink>
+                        <NavLink to="reports" icon={FaChartBar} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Reports</NavLink>
+                        <NavLink to="analytics" icon={MdTimeline} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Activity Timeline</NavLink>
+                        <NavLink to="sheets" icon={SheetsIcon} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Sheets</NavLink>
+                        <NavLink to="attendance" icon={BsCalendar2Check} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Attendance</NavLink>
+                        <NavLink to="video-library" icon={FaVideo} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Video Library</NavLink>
+                        <NavLink to="ai-assistant" icon={BsChatDots} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>AI Assistant</NavLink>
+                    </div>
+                    <div className="flex-shrink-0 pt-2">
+                        <NavLink to="settings" icon={FaCog} currentPage={currentPage} onNavigate={onNavigate} isExpanded={isExpanded}>Settings</NavLink>
+                    </div>
                 </nav>
             </aside>
             <div className="hidden md:block">

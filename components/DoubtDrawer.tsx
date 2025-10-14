@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, FC, useRef, useEffect } from 'react';
 import { Student, Doubt, SubjectData, WorkItem, DoubtStatus, DoubtPriority, WorkItem as WorkItemType } from '../types';
 import PlaceholderAvatar from './PlaceholderAvatar';
@@ -28,6 +27,7 @@ interface DoubtDrawerProps {
     onSaveDoubt: (doubt: Doubt) => void;
     onDeleteDoubt: (doubtId: string) => void;
     onSaveWorkItem: (item: WorkItem) => void;
+    onConvertToTask: (student: Student, workItem: Partial<WorkItem>) => void;
     onAddDoubt: () => void;
 }
 
@@ -44,7 +44,7 @@ const STATUS_STYLES: Record<DoubtStatus, string> = {
 };
 
 
-const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItems, onClose, onSaveDoubt, onDeleteDoubt, onSaveWorkItem, onAddDoubt }) => {
+const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItems, onClose, onSaveDoubt, onDeleteDoubt, onSaveWorkItem, onConvertToTask, onAddDoubt }) => {
     const [activeTab, setActiveTab] = useState<'All' | 'Open' | 'Resolved'>('Open');
     const [editingDoubt, setEditingDoubt] = useState<Doubt | null>(null);
     const [filters, setFilters] = useState({
@@ -202,76 +202,38 @@ const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItem
     };
 
     const handleResolve = (doubt: Doubt) => {
-        // Find the work item linked to this doubt
         const linkedWorkItem = workItems.find(item => item.linkedDoubtId === doubt.id && item.source === 'doubt');
-
-        // If a linked task exists and it's not already completed, mark it as completed.
         if (linkedWorkItem && linkedWorkItem.status !== 'Completed') {
-            const cleanWorkItem: WorkItemType = {
-                id: linkedWorkItem.id, studentId: linkedWorkItem.studentId, title: linkedWorkItem.title, 
-                subject: linkedWorkItem.subject, chapterNo: linkedWorkItem.chapterNo, chapterName: linkedWorkItem.chapterName, 
-                topic: linkedWorkItem.topic, description: linkedWorkItem.description, dueDate: linkedWorkItem.dueDate, 
-                status: 'Completed', priority: linkedWorkItem.priority, links: linkedWorkItem.links, 
-                files: linkedWorkItem.files, mentorNote: linkedWorkItem.mentorNote, dateCreated: linkedWorkItem.dateCreated, 
-                linkedDoubtId: linkedWorkItem.linkedDoubtId, source: linkedWorkItem.source
-            };
-            onSaveWorkItem(cleanWorkItem);
+            onSaveWorkItem({ ...linkedWorkItem, status: 'Completed' });
         }
-
-        const cleanDoubt: Doubt = {
-            id: doubt.id, studentId: doubt.studentId, subject: doubt.subject, chapterNo: doubt.chapterNo, 
-            chapterName: doubt.chapterName, testId: doubt.testId, text: doubt.text, priority: doubt.priority, 
-            origin: doubt.origin, createdAt: doubt.createdAt, status: 'Resolved', 
-            resolvedAt: new Date().toISOString().split('T')[0], attachment: doubt.attachment, voiceNote: doubt.voiceNote
-        };
-        onSaveDoubt(cleanDoubt);
+        onSaveDoubt({ ...doubt, status: 'Resolved', resolvedAt: new Date().toISOString().split('T')[0] });
     };
 
     const handleUndoResolve = (doubt: Doubt) => {
-         const cleanDoubt: Doubt = {
-            id: doubt.id, studentId: doubt.studentId, subject: doubt.subject, chapterNo: doubt.chapterNo, 
-            chapterName: doubt.chapterName, testId: doubt.testId, text: doubt.text, priority: doubt.priority, 
-            origin: doubt.origin, createdAt: doubt.createdAt, status: 'Open', 
-            resolvedAt: undefined, attachment: doubt.attachment, voiceNote: doubt.voiceNote
-        };
-        onSaveDoubt(cleanDoubt);
+         onSaveDoubt({ ...doubt, status: 'Open', resolvedAt: undefined });
     };
 
     const handleConvertToTask = (doubt: Doubt) => {
-        // Safeguard to prevent creating a duplicate task.
         const alreadyExists = workItems.some(item => item.linkedDoubtId === doubt.id);
         if (alreadyExists) {
             alert("This doubt has already been converted to a work task.");
             return;
         }
 
-        const dueDate = new Date();
-        dueDate.setDate(dueDate.getDate() + 3);
-
-        const newWorkItem: WorkItemType = {
-            id: `w_${Date.now()}`,
-            studentId: doubt.studentId,
+        const partialWorkItem: Partial<WorkItem> = {
             title: `Resolve Doubt: ${doubt.chapterName || doubt.subject}`,
             subject: doubt.subject,
-            chapterNo: doubt.chapterNo || '',
-            chapterName: doubt.chapterName || '',
+            chapterNo: doubt.chapterNo,
+            chapterName: doubt.chapterName,
+            topic: doubt.topic,
             description: doubt.text,
-            dueDate: dueDate.toISOString().split('T')[0],
-            status: 'Assign',
             priority: doubt.priority,
-            dateCreated: new Date().toISOString().split('T')[0],
             linkedDoubtId: doubt.id,
             source: 'doubt',
+            status: 'Assign',
         };
-        onSaveWorkItem(newWorkItem);
         
-        const cleanDoubt: Doubt = {
-            id: doubt.id, studentId: doubt.studentId, subject: doubt.subject, chapterNo: doubt.chapterNo, 
-            chapterName: doubt.chapterName, testId: doubt.testId, text: doubt.text, priority: doubt.priority, 
-            origin: doubt.origin, createdAt: doubt.createdAt, status: 'Tasked', resolvedAt: doubt.resolvedAt, 
-            attachment: doubt.attachment, voiceNote: doubt.voiceNote
-        };
-        onSaveDoubt(cleanDoubt);
+        onConvertToTask(student, partialWorkItem);
     };
 
 
