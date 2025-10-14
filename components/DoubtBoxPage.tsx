@@ -267,8 +267,12 @@ const DoubtBoxPage: React.FC = () => {
                 <DoubtDrawer 
                     student={selectedStudent}
                     doubts={doubtsByStudent[selectedStudent.id] || []}
+                    subjects={allStudentSubjects[selectedStudent.id]?.subjects || []}
                     workItems={workItems.filter(w => w.studentId === selectedStudent.id)}
                     onClose={() => setSelectedStudent(null)}
+                    onSaveDoubt={handleSaveDoubt}
+                    onDeleteDoubt={handleDeleteDoubt}
+                    onSaveWorkItem={handleSaveWorkItem}
                     onConvertToTask={handleConvertToTask}
                     onAddDoubt={() => {
                         const studentForNew = selectedStudent;
