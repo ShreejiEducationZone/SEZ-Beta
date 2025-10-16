@@ -66,7 +66,7 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose
                 aria-hidden="true"
             ></div>
             <div
-                className={`fixed top-0 right-0 w-full max-w-md h-full bg-card/80 dark:bg-card/70 backdrop-blur-xl border-l border-border shadow-soft-xl flex flex-col transition-transform duration-300 ease-in-out z-50 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                className={`fixed top-0 right-0 w-full max-w-md h-full bg-card/80 dark:bg-card/70 backdrop-blur-xl border-l border-border shadow-soft-xl flex flex-col transition-transform duration-300 ease-in-out z-50 rounded-l-2xl ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="notification-drawer-title"

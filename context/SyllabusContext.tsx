@@ -1,21 +1,15 @@
 import React, { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
-// FIX: Import getDocument to fetch subjectAreas configuration.
 import { getCollection, setDocument, getDocument, runBatch } from '../firebase';
-// FIX: Import AreaDefinition type.
 import { SubjectData, SyllabusProgress, ProgressEntry, SheetColumn, AreaDefinition } from '../types';
 import { useData } from './DataContext';
 
 interface SyllabusContextType {
     allStudentSubjects: { [key: string]: { studentId: string; subjects: SubjectData[] } };
     syllabusProgress: SyllabusProgress[];
-    // FIX: Add subjectAreas to the context type.
-    subjectAreas: { [key: string]: AreaDefinition[] };
     isLoading: boolean;
     handleSaveSubjects: (studentId: string, subjects: SubjectData[]) => Promise<void>;
     handleUpdateSyllabusNode: (studentId: string, subject: string, nodeNo: string | number, updates: { isCompleted?: boolean; notesToAdd?: ProgressEntry[]; noteIndicesToDelete?: number[] }) => Promise<void>;
     handleBatchUpdateSyllabusProgress: (changes: Map<string, boolean>) => Promise<void>;
-    // FIX: Add handleSaveSubjectAreas to the context type.
-    handleSaveSubjectAreas: (areas: { [key: string]: AreaDefinition[] }) => Promise<void>;
 }
 
 const SyllabusContext = createContext<SyllabusContextType | undefined>(undefined);
@@ -31,8 +25,6 @@ const DEFAULT_SHEET_COLUMNS: SheetColumn[] = [
 export const SyllabusProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [allStudentSubjects, setAllStudentSubjects] = useState<{ [key: string]: { studentId: string; subjects: SubjectData[] } }>({});
     const [syllabusProgress, setSyllabusProgress] = useState<SyllabusProgress[]>([]);
-    // FIX: Add state for subjectAreas.
-    const [subjectAreas, setSubjectAreas] = useState<{ [key: string]: AreaDefinition[] }>({});
     const [isLoading, setIsLoading] = useState(false);
     
     const { currentUser, showToast } = useData();
@@ -42,17 +34,13 @@ export const SyllabusProvider: React.FC<{ children: ReactNode }> = ({ children }
             if (!currentUser) {
                 setAllStudentSubjects({});
                 setSyllabusProgress([]);
-                // FIX: Reset subjectAreas on logout.
-                setSubjectAreas({});
                 return;
             }
             setIsLoading(true);
             try {
-                // FIX: Fetch subjectAreas configuration along with other syllabus data.
-                const [subjectsData, syllabusProgressData, subjectAreasDoc] = await Promise.all([
+                const [subjectsData, syllabusProgressData] = await Promise.all([
                     getCollection("studentSubjects"),
                     getCollection("syllabusProgress"),
-                    getDocument("configuration", "subjectAreas"),
                 ]);
                 
                 const studentId = currentUser.studentId;
@@ -68,13 +56,6 @@ export const SyllabusProvider: React.FC<{ children: ReactNode }> = ({ children }
 
                 setSyllabusProgress(isAdmin ? syllabusProgressData as SyllabusProgress[] : (syllabusProgressData as SyllabusProgress[]).filter(p => p.studentId === studentId));
                 
-                // FIX: Set subjectAreas state from fetched data.
-                if (subjectAreasDoc && (subjectAreasDoc as any).areasBySubject) {
-                    setSubjectAreas((subjectAreasDoc as any).areasBySubject);
-                } else {
-                    setSubjectAreas({});
-                }
-
             } catch (error) {
                 console.error("Failed to fetch syllabus data:", error);
                 showToast("Could not load syllabus data.", 'error');
@@ -93,6 +74,7 @@ export const SyllabusProvider: React.FC<{ children: ReactNode }> = ({ children }
         } catch (error: any) {
             console.error("Error saving subjects:", error);
             showToast(`Failed to save subjects: ${error.message}`, 'error');
+            throw error;
         }
     }, [showToast]);
 
@@ -162,21 +144,9 @@ export const SyllabusProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
     }, [syllabusProgress, showToast]);
 
-    // FIX: Add handler function for saving subject areas.
-    const handleSaveSubjectAreas = useCallback(async (areas: { [key: string]: AreaDefinition[] }) => {
-        try {
-            await setDocument("configuration", "subjectAreas", { areasBySubject: areas });
-            setSubjectAreas(areas);
-            showToast('Subject areas saved.', 'success');
-        } catch (error: any) {
-            showToast(`Failed to save subject areas: ${error.message}`, 'error');
-            throw error;
-        }
-    }, [showToast]);
+    const value = { allStudentSubjects, syllabusProgress, isLoading, handleSaveSubjects, handleUpdateSyllabusNode, handleBatchUpdateSyllabusProgress };
 
-    const value = { allStudentSubjects, syllabusProgress, isLoading, handleSaveSubjects, handleUpdateSyllabusNode, subjectAreas, handleSaveSubjectAreas, handleBatchUpdateSyllabusProgress };
-
-    return <SyllabusContext.Provider value={value}>{children}</SyllabusContext.Provider>;
+    return <SyllabusContext.Provider value={value as SyllabusContextType}>{children}</SyllabusContext.Provider>;
 };
 
 export const useSyllabus = () => {

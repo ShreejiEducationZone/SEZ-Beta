@@ -1,9 +1,10 @@
-import React from 'react';
-import { Test, Student, TestPriority, TestStatus } from '../types';
+import React, { useMemo } from 'react';
+import { Test, Student, TestPriority, TestStatus, SubjectData, SyllabusNode } from '../types';
 
 interface TestDetailModalProps {
     test: Test;
     student: Student;
+    studentSubjects: SubjectData[];
     onClose: () => void;
     onAddMarking: (test: Test) => void;
     onEdit: (test: Test) => void;
@@ -30,13 +31,26 @@ const DetailRow: React.FC<{ label: string; children: React.ReactNode; className?
 );
 
 
-const TestDetailModal: React.FC<TestDetailModalProps> = ({ test, student, onClose, onAddMarking, onEdit, onDelete }) => {
+const TestDetailModal: React.FC<TestDetailModalProps> = ({ test, student, studentSubjects, onClose, onAddMarking, onEdit, onDelete }) => {
     
     const scorePercentage = (test.marksObtained != null && test.totalMarks != null && test.totalMarks > 0)
         ? Math.round((test.marksObtained / test.totalMarks) * 100)
         : null;
+        
+    const nodeMap = useMemo(() => {
+        const map = new Map<string, string>();
+        const subjectData = studentSubjects.find(s => s.subject === test.subject);
+        if (!subjectData) return map;
+        const recurse = (nodes: SyllabusNode[]) => {
+            nodes.forEach(node => {
+                map.set(String(node.no), node.name);
+                if (node.children) recurse(node.children);
+            });
+        };
+        recurse(subjectData.chapters);
+        return map;
+    }, [studentSubjects, test.subject]);
 
-    // Helper to safely convert legacy string data to an array for rendering
     const getAreasAsArray = (areas: string | string[] | undefined): string[] => {
         if (!areas) return [];
         if (Array.isArray(areas)) return areas;
@@ -59,7 +73,7 @@ const TestDetailModal: React.FC<TestDetailModalProps> = ({ test, student, onClos
                 
                 <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
                     <DetailRow label="Subject"><p>{test.subject}</p></DetailRow>
-                    <DetailRow label="Test Date"><p>{new Date(test.testDate).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}</p></DetailRow>
+                    <DetailRow label="Test Date"><p>{new Date(test.testDate.replace(/-/g, '/')).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}</p></DetailRow>
                     <DetailRow label="Status"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${STATUS_STYLES[test.status]}`}>{test.status}</span></DetailRow>
                     <DetailRow label="Priority"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${PRIORITY_STYLES[test.priority]}`}>{test.priority}</span></DetailRow>
                 </div>
@@ -99,14 +113,14 @@ const TestDetailModal: React.FC<TestDetailModalProps> = ({ test, student, onClos
                              <DetailRow label="Strong Areas">
                                 {strongAreas.length > 0 ? (
                                     <div className="flex flex-wrap gap-2">
-                                        {strongAreas.map(area => <span key={area} className="px-2 py-1 text-xs font-medium rounded-full bg-success-muted text-success-muted-foreground">{area}</span>)}
+                                        {strongAreas.map(areaNo => <span key={areaNo} className="px-2 py-1 text-xs font-medium rounded-full bg-success-muted text-success-muted-foreground">{nodeMap.get(areaNo) ? `${areaNo}. ${nodeMap.get(areaNo)}` : `Area #${areaNo}`}</span>)}
                                     </div>
                                 ) : <p className="text-sm italic text-muted-foreground">No strong areas logged.</p>}
                             </DetailRow>
                              <DetailRow label="Weak Areas">
                                 {weakAreas.length > 0 ? (
                                     <div className="flex flex-wrap gap-2">
-                                        {weakAreas.map(area => <span key={area} className="px-2 py-1 text-xs font-medium rounded-full bg-danger-muted text-danger-muted-foreground">{area}</span>)}
+                                        {weakAreas.map(areaNo => <span key={areaNo} className="px-2 py-1 text-xs font-medium rounded-full bg-danger-muted text-danger-muted-foreground">{nodeMap.get(areaNo) ? `${areaNo}. ${nodeMap.get(areaNo)}` : `Area #${areaNo}`}</span>)}
                                     </div>
                                 ) : <p className="text-sm italic text-muted-foreground">No weak areas logged.</p>}
                             </DetailRow>

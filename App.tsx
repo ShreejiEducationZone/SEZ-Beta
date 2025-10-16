@@ -431,35 +431,37 @@ const App: React.FC = () => {
             )}
 
             <div className={`transition-all duration-300 ${isSidebarExpanded ? 'md:pl-72' : 'md:pl-24'}`}>
-                <header className="sticky top-4 mx-4 z-30">
-                     <div className="bg-card/80 dark:bg-card/70 backdrop-blur-lg rounded-2xl border border-border flex items-center justify-between h-16 px-6">
-                        <div className="flex items-center gap-4">
-                            <button onClick={() => setSidebarExpanded(!isSidebarExpanded)} className="md:hidden p-2 -ml-2 rounded-md text-muted-foreground hover:bg-muted">
-                                <FaBars className="h-6 w-6" />
-                            </button>
-                            <h1 className="text-2xl font-bold text-foreground">{pageTitles[currentPage]}</h1>
+                <div className="max-w-7xl mx-auto">
+                    <header className="sticky top-4 mx-4 z-30">
+                        <div className="bg-card/80 dark:bg-card/70 backdrop-blur-lg rounded-2xl border border-border flex items-center justify-between h-16 px-6">
+                            <div className="flex items-center gap-4">
+                                <button onClick={() => setSidebarExpanded(!isSidebarExpanded)} className="md:hidden p-2 -ml-2 rounded-md text-muted-foreground hover:bg-muted">
+                                    <FaBars className="h-6 w-6" />
+                                </button>
+                                <h1 className="text-2xl font-bold text-foreground">{pageTitles[currentPage]}</h1>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setNotificationDrawerOpen(true)}
+                                    className="relative p-2 rounded-full text-muted-foreground hover:bg-muted focus:outline-none"
+                                    aria-label={`Notifications (${notificationCount})`}
+                                >
+                                    <FaBell className="h-6 w-6" />
+                                    {notificationCount > 0 && (
+                                        <span className="absolute top-1 right-1 h-5 w-5 flex items-center justify-center rounded-full bg-danger text-danger-foreground text-xs font-bold ring-2 ring-card">
+                                            {notificationCount}
+                                        </span>
+                                    )}
+                                </button>
+                                <ProfileDropdown />
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                             <button
-                                onClick={() => setNotificationDrawerOpen(true)}
-                                className="relative p-2 rounded-full text-muted-foreground hover:bg-muted focus:outline-none"
-                                aria-label={`Notifications (${notificationCount})`}
-                            >
-                                <FaBell className="h-6 w-6" />
-                                {notificationCount > 0 && (
-                                    <span className="absolute top-1 right-1 h-5 w-5 flex items-center justify-center rounded-full bg-danger text-danger-foreground text-xs font-bold ring-2 ring-card">
-                                        {notificationCount}
-                                    </span>
-                                )}
-                            </button>
-                            <ProfileDropdown />
-                        </div>
-                     </div>
-                </header>
-                
-                <main className="p-4 md:p-8">
-                    {renderContent()}
-                </main>
+                    </header>
+                    
+                    <main className="p-4 md:p-8">
+                        {renderContent()}
+                    </main>
+                </div>
             </div>
 
             <NotificationDrawer

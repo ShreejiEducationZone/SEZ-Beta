@@ -45,7 +45,7 @@ const STATUS_STYLES: Record<DoubtStatus, string> = {
 
 
 const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItems, onClose, onSaveDoubt, onDeleteDoubt, onSaveWorkItem, onConvertToTask, onAddDoubt }) => {
-    const [activeTab, setActiveTab] = useState<'All' | 'Open' | 'Resolved'>('Open');
+    const [activeTab, setActiveTab] = useState<'Open' | 'Tasked' | 'Resolved'>('Open');
     const [editingDoubt, setEditingDoubt] = useState<Doubt | null>(null);
     const [filters, setFilters] = useState({
         subject: '',
@@ -65,6 +65,15 @@ const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItem
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    const doubtCounts = useMemo(() => {
+        return doubts.reduce((acc, doubt) => {
+            if (doubt.status === 'Open') acc.Open++;
+            else if (doubt.status === 'Tasked') acc.Tasked++;
+            else if (doubt.status === 'Resolved') acc.Resolved++;
+            return acc;
+        }, { Open: 0, Tasked: 0, Resolved: 0 });
+    }, [doubts]);
 
     const uniqueSubjects = useMemo(() => {
         return Array.from(new Set(subjects.map(s => s.subject)));
@@ -93,7 +102,9 @@ const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItem
 
         // 1. Apply activeTab filter
         if (activeTab === 'Open') {
-            tempDoubts = tempDoubts.filter(d => d.status === 'Open' || d.status === 'Tasked');
+            tempDoubts = tempDoubts.filter(d => d.status === 'Open');
+        } else if (activeTab === 'Tasked') {
+            tempDoubts = tempDoubts.filter(d => d.status === 'Tasked');
         } else if (activeTab === 'Resolved') {
             tempDoubts = tempDoubts.filter(d => d.status === 'Resolved');
         }
@@ -339,7 +350,7 @@ const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItem
     return (
         <>
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex justify-end" onClick={onClose}>
-                <div className="w-full max-w-3xl h-full bg-card/80 backdrop-blur-lg border-l border-border shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+                <div className="w-full max-w-3xl h-full bg-card/80 backdrop-blur-lg border-l border-border shadow-2xl flex flex-col rounded-l-2xl" onClick={e => e.stopPropagation()}>
                     <header className="p-6 border-b border-border flex-shrink-0">
                         <div className="flex justify-between items-start">
                             <div className="flex items-center space-x-4">
@@ -387,13 +398,16 @@ const DoubtDrawer: FC<DoubtDrawerProps> = ({ student, doubts, subjects, workItem
                         </div>
                         <div className="mt-4 border-b border-border">
                             <nav className="-mb-px flex space-x-6 overflow-x-auto">
-                                {(['Open', 'Resolved', 'All'] as const).map(tab => (
+                                {(['Open', 'Tasked', 'Resolved'] as const).map(tab => (
                                     <button
                                         key={tab}
                                         onClick={() => setActiveTab(tab)}
-                                        className={`whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm ${activeTab === tab ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                                        className={`whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === tab ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
                                     >
                                         {tab}
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === tab ? 'bg-primary/20 text-primary' : 'bg-border text-muted-foreground'}`}>
+                                            {doubtCounts[tab]}
+                                        </span>
                                     </button>
                                 ))}
                             </nav>

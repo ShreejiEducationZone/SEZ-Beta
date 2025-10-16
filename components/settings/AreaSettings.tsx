@@ -1,9 +1,8 @@
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { SubjectData, AreaDefinition } from '../../types';
-import SelectField from '../form/SelectField';
 import DeleteIcon from '../icons/DeleteIcon';
+import ChevronDownIcon from '../icons/ChevronDownIcon';
+import isEqual from 'lodash.isequal';
 
 interface AreaSettingsProps {
     subjectAreas: { [key: string]: AreaDefinition[] };
@@ -12,130 +11,163 @@ interface AreaSettingsProps {
 }
 
 const AreaSettings: React.FC<AreaSettingsProps> = ({ subjectAreas, onSaveSubjectAreas, allStudentSubjects }) => {
-    const [areas, setAreas] = useState(subjectAreas);
-    const [selectedSubject, setSelectedSubject] = useState('');
-    const [newArea, setNewArea] = useState({ title: '', description: '' });
+    const [localAreas, setLocalAreas] = useState(subjectAreas);
+    const [activeSubject, setActiveSubject] = useState<string | null>(null);
+    const [newAreaForms, setNewAreaForms] = useState<Record<string, { title: string; description: string }>>({});
 
     useEffect(() => {
-        setAreas(subjectAreas);
+        setLocalAreas(subjectAreas);
     }, [subjectAreas]);
 
     const allSubjects = useMemo(() => {
         const subjectsSet = new Set<string>();
+        // FIX: Explicitly type the 'data' parameter to resolve TypeScript inference issue.
         Object.values(allStudentSubjects).forEach((data: { subjects: SubjectData[] }) => {
             if (data && data.subjects) {
               data.subjects.forEach(s => subjectsSet.add(s.subject));
             }
         });
-        return Array.from(subjectsSet).sort();
+        const sortedSubjects = Array.from(subjectsSet).sort();
+        return sortedSubjects;
     }, [allStudentSubjects]);
-
+    
     useEffect(() => {
-        if(allSubjects.length > 0 && !selectedSubject) {
-            setSelectedSubject(allSubjects[0]);
+        if (allSubjects.length > 0 && !activeSubject) {
+            setActiveSubject(allSubjects[0]);
         }
-    }, [allSubjects, selectedSubject]);
+    }, [allSubjects, activeSubject]);
 
-    const handleAddArea = () => {
-        if (!selectedSubject || !newArea.title.trim() || !newArea.description.trim()) {
-            alert("Please select a subject and provide both an area title and description.");
+    const isDirty = useMemo(() => !isEqual(subjectAreas, localAreas), [subjectAreas, localAreas]);
+    
+    const handleFormChange = (subject: string, field: 'title' | 'description', value: string) => {
+        setNewAreaForms(prev => ({
+            ...prev,
+            [subject]: { ...(prev[subject] || { title: '', description: '' }), [field]: value }
+        }));
+    };
+
+    const handleAddArea = (subject: string) => {
+        const newArea = newAreaForms[subject];
+        if (!newArea || !newArea.title.trim() || !newArea.description.trim()) {
+            alert("Please provide both an area title and description.");
             return;
         }
-        const currentAreas = areas[selectedSubject] || [];
+
+        const currentAreas = localAreas[subject] || [];
         if (currentAreas.some(a => a.title.toLowerCase() === newArea.title.trim().toLowerCase())) {
-            alert("This area title already exists for the selected subject.");
+            alert("This area title already exists for this subject.");
             return;
         }
+
         const updatedAreas = {
-            ...areas,
-            [selectedSubject]: [...currentAreas, { title: newArea.title.trim(), description: newArea.description.trim() }].sort((a, b) => a.title.localeCompare(b.title))
+            ...localAreas,
+            [subject]: [...currentAreas, { title: newArea.title.trim(), description: newArea.description.trim() }].sort((a, b) => a.title.localeCompare(b.title))
         };
-        setAreas(updatedAreas);
-        setNewArea({ title: '', description: '' });
+        setLocalAreas(updatedAreas);
+        
+        // Reset form for that subject
+        setNewAreaForms(prev => ({
+            ...prev,
+            [subject]: { title: '', description: '' }
+        }));
     };
 
-    const handleDeleteArea = (titleToDelete: string) => {
-        const updatedSubjectAreas = (areas[selectedSubject] || []).filter(a => a.title !== titleToDelete);
-        const updatedAreas = { ...areas };
+    const handleDeleteArea = (subject: string, titleToDelete: string) => {
+        const updatedSubjectAreas = (localAreas[subject] || []).filter(a => a.title !== titleToDelete);
+        const updatedAreas = { ...localAreas };
         if (updatedSubjectAreas.length > 0) {
-            updatedAreas[selectedSubject] = updatedSubjectAreas;
+            updatedAreas[subject] = updatedSubjectAreas;
         } else {
-            delete updatedAreas[selectedSubject];
+            delete updatedAreas[subject];
         }
-        setAreas(updatedAreas);
+        setLocalAreas(updatedAreas);
     };
 
-    const handleSave = () => {
-        onSaveSubjectAreas(areas);
-        alert('Subject areas saved successfully.');
-    };
-
-    const handleReset = () => {
-        setAreas(subjectAreas);
-    };
+    const handleSave = () => onSaveSubjectAreas(localAreas);
+    const handleReset = () => setLocalAreas(subjectAreas);
 
     return (
-        <div className="max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Manage Subject Areas</h2>
-            <div className="bg-light-card dark:bg-dark-card rounded-xl shadow-sm p-6 space-y-6">
-                <div>
-                    <SelectField 
-                        label="Select Subject to Manage" 
-                        name="subject" 
-                        value={selectedSubject}
-                        onChange={(e) => setSelectedSubject(e.target.value)}
-                        options={allSubjects}
-                    />
-                </div>
-                {selectedSubject ? (
-                    <>
-                        <div>
-                            <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Areas for {selectedSubject}</h3>
-                            <div className="space-y-2 max-h-60 overflow-y-auto thin-scrollbar pr-2">
-                                {(areas[selectedSubject] || []).map(area => (
-                                    <div key={area.title} className="flex justify-between items-center bg-gray-100 dark:bg-gray-700/50 p-3 rounded-md">
-                                        <div>
-                                            <p className="font-semibold">{area.title}</p>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">{area.description}</p>
-                                        </div>
-                                        <button onClick={() => handleDeleteArea(area.title)} className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full flex-shrink-0 ml-2">
-                                            <DeleteIcon />
-                                        </button>
-                                    </div>
-                                ))}
-                                {(areas[selectedSubject] || []).length === 0 && <p className="text-sm text-gray-500 italic">No areas defined for this subject yet.</p>}
-                            </div>
-                        </div>
+        <div className="max-w-3xl">
+            <h2 className="text-3xl font-bold mb-8">Manage Subject Areas</h2>
 
-                        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                             <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Add New Area to {selectedSubject}</h3>
-                             <div className="space-y-2">
-                                <input
-                                    type="text"
-                                    value={newArea.title}
-                                    onChange={(e) => setNewArea(prev => ({...prev, title: e.target.value}))}
-                                    placeholder="New Area Title"
-                                    className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50"
-                                />
-                                <textarea
-                                    value={newArea.description}
-                                    onChange={(e) => setNewArea(prev => ({...prev, description: e.target.value}))}
-                                    placeholder="Description for the new area..."
-                                    rows={2}
-                                    className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50"
-                                />
-                                <button onClick={handleAddArea} className="w-full h-10 px-4 rounded-md bg-brand-blue/80 text-white hover:bg-brand-blue text-sm font-semibold">Add Area</button>
-                             </div>
+            <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
+                {allSubjects.length > 0 ? allSubjects.map(subject => {
+                    const areasForSubject = localAreas[subject] || [];
+                    const isExpanded = activeSubject === subject;
+                    const newAreaData = newAreaForms[subject] || { title: '', description: '' };
+
+                    return (
+                        <div key={subject}>
+                            <button
+                                onClick={() => setActiveSubject(isExpanded ? null : subject)}
+                                className="w-full flex justify-between items-center p-4 text-left hover:bg-muted"
+                                aria-expanded={isExpanded}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="font-semibold text-foreground">{subject}</span>
+                                    <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-border text-muted-foreground">{areasForSubject.length} areas</span>
+                                </div>
+                                <ChevronDownIcon className={`h-5 w-5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                            </button>
+                            {isExpanded && (
+                                <div className="p-4 space-y-4 bg-muted/30">
+                                    {areasForSubject.length > 0 && (
+                                        <div className="space-y-2 max-h-60 overflow-y-auto thin-scrollbar pr-2">
+                                            {areasForSubject.map(area => (
+                                                <div key={area.title} className="group flex justify-between items-start bg-background p-3 rounded-md border border-border">
+                                                    <div>
+                                                        <p className="font-semibold text-sm text-foreground">{area.title}</p>
+                                                        <p className="text-sm text-muted-foreground">{area.description}</p>
+                                                    </div>
+                                                    <button onClick={() => handleDeleteArea(subject, area.title)} className="p-1.5 text-muted-foreground hover:text-danger hover:bg-danger/10 rounded-full flex-shrink-0 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <DeleteIcon />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <div className="pt-4 border-t border-border">
+                                        <h3 className="text-sm font-semibold text-foreground mb-2">Add New Area to {subject}</h3>
+                                        <div className="space-y-2">
+                                            <input
+                                                type="text"
+                                                value={newAreaData.title}
+                                                onChange={(e) => handleFormChange(subject, 'title', e.target.value)}
+                                                placeholder="New Area Title (e.g., Algebra)"
+                                                className="w-full h-10 px-3 rounded-lg border border-border bg-background"
+                                            />
+                                            <textarea
+                                                value={newAreaData.description}
+                                                onChange={(e) => handleFormChange(subject, 'description', e.target.value)}
+                                                placeholder="Description for this area..."
+                                                rows={2}
+                                                className="w-full p-3 rounded-lg border border-border bg-background"
+                                            />
+                                            <button onClick={() => handleAddArea(subject)} className="w-full h-10 px-4 rounded-lg bg-primary/10 text-primary font-semibold hover:bg-primary/20">Add Area</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    </>
-                ) : (
-                    <p className="text-center text-gray-500">No subjects defined. Please add subjects in the 'Subject Manager' page first.</p>
+                    );
+                }) : (
+                    <p className="text-center text-muted-foreground p-8">No subjects found. Add subjects via the 'Subject Manager' page first.</p>
                 )}
-                 <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                    <button onClick={handleReset} className="py-2 px-5 rounded-lg bg-gray-200 dark:bg-gray-600 font-semibold">Reset</button>
-                    <button onClick={handleSave} className="h-10 px-4 rounded-md bg-brand-blue text-white hover:bg-blue-600 text-sm font-semibold">Save Changes</button>
-                </div>
             </div>
+
+            {isDirty && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4">
+                    <div className="bg-card/80 backdrop-blur-xl border border-border rounded-full shadow-soft-lg p-2 flex items-center justify-between">
+                        <p className="text-sm font-semibold pl-4 text-foreground">Unsaved changes</p>
+                        <div className="flex gap-2">
+                            <button onClick={handleReset} className="h-9 px-4 rounded-full text-sm font-semibold text-muted-foreground hover:bg-muted">Discard</button>
+                            <button onClick={handleSave} className="h-9 px-4 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90">
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

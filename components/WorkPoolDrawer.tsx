@@ -241,7 +241,7 @@ const WorkPoolDrawer: React.FC<WorkPoolDrawerProps> = ({ student, workItems, onC
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex justify-end" onClick={onClose}>
-            <div className="w-full max-w-3xl h-full bg-card/80 dark:bg-card/70 backdrop-blur-lg border-l border-border shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="w-full max-w-3xl h-full bg-card/80 dark:bg-card/70 backdrop-blur-lg border-l border-border shadow-2xl flex flex-col rounded-l-2xl" onClick={e => e.stopPropagation()}>
                 <header className="p-6 border-b border-border flex-shrink-0">
                     <div className="flex justify-between items-start">
                         <div className="flex items-center space-x-4">
@@ -293,9 +293,12 @@ const WorkPoolDrawer: React.FC<WorkPoolDrawerProps> = ({ student, workItems, onC
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
-                                    className={`whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm ${activeTab === tab ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                                    className={`whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === tab ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
                                 >
-                                    {tab} ({workCounts[tab]})
+                                    {tab}
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === tab ? 'bg-primary/20 text-primary' : 'bg-border text-muted-foreground'}`}>
+                                        {workCounts[tab]}
+                                    </span>
                                 </button>
                             ))}
                         </nav>

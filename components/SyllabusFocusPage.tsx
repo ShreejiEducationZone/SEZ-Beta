@@ -174,7 +174,7 @@ const SyllabusFocusPage: FC<SyllabusFocusPageProps> = ({ student, studentSubject
                     </nav>
                 </div>
 
-                <div className="mt-6 relative max-h-[60vh] overflow-y-auto thin-scrollbar pr-4 -mr-4">
+                <div className="mt-4 pt-2 relative max-h-[60vh] overflow-y-auto thin-scrollbar pr-4 -mr-4">
                      {/* Vertical Timeline Line */}
                     <div className="absolute top-0 left-[7px] w-0.5 h-full bg-border -z-10"></div>
                     

@@ -4,6 +4,8 @@ import PlaceholderAvatar from '../PlaceholderAvatar';
 import ChevronRightIcon from '../icons/ChevronRightIcon';
 import EyeIcon from '../icons/EyeIcon';
 import EyeSlashIcon from '../icons/EyeSlashIcon';
+import { FaKey } from 'react-icons/fa';
+
 
 interface PasswordManagerModalProps {
     student: Student;
@@ -16,9 +18,9 @@ const PasswordManagerModal: React.FC<PasswordManagerModalProps> = ({ student, on
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
     const generatePassword = () => {
-        const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()';
+        const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let newPassword = '';
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 8; i++) {
             newPassword += chars.charAt(Math.floor(Math.random() * chars.length));
         }
         setPassword(newPassword);
@@ -72,7 +74,7 @@ const PasswordManagerModal: React.FC<PasswordManagerModalProps> = ({ student, on
                 </div>
                 
                 <div className="flex items-center gap-3 mt-6">
-                    <button onClick={onClose} className="py-2 px-5 rounded-lg bg-muted text-muted-foreground hover:bg-border font-semibold flex-grow">Cancel</button>
+                    <button onClick={onClose} className="h-10 px-5 rounded-lg bg-muted text-muted-foreground hover:bg-border font-semibold flex-grow">Cancel</button>
                     {(student.password || password) && (
                         <button onClick={handleRemove} className="h-10 px-4 rounded-lg bg-danger text-danger-foreground hover:bg-danger/90 text-sm font-semibold">Remove</button>
                     )}
@@ -93,27 +95,33 @@ const StudentPasswordSettings: React.FC<StudentPasswordSettingsProps> = ({ stude
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
     return (
-        <>
-            <h2 className="text-2xl font-bold mb-6 text-foreground">Student Login Credentials</h2>
-            <div className="bg-card rounded-2xl shadow-soft border border-border overflow-hidden">
+        <div className="max-w-3xl">
+            <h2 className="text-3xl font-bold mb-8">Student Passwords</h2>
+            <div className="bg-muted/50 rounded-xl border border-border">
                 {students.map((student, index) => (
-                    <button key={student.id} onClick={() => setSelectedStudent(student)} className="w-full text-left group">
-                        <div className={`flex items-center justify-between p-4 min-h-[56px] ${index !== 0 ? 'border-t border-border' : ''} group-hover:bg-muted`}>
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full overflow-hidden bg-muted flex-shrink-0">
-                                    {student.avatarUrl ? <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" /> : <PlaceholderAvatar />}
-                                </div>
-                                <span className="font-medium text-foreground">{student.name}</span>
+                    <div key={student.id} className={`flex items-center justify-between p-3 ${index > 0 ? 'border-t border-border' : ''}`}>
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                                {student.avatarUrl ? <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" /> : <PlaceholderAvatar />}
                             </div>
-                            <div className="flex items-center gap-2 text-muted-foreground group-hover:text-foreground">
-                                <span className={student.password ? 'text-success' : 'text-warning'}>
-                                    {student.password ? 'Password set' : 'Not set'}
-                                </span>
-                                <ChevronRightIcon className="h-5 w-5" />
+                            <div>
+                                <p className="font-medium text-foreground">{student.name}</p>
+                                 <div className={`flex items-center gap-1.5 text-xs font-medium ${student.password ? 'text-success' : 'text-warning'}`}>
+                                    <FaKey className="h-3 w-3" />
+                                    <span>{student.password ? 'Password set' : 'Not set'}</span>
+                                </div>
                             </div>
                         </div>
-                    </button>
+                        <button 
+                            onClick={() => setSelectedStudent(student)} 
+                            className="flex items-center gap-1 h-8 px-4 rounded-lg bg-background border border-border hover:bg-border text-sm font-semibold text-foreground"
+                        >
+                            Manage
+                            <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                    </div>
                 ))}
+                 {students.length === 0 && <p className="text-center text-muted-foreground p-8">No active students found.</p>}
             </div>
             {selectedStudent && (
                 <PasswordManagerModal
@@ -122,7 +130,7 @@ const StudentPasswordSettings: React.FC<StudentPasswordSettingsProps> = ({ stude
                     onClose={() => setSelectedStudent(null)}
                 />
             )}
-        </>
+        </div>
     );
 };
 

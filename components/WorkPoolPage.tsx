@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Student, SubjectData, WorkItem, WorkHealthStatus } from '../types';
 import StudentWorkCard from './StudentWorkCard';
 import WorkItemsTable from './WorkItemsTable';
@@ -13,6 +13,7 @@ import { useSyllabus } from '../context/SyllabusContext';
 import { useWorkPool } from '../context/WorkPoolContext';
 // FIX: Import useStudent to get students data
 import { useStudent } from '../context/StudentContext';
+import CardsIcon from './icons/CardsIcon';
 
 const WorkPoolPage: React.FC = () => {
     // FIX: Get data from specific context hooks
@@ -23,8 +24,34 @@ const WorkPoolPage: React.FC = () => {
 
     const [showArchived, setShowArchived] = useState(false);
     const [viewingStudentWork, setViewingStudentWork] = useState<Student | null>(null);
-    const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table');
+    const [viewMode, setViewMode] = useState<'cards' | 'table' | 'calendar'>('cards');
     const [selectedWorkItem, setSelectedWorkItem] = useState<WorkItem | null>(null);
+
+    const [sliderStyle, setSliderStyle] = useState({});
+    const tabsContainerRef = useRef<HTMLDivElement>(null);
+
+    const updateSlider = useCallback(() => {
+        if (tabsContainerRef.current) {
+            const activeTabNode = tabsContainerRef.current.querySelector(`[data-viewmode="${viewMode}"]`) as HTMLElement;
+            if (activeTabNode) {
+                setSliderStyle({
+                    width: `${activeTabNode.offsetWidth}px`,
+                    transform: `translateX(${activeTabNode.offsetLeft}px)`,
+                });
+            }
+        }
+    }, [viewMode]);
+
+    useEffect(() => {
+        // A small timeout to ensure layout is complete before measuring
+        const timeoutId = setTimeout(updateSlider, 50);
+        window.addEventListener('resize', updateSlider);
+        return () => {
+            clearTimeout(timeoutId);
+            window.removeEventListener('resize', updateSlider);
+        };
+    }, [viewMode, updateSlider]);
+
 
     const [filters, setFilters] = useState({
         searchQuery: '',
@@ -168,12 +195,83 @@ const WorkPoolPage: React.FC = () => {
         if (!selectedWorkItem) return null;
         return students.find(s => s.id === selectedWorkItem.studentId) || null;
     }, [selectedWorkItem, students]);
+    
+    const renderContent = () => {
+        switch (viewMode) {
+            case 'cards':
+                return displayedStudents.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {displayedStudents.map(student => (
+                            <StudentWorkCard
+                                key={student.id}
+                                student={student}
+                                workItems={workItemsByStudent[student.id] || []}
+                                onViewWork={() => setViewingStudentWork(student)}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                     <div className="text-center py-16 text-muted-foreground">
+                        <h3 className="text-xl font-semibold">No {showArchived ? 'archived' : 'active'} students found.</h3>
+                        <p>Try viewing {showArchived ? 'active' : 'archived'} students or clearing your filters.</p>
+                    </div>
+                );
+            case 'table':
+                return <WorkItemsTable 
+                    workItems={filteredWorkItems} 
+                    students={students} 
+                    workHealthByStudent={workHealthByStudent}
+                    onEdit={handleEditWork}
+                    onDelete={handleDeleteWorkItem}
+                />;
+            case 'calendar':
+                return <WorkCalendarView
+                    workItems={filteredWorkItems}
+                    students={students}
+                    onItemClick={handleViewWorkDetails}
+                    onSaveWorkItem={handleSaveWorkItem}
+                />;
+            default:
+                return null;
+        }
+    };
+
 
     return (
         <div>
             <p className="mt-2 mb-6 text-muted-foreground max-w-3xl">
                 Assign and manage student tasks like tuition work, homework, and other assignments. Click on a student to view their work or "+ Add Work" to get started.
             </p>
+
+            <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center">
+                    <input
+                        type="checkbox"
+                        id="showArchivedWorkPool"
+                        checked={showArchived}
+                        onChange={() => setShowArchived(!showArchived)}
+                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                    />
+                    <label htmlFor="showArchivedWorkPool" className="ml-2 block text-sm text-muted-foreground">
+                        Show Archived Students
+                    </label>
+                </div>
+                <div ref={tabsContainerRef} className="relative flex items-center bg-muted p-1 rounded-full">
+                    <div
+                        className="absolute h-[calc(100%-0.5rem)] bg-background rounded-full shadow-soft transition-all duration-300"
+                        style={sliderStyle}
+                    ></div>
+                    <button data-viewmode="cards" onClick={() => setViewMode('cards')} className={`relative z-10 flex items-center justify-center gap-2 px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${viewMode === 'cards' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        <CardsIcon className="h-5 w-5" /> Cards
+                    </button>
+                    <button data-viewmode="table" onClick={() => setViewMode('table')} className={`relative z-10 flex items-center justify-center gap-2 px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${viewMode === 'table' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        <TableIcon className="h-5 w-5" /> Table
+                    </button>
+                    <button data-viewmode="calendar" onClick={() => setViewMode('calendar')} className={`relative z-10 flex items-center justify-center gap-2 px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${viewMode === 'calendar' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        <CalendarIcon className="h-5 w-5" /> Calendar
+                    </button>
+                </div>
+            </div>
 
             <WorkPoolFilterBar
                 filters={filters}
@@ -182,72 +280,8 @@ const WorkPoolPage: React.FC = () => {
                 onClearFilters={clearFilters}
                 allSubjects={allSubjects}
             />
-
-            <div className="flex items-center mb-6">
-                <input
-                    type="checkbox"
-                    id="showArchivedWorkPool"
-                    checked={showArchived}
-                    onChange={() => setShowArchived(!showArchived)}
-                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                />
-                <label htmlFor="showArchivedWorkPool" className="ml-2 block text-sm text-muted-foreground">
-                    Show Archived Students
-                </label>
-            </div>
             
-            {displayedStudents.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {displayedStudents.map(student => (
-                        <StudentWorkCard
-                            key={student.id}
-                            student={student}
-                            workItems={workItemsByStudent[student.id] || []}
-                            onViewWork={() => setViewingStudentWork(student)}
-                        />
-                    ))}
-                </div>
-            ) : (
-                 <div className="text-center py-16 text-muted-foreground">
-                    <h3 className="text-xl font-semibold">No {showArchived ? 'archived' : 'active'} students found.</h3>
-                    <p>Try viewing {showArchived ? 'active' : 'archived'} students or clearing your filters.</p>
-                </div>
-            )}
-
-            <div className="mt-12">
-                <div className="flex justify-end my-4">
-                    <button
-                        onClick={() => setViewMode(viewMode === 'table' ? 'calendar' : 'table')}
-                        className="flex items-center gap-2 h-10 px-4 rounded-lg bg-muted hover:bg-border text-sm font-semibold transition-colors"
-                    >
-                        {viewMode === 'table' ? (
-                            <>
-                                <CalendarIcon className="h-5 w-5" /> Calendar View
-                            </>
-                        ) : (
-                            <>
-                                <TableIcon className="h-5 w-5" /> Table View
-                            </>
-                        )}
-                    </button>
-                </div>
-                 {viewMode === 'table' ? (
-                    <WorkItemsTable 
-                        workItems={filteredWorkItems} 
-                        students={students} 
-                        workHealthByStudent={workHealthByStudent}
-                        onEdit={handleEditWork}
-                        onDelete={handleDeleteWorkItem}
-                    />
-                 ) : (
-                    <WorkCalendarView
-                        workItems={filteredWorkItems}
-                        students={students}
-                        onItemClick={handleViewWorkDetails}
-                        onSaveWorkItem={handleSaveWorkItem}
-                    />
-                 )}
-            </div>
+            {renderContent()}
 
             {viewingStudentWork && (
                 <WorkPoolDrawer

@@ -343,7 +343,7 @@ const SubjectManagerDrawer: React.FC<SubjectManagerDrawerProps> = ({ student, st
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-end" onClick={onClose}>
-            <div className="w-full max-w-2xl h-full bg-card/80 backdrop-blur-lg border-l border-border shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="w-full max-w-2xl h-full bg-card/80 backdrop-blur-lg border-l border-border shadow-2xl flex flex-col rounded-l-2xl" onClick={e => e.stopPropagation()}>
                 <input type="file" accept=".csv,.json" ref={fileInputRef} onChange={handleFileImport} className="hidden" />
                 {isArchived && (
                     <div className="p-2 bg-yellow-400 text-center text-black text-sm font-semibold">

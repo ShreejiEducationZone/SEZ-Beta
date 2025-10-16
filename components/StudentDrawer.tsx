@@ -41,7 +41,7 @@ const StudentDrawer: React.FC<StudentDrawerProps> = ({ student, onClose, onEdit,
         <>
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={onClose}></div>
             <div
-                className="fixed top-0 right-0 w-full max-w-md h-full bg-card/80 dark:bg-card/70 backdrop-blur-lg border-l border-border shadow-2xl p-6 flex flex-col transition-transform duration-300 ease-in-out translate-x-0 z-50"
+                className="fixed top-0 right-0 w-full max-w-md h-full bg-card/80 dark:bg-card/70 backdrop-blur-lg border-l border-border shadow-2xl p-6 flex flex-col transition-transform duration-300 ease-in-out translate-x-0 z-50 rounded-l-2xl"
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex-shrink-0">

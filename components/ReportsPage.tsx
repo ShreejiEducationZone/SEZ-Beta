@@ -76,6 +76,7 @@ const ReportsPage: React.FC = () => {
     }, [activeStudents, studentFilters]);
 
     const selectedStudent = useMemo(() => students.find(s => s.id === selectedStudentId), [selectedStudentId, students]);
+    const studentSubjectsForSelected = useMemo(() => selectedStudentId ? allStudentSubjects[selectedStudentId]?.subjects : [], [selectedStudentId, allStudentSubjects]);
     const testsForSelectedStudent = useMemo(() => selectedStudentId ? tests.filter(t => t.studentId === selectedStudentId) : [], [selectedStudentId, tests]);
     const completedAndAbsentTests = useMemo(() => testsForSelectedStudent.filter(t => t.status === 'Completed' || t.status === 'Absent'), [testsForSelectedStudent]);
     const stats = useMemo(() => (selectedStudentId && studentPerformanceData.has(selectedStudentId)) ? studentPerformanceData.get(selectedStudentId)! : { avgScore: 0, completedTests: 0, upcomingTests: 0, absentTests: 0 }, [selectedStudentId, studentPerformanceData]);
@@ -169,7 +170,7 @@ const ReportsPage: React.FC = () => {
                                 <StatCard icon={XCircleIcon} iconBgClass="bg-danger-muted" iconClass="text-danger" title="Absent Tests" value={stats.absentTests} />
                             </div>
                         </div>
-                        <OverallStrengthsWeaknesses tests={completedAndAbsentTests.filter(t => t.status === 'Completed')} />
+                        <OverallStrengthsWeaknesses tests={completedAndAbsentTests.filter(t => t.status === 'Completed')} studentSubjects={studentSubjectsForSelected} />
                         <TestSchedule 
                             tests={testsForSelectedStudent}
                             workItems={workItems}
@@ -184,7 +185,7 @@ const ReportsPage: React.FC = () => {
                     </div>
                 </div>
             )}
-            {viewingTest && selectedStudent && <TestDetailModal test={viewingTest} student={selectedStudent} onClose={() => setViewingTest(null)} onAddMarking={handleAddMarking} onEdit={handleEditTest} onDelete={handleDeleteAndCloseModal} />}
+            {viewingTest && selectedStudent && <TestDetailModal test={viewingTest} student={selectedStudent} studentSubjects={studentSubjectsForSelected} onClose={() => setViewingTest(null)} onAddMarking={handleAddMarking} onEdit={handleEditTest} onDelete={handleDeleteAndCloseModal} />}
         </div>
     );
 };

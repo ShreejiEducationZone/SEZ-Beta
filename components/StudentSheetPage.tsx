@@ -8,6 +8,7 @@ import ManageSheetColumnsModal from './ManageSheetColumnsModal';
 import WrenchScrewdriverIcon from './icons/WrenchScrewdriverIcon';
 import UnsavedChangesAlert from './UnsavedChangesAlert';
 import SelectSheetTaskModal from './AssignSheetTaskModal';
+import Checkbox from './form/Checkbox';
 
 interface StudentSheetPageProps {
     student: Student;
@@ -86,6 +87,10 @@ const StudentSheetPage: FC<StudentSheetPageProps> = ({ student, onBack }) => {
         }
     };
     
+    const handleDiscardChanges = () => {
+        setPendingChanges(new Map());
+    };
+
     const handleSaveColumns = async (newColumns: SheetColumn[]) => {
         if (!selectedSubjectData) return;
         
@@ -132,13 +137,7 @@ const StudentSheetPage: FC<StudentSheetPageProps> = ({ student, onBack }) => {
                 <div className="flex items-center gap-4">
                     <h1 className="text-2xl font-bold text-foreground truncate">Progress Sheet: {student.name}</h1>
                 </div>
-                 <button 
-                    onClick={handleSaveProgress}
-                    disabled={pendingChanges.size === 0 || isSaving}
-                    className="h-10 px-6 rounded-lg bg-primary text-primary-foreground font-semibold disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
-                >
-                    {isSaving ? 'Saving...' : `Save (${pendingChanges.size})`}
-                </button>
+                 <div className="w-24 flex-shrink-0"></div>
             </div>
             
             <div className="bg-card rounded-2xl shadow-soft border border-border overflow-hidden">
@@ -199,13 +198,12 @@ const StudentSheetPage: FC<StudentSheetPageProps> = ({ student, onBack }) => {
                                             </td>
                                             {columnsToRender.map(col => (
                                                 <td key={col.id} className="px-6 py-4 text-center">
-                                                    <input 
-                                                        type="checkbox"
-                                                        checked={!!tasks[col.id]}
-                                                        onChange={() => handleCheckboxChange(chapter.no, col.id)}
-                                                        className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-                                                        aria-label={`${col.name} for ${chapter.name}`}
-                                                    />
+                                                    <div className="flex justify-center">
+                                                        <Checkbox
+                                                            checked={!!tasks[col.id]}
+                                                            onChange={() => handleCheckboxChange(chapter.no, col.id)}
+                                                        />
+                                                    </div>
                                                 </td>
                                             ))}
                                         </tr>
@@ -223,6 +221,20 @@ const StudentSheetPage: FC<StudentSheetPageProps> = ({ student, onBack }) => {
                     </table>
                 </div>
             </div>
+
+            {pendingChanges.size > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4">
+                    <div className="bg-card/80 backdrop-blur-xl border border-border rounded-full shadow-soft-lg p-2 flex items-center justify-between">
+                        <p className="text-sm font-semibold pl-4 text-foreground">{pendingChanges.size} unsaved change{pendingChanges.size > 1 ? 's' : ''}</p>
+                        <div className="flex gap-2">
+                            <button onClick={handleDiscardChanges} className="h-9 px-4 rounded-full text-sm font-semibold text-muted-foreground hover:bg-muted">Discard</button>
+                            <button onClick={handleSaveProgress} disabled={isSaving} className="h-9 px-4 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+                                {isSaving ? 'Saving...' : 'Save'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {isColumnModalOpen && (
                 <ManageSheetColumnsModal

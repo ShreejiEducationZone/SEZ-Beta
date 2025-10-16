@@ -1,8 +1,51 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Student, SubjectData, Test, TestStatus, TestPriority, TestType, Chapter, MistakeTypeDefinition, AreaDefinition, SyllabusNode } from '../types';
+import { Student, SubjectData, Test, TestStatus, TestPriority, TestType, Chapter, MistakeTypeDefinition, SyllabusNode } from '../types';
 import { TEST_PRIORITIES, TEST_TYPES } from '../constants';
 import InputField from './form/InputField';
 import SelectField from './form/SelectField';
+
+interface SyllabusAreaNodeProps {
+    node: SyllabusNode;
+    type: 'strong' | 'weak';
+    selectedStrong: Set<string>;
+    selectedWeak: Set<string>;
+    onToggle: (nodeNo: string, type: 'strong' | 'weak') => void;
+}
+
+const SyllabusAreaNode: React.FC<SyllabusAreaNodeProps> = ({ node, type, selectedStrong, selectedWeak, onToggle }) => {
+    const isSelected = type === 'strong' ? selectedStrong.has(String(node.no)) : selectedWeak.has(String(node.no));
+    const isDisabled = type === 'strong' ? selectedWeak.has(String(node.no)) : selectedStrong.has(String(node.no));
+
+    return (
+        <div className="pl-4">
+            <label className={`flex items-center gap-2 p-1.5 rounded-md transition-colors ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted'}`}>
+                <input
+                    type="checkbox"
+                    checked={isSelected}
+                    disabled={isDisabled}
+                    onChange={() => onToggle(String(node.no), type)}
+                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <span className="text-foreground text-sm">{node.no}. {node.name}</span>
+            </label>
+            {node.children && node.children.length > 0 && (
+                <div className="border-l-2 border-border ml-3">
+                    {node.children.map(child => (
+                        <SyllabusAreaNode 
+                            key={String(child.no)}
+                            node={child}
+                            type={type}
+                            selectedStrong={selectedStrong}
+                            selectedWeak={selectedWeak}
+                            onToggle={onToggle}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 
 interface TestFormProps {
     student: Student;
@@ -11,10 +54,9 @@ interface TestFormProps {
     onSave: (test: Test) => void;
     onCancel: () => void;
     allMistakeTypes: MistakeTypeDefinition[];
-    subjectAreas: { [key: string]: AreaDefinition[] };
 }
 
-const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onSave, onCancel, allMistakeTypes, subjectAreas }) => {
+const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onSave, onCancel, allMistakeTypes }) => {
     const isEditMode = !!test;
     const [status, setStatus] = useState<TestStatus>(test?.status === 'Upcoming' ? 'Completed' : (test?.status || 'Upcoming'));
     const [isAbsent, setIsAbsent] = useState(test?.status === 'Absent');
@@ -30,7 +72,6 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
         retestRequired: test?.retestRequired || 'No',
     });
     
-    // Helper to safely convert legacy string data to an array for state initialization
     const getAreasForState = (areas: string | string[] | undefined): string[] => {
         if (!areas) return [];
         if (Array.isArray(areas)) return areas;
@@ -47,12 +88,6 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
         if (!formData.subject) return [];
         return studentSubjects.find(s => s.subject === formData.subject)?.chapters || [];
     }, [formData.subject, studentSubjects]);
-
-    const availableAreas = useMemo(() => {
-        if (!formData.subject) return [];
-        const areasForSubject = subjectAreas[formData.subject] || [];
-        return areasForSubject.map(areaDef => areaDef.title);
-    }, [formData.subject, subjectAreas]);
 
     useEffect(() => {
         if (!isEditMode) {
@@ -97,19 +132,19 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
         });
     };
     
-    const handleAreaToggle = (area: string, type: 'strong' | 'weak') => {
+    const handleAreaToggle = (nodeNo: string, type: 'strong' | 'weak') => {
         if (type === 'strong') {
             setStrongAreas(prev => {
                 const newSet = new Set(prev);
-                if (newSet.has(area)) newSet.delete(area);
-                else newSet.add(area);
+                if (newSet.has(nodeNo)) newSet.delete(nodeNo);
+                else newSet.add(nodeNo);
                 return newSet;
             });
         } else {
             setWeakAreas(prev => {
                 const newSet = new Set(prev);
-                if (newSet.has(area)) newSet.delete(area);
-                else newSet.add(area);
+                if (newSet.has(nodeNo)) newSet.delete(nodeNo);
+                else newSet.add(nodeNo);
                 return newSet;
             });
         }
@@ -120,6 +155,7 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
         const newErrors: { [key: string]: string } = {};
         if (!formData.title.trim()) newErrors.title = 'Title is required';
         if (!formData.subject) newErrors.subject = 'Subject is required';
+        if (status === 'Upcoming' && !formData.testType) newErrors.testType = 'Test Type is required';
         if (!formData.testDate) newErrors.testDate = 'Test Date is required';
         if (selectedChapters.length === 0) newErrors.chapters = 'At least one chapter must be selected';
 
@@ -155,10 +191,9 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
             chapters: selectedChapters,
             testDate: formData.testDate,
             priority: formData.priority as TestPriority,
-            // Clear completed data if not in a completed/absent state or if absent
-            testType: finalStatus === 'Completed' ? (formData.testType as TestType) : undefined,
-            marksObtained: finalStatus === 'Completed' && formData.marksObtained !== '' ? parseFloat(formData.marksObtained) : undefined,
-            totalMarks: finalStatus === 'Completed' && formData.totalMarks !== '' ? parseFloat(formData.totalMarks) : undefined,
+            testType: formData.testType as TestType,
+            marksObtained: finalStatus === 'Completed' ? parseFloat(formData.marksObtained) : undefined,
+            totalMarks: finalStatus === 'Completed' ? parseFloat(formData.totalMarks) : undefined,
             mistakeTypes: finalStatus === 'Completed' ? Array.from(mistakeTypes) : undefined,
             strongArea: finalStatus === 'Completed' ? Array.from(strongAreas) : undefined,
             weakArea: finalStatus === 'Completed' ? Array.from(weakAreas) : undefined,
@@ -192,8 +227,9 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
                 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <InputField label="Test Title" name="title" value={formData.title} onChange={handleChange} error={errors.title} required />
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <SelectField label="Subject" name="subject" value={formData.subject} onChange={handleChange} options={studentSubjects.map(s => s.subject)} error={errors.subject} required />
+                        <SelectField label="Test Type" name="testType" value={formData.testType} onChange={handleChange} options={TEST_TYPES} error={errors.testType} required={status !== 'Upcoming'} />
                         <InputField label="Test Date" name="testDate" type="date" value={formData.testDate} onChange={handleChange} error={errors.testDate} required />
                         <SelectField label="Priority" name="priority" value={formData.priority} onChange={handleChange} options={TEST_PRIORITIES} required />
                     </div>
@@ -228,8 +264,7 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
                             
                             {!isAbsent && (
                                 <>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <SelectField label="Test Type" name="testType" value={formData.testType} onChange={handleChange} options={TEST_TYPES} error={errors.testType} required />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <InputField label="Marks Obtained" name="marksObtained" type="number" value={formData.marksObtained} onChange={handleChange} error={errors.marksObtained} required />
                                     <InputField label="Total Marks" name="totalMarks" type="number" value={formData.totalMarks} onChange={handleChange} error={errors.totalMarks} required />
                                 </div>
@@ -253,24 +288,32 @@ const TestForm: React.FC<TestFormProps> = ({ student, studentSubjects, test, onS
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-muted-foreground">Strong Areas</label>
-                                        <div className="mt-2 max-h-52 overflow-y-auto thin-scrollbar border border-border rounded-lg p-2 space-y-2 bg-background">
-                                            {availableAreas.length > 0 ? availableAreas.map(area => (
-                                                <label key={`strong-${area}`} className={`flex items-center gap-2 p-2 rounded-md transition-colors ${weakAreas.has(area) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted has-[:checked]:bg-success-muted'}`} title={subjectAreas[formData.subject]?.find(def => def.title === area)?.description || ''}>
-                                                    <input type="checkbox" checked={strongAreas.has(area)} onChange={() => handleAreaToggle(area, 'strong')} disabled={weakAreas.has(area)} className="h-4 w-4 rounded border-border text-primary focus:ring-primary"/>
-                                                    <span className="text-foreground">{area}</span>
-                                                </label>
-                                            )) : <p className="text-sm text-muted-foreground italic p-2">No areas defined for this subject. Add them in Settings.</p>}
+                                        <div className="mt-2 max-h-52 overflow-y-auto thin-scrollbar border border-border rounded-lg p-2 space-y-1 bg-background">
+                                            {availableChapters.length > 0 ? availableChapters.map(chapter => (
+                                                <SyllabusAreaNode
+                                                    key={`strong-${String(chapter.no)}`}
+                                                    node={chapter}
+                                                    type="strong"
+                                                    selectedStrong={strongAreas}
+                                                    selectedWeak={weakAreas}
+                                                    onToggle={handleAreaToggle}
+                                                />
+                                            )) : <p className="text-sm text-muted-foreground italic p-2">Select a subject to see syllabus.</p>}
                                         </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-muted-foreground">Weak Areas</label>
-                                        <div className="mt-2 max-h-52 overflow-y-auto thin-scrollbar border border-border rounded-lg p-2 space-y-2 bg-background">
-                                             {availableAreas.length > 0 ? availableAreas.map(area => (
-                                                <label key={`weak-${area}`} className={`flex items-center gap-2 p-2 rounded-md transition-colors ${strongAreas.has(area) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted has-[:checked]:bg-danger-muted'}`} title={subjectAreas[formData.subject]?.find(def => def.title === area)?.description || ''}>
-                                                    <input type="checkbox" checked={weakAreas.has(area)} onChange={() => handleAreaToggle(area, 'weak')} disabled={strongAreas.has(area)} className="h-4 w-4 rounded border-border text-primary focus:ring-primary"/>
-                                                    <span className="text-foreground">{area}</span>
-                                                </label>
-                                            )) : <p className="text-sm text-muted-foreground italic p-2">No areas defined for this subject. Add them in Settings.</p>}
+                                        <div className="mt-2 max-h-52 overflow-y-auto thin-scrollbar border border-border rounded-lg p-2 space-y-1 bg-background">
+                                            {availableChapters.length > 0 ? availableChapters.map(chapter => (
+                                                <SyllabusAreaNode
+                                                    key={`weak-${String(chapter.no)}`}
+                                                    node={chapter}
+                                                    type="weak"
+                                                    selectedStrong={strongAreas}
+                                                    selectedWeak={weakAreas}
+                                                    onToggle={handleAreaToggle}
+                                                />
+                                            )) : <p className="text-sm text-muted-foreground italic p-2">Select a subject to see syllabus.</p>}
                                         </div>
                                     </div>
                                 </div>

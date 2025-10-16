@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { Student, AttendanceRecord, AttendanceStatus } from '../../types';
@@ -161,6 +162,8 @@ export const ManualAttendance: React.FC = () => {
         }
     };
     
+    const handleDiscardChanges = useCallback(() => setPendingChanges(new Map()), []);
+
     const dailyStats = useMemo(() => {
         let present = 0, absent = 0, holiday = 0, leave = 0, none = 0;
         filteredStudents.forEach(student => {
@@ -210,11 +213,6 @@ export const ManualAttendance: React.FC = () => {
                         <button onClick={handleDeclareHoliday} className="h-10 px-4 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-sm font-semibold">
                             Declare Holiday
                         </button>
-                        {pendingChanges.size > 0 && (
-                             <button onClick={handleSaveChanges} disabled={isSaving} className="h-10 px-4 rounded-md bg-green-600 text-white hover:bg-green-700 text-sm font-semibold disabled:bg-gray-400">
-                                {isSaving ? 'Saving...' : `Save ${pendingChanges.size} Change(s)`}
-                            </button>
-                        )}
                     </div>
                 </div>
                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
@@ -260,6 +258,20 @@ export const ManualAttendance: React.FC = () => {
             </div>
 
             {isHolidayModalOpen && <HolidayManagerModal onClose={() => setIsHolidayModalOpen(false)} />}
+
+            {pendingChanges.size > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4">
+                    <div className="bg-card/80 backdrop-blur-xl border border-border rounded-full shadow-soft-lg p-2 flex items-center justify-between">
+                        <p className="text-sm font-semibold pl-4 text-foreground">{pendingChanges.size} unsaved change{pendingChanges.size > 1 ? 's' : ''}</p>
+                        <div className="flex gap-2">
+                            <button onClick={handleDiscardChanges} className="h-9 px-4 rounded-full text-sm font-semibold text-muted-foreground hover:bg-muted">Discard</button>
+                            <button onClick={handleSaveChanges} disabled={isSaving} className="h-9 px-4 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90">
+                                {isSaving ? 'Saving...' : 'Save'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };

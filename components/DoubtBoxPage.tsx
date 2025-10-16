@@ -15,7 +15,7 @@ import { useSyllabus } from '../context/SyllabusContext';
 import { useWorkPool } from '../context/WorkPoolContext';
 import { useStudent } from '../context/StudentContext';
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip: React.FC<any> = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
@@ -28,7 +28,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     return null;
 };
   
-const CustomActiveDot = (props: any) => {
+const CustomActiveDot: React.FC<any> = (props: any) => {
     const { cx, cy, stroke } = props;
     return (
         <g>
@@ -37,6 +37,16 @@ const CustomActiveDot = (props: any) => {
         </g>
     );
 };
+
+const StatItem: React.FC<{ count: number; label: string; badgeClasses: string; }> = ({ count, label, badgeClasses }) => (
+    <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-muted-foreground">{label}</span>
+        <span className={`flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full text-xs font-bold ${badgeClasses}`}>
+            {count}
+        </span>
+    </div>
+);
+
 
 const DoubtBoxPage: React.FC = () => {
     const { allStudentSubjects } = useSyllabus();
@@ -48,6 +58,9 @@ const DoubtBoxPage: React.FC = () => {
     const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
     const [viewingDoubt, setViewingDoubt] = useState<Doubt | null>(null);
     const [viewingWorkItem, setViewingWorkItem] = useState<WorkItem | null>(null);
+    
+    const doubtViews: ('cards' | 'table')[] = ['cards', 'table'];
+    const activeDoubtViewIndex = doubtViews.indexOf(viewMode);
 
     const [filters, setFilters] = useState({
         subject: '', priority: '', status: '', board: '', grade: '', batch: '', searchQuery: ''
@@ -141,11 +154,10 @@ const DoubtBoxPage: React.FC = () => {
     }, [doubts, students, showArchived, filters]);
 
     const doubtStats = useMemo(() => {
-        const total = filteredDoubtsForTable.length;
         const open = filteredDoubtsForTable.filter(d => d.status === 'Open').length;
         const tasked = filteredDoubtsForTable.filter(d => d.status === 'Tasked').length;
         const resolved = filteredDoubtsForTable.filter(d => d.status === 'Resolved').length;
-        return { total, open, tasked, resolved };
+        return { open, tasked, resolved };
     }, [filteredDoubtsForTable]);
 
     const handleViewDoubtDetails = useCallback((doubt: Doubt) => setViewingDoubt(doubt), []);
@@ -186,18 +198,30 @@ const DoubtBoxPage: React.FC = () => {
         <div>
             <p className="mt-2 mb-6 text-muted-foreground max-w-3xl">Track and resolve student doubts. Click on a student to view their doubt history, or add a new one.</p>
             
-            <div className="bg-card p-2 rounded-xl shadow-soft border border-border mb-6 flex justify-between items-center">
-                <div className="flex items-center gap-x-4 pl-2">
-                    <div className="text-sm font-semibold text-muted-foreground">Total: <span className="text-lg font-bold text-foreground">{doubtStats.total}</span></div>
-                    <div className="w-px h-6 bg-border"></div>
-                    <div className="text-sm font-semibold text-muted-foreground">Open: <span className="text-lg font-bold text-warning">{doubtStats.open}</span></div>
-                    <div className="text-sm font-semibold text-muted-foreground">Tasked: <span className="text-lg font-bold text-accent">{doubtStats.tasked}</span></div>
-                    <div className="text-sm font-semibold text-muted-foreground">Resolved: <span className="text-lg font-bold text-success">{doubtStats.resolved}</span></div>
+             <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-4 bg-card rounded-2xl shadow-soft border border-border">
+                    <StatItem count={doubtStats.open} label="Open" badgeClasses="bg-warning-muted text-warning-muted-foreground" />
+                    <StatItem count={doubtStats.tasked} label="Tasked" badgeClasses="bg-accent-muted text-accent-muted-foreground" />
+                    <StatItem count={doubtStats.resolved} label="Resolved" badgeClasses="bg-success-muted text-success-muted-foreground" />
                 </div>
 
-                <div className="flex bg-muted rounded-lg p-1">
-                    <button onClick={() => setViewMode('cards')} className={`flex items-center gap-2 px-3 py-1 text-sm font-semibold rounded-md transition-colors ${viewMode === 'cards' ? 'bg-background shadow-soft' : 'text-muted-foreground'}`}><CardsIcon className="h-5 w-5" /> Cards View</button>
-                    <button onClick={() => setViewMode('table')} className={`flex items-center gap-2 px-3 py-1 text-sm font-semibold rounded-md transition-colors ${viewMode === 'table' ? 'bg-background shadow-soft' : 'text-muted-foreground'}`}><TableIcon className="h-5 w-5" /> Table View</button>
+                <div className="flex items-center gap-4 self-end md:self-center">
+                    <div className="flex items-center">
+                        <input type="checkbox" id="showArchivedDoubtBox" checked={showArchived} onChange={() => setShowArchived(!showArchived)} className="h-4 w-4 rounded border-border text-primary focus:ring-primary" />
+                        <label htmlFor="showArchivedDoubtBox" className="ml-2 block text-sm text-muted-foreground whitespace-nowrap">Show Archived</label>
+                    </div>
+                    <div className="relative flex items-center bg-muted p-1 rounded-full flex-shrink-0">
+                        <div
+                            className="absolute h-[calc(100%-0.5rem)] w-1/2 bg-background rounded-full shadow-soft transition-transform duration-300"
+                            style={{ transform: `translateX(${activeDoubtViewIndex * 100}%)` }}
+                        ></div>
+                        <button onClick={() => setViewMode('cards')} className={`relative z-10 flex items-center justify-center gap-2 px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${viewMode === 'cards' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                            <CardsIcon className="h-5 w-5" /> Cards
+                        </button>
+                        <button onClick={() => setViewMode('table')} className={`relative z-10 flex items-center justify-center gap-2 px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${viewMode === 'table' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                            <TableIcon className="h-5 w-5" /> Table
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -245,11 +269,6 @@ const DoubtBoxPage: React.FC = () => {
                 allGrades={GRADES} 
                 allBatches={BATCHES} 
             />
-            
-            <div className="flex items-center my-6">
-                <input type="checkbox" id="showArchivedDoubtBox" checked={showArchived} onChange={() => setShowArchived(!showArchived)} className="h-4 w-4 rounded border-border text-primary focus:ring-primary" />
-                <label htmlFor="showArchivedDoubtBox" className="ml-2 block text-sm text-muted-foreground">Show Archived Students</label>
-            </div>
 
             {viewMode === 'cards' ? (
                 displayedStudents.length > 0 ? (

@@ -1,8 +1,9 @@
-
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { MistakeTypeDefinition } from '../../types';
 import { MISTAKE_TYPES } from '../../constants';
 import DeleteIcon from '../icons/DeleteIcon';
+import PlusIcon from '../icons/PlusIcon';
+import isEqual from 'lodash.isequal';
 
 interface MistakeTypeSettingsProps {
     customMistakeTypes: MistakeTypeDefinition[];
@@ -10,92 +11,122 @@ interface MistakeTypeSettingsProps {
 }
 
 const MistakeTypeSettings: React.FC<MistakeTypeSettingsProps> = ({ customMistakeTypes, onSaveMistakeTypes }) => {
-    const [types, setTypes] = useState(customMistakeTypes);
+    const [localTypes, setLocalTypes] = useState(customMistakeTypes);
     const [newType, setNewType] = useState({ title: '', description: '' });
+    const [isAdding, setIsAdding] = useState(false);
+    
+    useEffect(() => {
+        setLocalTypes(customMistakeTypes);
+    }, [customMistakeTypes]);
+
+    const isDirty = useMemo(() => !isEqual(customMistakeTypes, localTypes), [customMistakeTypes, localTypes]);
+
+    const allTypes = useMemo(() => {
+        const defaultTypesWithFlag = MISTAKE_TYPES.map(t => ({ ...t, isDefault: true }));
+        const customTypesWithFlag = localTypes.map(t => ({ ...t, isDefault: false }));
+        return [...defaultTypesWithFlag, ...customTypesWithFlag];
+    }, [localTypes]);
 
     const handleAdd = () => {
         const title = newType.title.trim();
         const description = newType.description.trim();
-        if (title && description && !types.some(t => t.title.toLowerCase() === title.toLowerCase()) && !MISTAKE_TYPES.some(t => t.title.toLowerCase() === title.toLowerCase())) {
-            setTypes([...types, { title, description }]);
+        if (title && description && !allTypes.some(t => t.title.toLowerCase() === title.toLowerCase())) {
+            setLocalTypes(prev => [...prev, { title, description }]);
             setNewType({ title: '', description: '' });
+            setIsAdding(false);
         } else {
             alert("Mistake type title must be unique and non-empty, and a description must be provided.");
         }
     };
 
     const handleDelete = (titleToDelete: string) => {
-        setTypes(types.filter(t => t.title !== titleToDelete));
+        setLocalTypes(localTypes.filter(t => t.title !== titleToDelete));
     };
 
     const handleSave = () => {
-        onSaveMistakeTypes(types);
-        alert('Custom mistake types have been saved.');
+        onSaveMistakeTypes(localTypes);
     };
     
     const handleReset = () => {
-        setTypes(customMistakeTypes);
+        setLocalTypes(customMistakeTypes);
     }
 
     return (
-        <div className="max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Manage Mistake Types</h2>
-            
-            <div className="bg-light-card dark:bg-dark-card rounded-xl shadow-sm p-6 space-y-6">
-                <div>
-                    <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Default Types (Cannot be changed)</h3>
+        <div className="max-w-3xl">
+            <div className="flex justify-between items-center mb-8">
+                <h2 className="text-3xl font-bold">Manage Mistake Types</h2>
+                {!isAdding && (
+                     <button 
+                        onClick={() => setIsAdding(true)}
+                        className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20"
+                    >
+                        <PlusIcon className="h-4 w-4" /> Add
+                    </button>
+                )}
+            </div>
+
+            {isAdding && (
+                <div className="p-4 border border-border rounded-xl bg-primary/5 mb-6">
+                    <h3 className="font-semibold text-foreground mb-2">New Custom Type</h3>
                     <div className="space-y-2">
-                        {MISTAKE_TYPES.map(type => (
-                            <div key={type.title} className="bg-gray-100 dark:bg-gray-700/50 p-3 rounded-md">
-                                <p className="font-semibold">{type.title}</p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">{type.description}</p>
-                            </div>
-                        ))}
+                        <input
+                            type="text"
+                            value={newType.title}
+                            onChange={(e) => setNewType(prev => ({...prev, title: e.target.value}))}
+                            placeholder="Mistake Title (e.g., Reading Error)"
+                            className="w-full h-10 px-3 rounded-lg border border-border bg-background"
+                            autoFocus
+                        />
+                        <textarea
+                            value={newType.description}
+                            onChange={(e) => setNewType(prev => ({...prev, description: e.target.value}))}
+                            placeholder="Description..."
+                            rows={2}
+                            className="w-full p-3 rounded-lg border border-border bg-background"
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button onClick={() => setIsAdding(false)} className="h-9 px-4 rounded-lg bg-muted text-muted-foreground font-semibold hover:bg-border">Cancel</button>
+                            <button onClick={handleAdd} className="h-9 px-4 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90">Add</button>
+                        </div>
                     </div>
                 </div>
+            )}
 
-                <div>
-                    <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mt-4 mb-2">Your Custom Types</h3>
-                    <div className="space-y-2">
-                        {types.map(type => (
-                            <div key={type.title} className="bg-gray-50 dark:bg-dark-bg p-3 rounded-md">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="font-semibold">{type.title}</p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">{type.description}</p>
-                                    </div>
-                                    <button onClick={() => handleDelete(type.title)} className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full flex-shrink-0 ml-2"><DeleteIcon /></button>
-                                </div>
+            <div className="rounded-xl border border-border overflow-hidden">
+                <div className="divide-y divide-border">
+                    {allTypes.map(type => (
+                        <div key={type.title} className="group flex justify-between items-start p-4 bg-muted/30 hover:bg-muted/60">
+                            <div>
+                                <p className="font-semibold text-sm text-foreground">{type.title}</p>
+                                <p className="text-sm text-muted-foreground">{type.description}</p>
                             </div>
-                        ))}
-                         {types.length === 0 && <p className="text-sm text-gray-500 italic">No custom types added yet.</p>}
-                    </div>
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
-                    <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Add New Type</h3>
-                    <input
-                        type="text"
-                        value={newType.title}
-                        onChange={(e) => setNewType(prev => ({...prev, title: e.target.value}))}
-                        placeholder="New Mistake Title"
-                        className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50"
-                    />
-                    <textarea
-                        value={newType.description}
-                        onChange={(e) => setNewType(prev => ({...prev, description: e.target.value}))}
-                        placeholder="Description..."
-                        rows={2}
-                        className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50"
-                    />
-                    <button onClick={handleAdd} className="w-full h-10 px-4 rounded-md bg-brand-blue/80 text-white hover:bg-brand-blue text-sm font-semibold">Add New Type</button>
-                </div>
-
-                <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                    <button onClick={handleReset} className="py-2 px-5 rounded-lg bg-gray-200 dark:bg-gray-600 font-semibold">Reset</button>
-                    <button onClick={handleSave} className="h-10 px-4 rounded-md bg-brand-blue text-white hover:bg-blue-600 text-sm font-semibold">Save Changes</button>
+                            <div className="flex-shrink-0 ml-4">
+                                {type.isDefault ? (
+                                    <span className="text-xs font-semibold text-muted-foreground bg-border px-2 py-1 rounded-full">Default</span>
+                                ) : (
+                                    <button onClick={() => handleDelete(type.title)} className="p-1.5 text-muted-foreground hover:text-danger hover:bg-danger/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <DeleteIcon />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
+            
+             {isDirty && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4">
+                    <div className="bg-card/80 backdrop-blur-xl border border-border rounded-full shadow-soft-lg p-2 flex items-center justify-between">
+                        <p className="text-sm font-semibold pl-4 text-foreground">Unsaved changes</p>
+                        <div className="flex gap-2">
+                            <button onClick={handleReset} className="h-9 px-4 rounded-full text-sm font-semibold text-muted-foreground hover:bg-muted">Discard</button>
+                            <button onClick={handleSave} className="h-9 px-4 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90">
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
