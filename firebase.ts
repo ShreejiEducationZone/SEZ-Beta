@@ -1,7 +1,7 @@
 // User's Firebase project configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyB6YR3oa9G7fKV9obY1FnVXYg9wHclAqOM",
-  projectId: "sez-v1",
+  apiKey: "AIzaSyB_PcFeNPA45rdqIN3GL0JQagLnRo1QnBs",
+  projectId: "sez-beta",
 };
 
 const API_KEY = firebaseConfig.apiKey;
