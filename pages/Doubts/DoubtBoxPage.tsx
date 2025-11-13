@@ -21,7 +21,7 @@ import { useStudent } from '../../context/StudentContext';
 const DoubtBoxPage: React.FC = () => {
     // FIX: Destructure data from specific context hooks instead of the generic useData hook.
     const { allStudentSubjects } = useSyllabus();
-    const { workItems, handleSaveWorkItem } = useWorkPool();
+    const { workItems, handleSaveWorkItem, openWorkForm } = useWorkPool();
     const { doubts, handleSaveDoubt, handleDeleteDoubt } = useDoubtBox();
     const { students } = useStudent();
 
@@ -168,6 +168,11 @@ const DoubtBoxPage: React.FC = () => {
     const handleViewTask = useCallback((workItem: WorkItem) => setViewingWorkItem(workItem), []);
     const studentForWorkItemModal = useMemo(() => viewingWorkItem ? students.find(s => s.id === viewingWorkItem.studentId) || null : null, [viewingWorkItem, students]);
 
+    const handleConvertToTask = (student: Student, workItem: Partial<WorkItem>) => {
+        setSelectedStudent(null);
+        openWorkForm(student, workItem);
+    };
+
     return (
         <div>
             <p className="mt-2 mb-6 text-gray-600 dark:text-gray-400 max-w-3xl">Track and resolve student doubts. Click on a student to view their doubt history, or add a new one.</p>
@@ -216,7 +221,7 @@ const DoubtBoxPage: React.FC = () => {
             {viewMode === 'cards' ? (
                 displayedStudents.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {displayedStudents.map(student => <StudentDoubtCard key={student.id} student={student} doubts={doubtsByStudent[student.id] || []} onAddDoubt={() => setStudentForNewDoubt(student)} onViewDoubts={() => setSelectedStudent(student)} />)}
+                        {displayedStudents.map(student => <StudentDoubtCard key={student.id} student={student} doubts={doubtsByStudent[student.id] || []} onViewDoubts={() => setSelectedStudent(student)} />)}
                     </div>
                 ) : (
                     <div className="text-center py-16 text-gray-500 dark:text-gray-400"><h3 className="text-xl font-semibold">No students found.</h3><p>Try adjusting your search or filters.</p></div>

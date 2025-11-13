@@ -9,11 +9,13 @@ import WorkItemDetailModal from './WorkItemDetailModal';
 import CalendarIcon from './icons/CalendarIcon';
 import TableIcon from './icons/TableIcon';
 import WorkPoolDrawer from './WorkPoolDrawer';
-import { useData } from '../context/DataContext';
-import { useStudent } from '../context/StudentContext';
+import { useSyllabus } from './context/SyllabusContext';
+import { useWorkPool } from './context/WorkPoolContext';
+import { useStudent } from './context/StudentContext';
 
 const WorkPoolPage: React.FC = () => {
-    const { allStudentSubjects, workItems, handleSaveWorkItem, handleDeleteWorkItem } = useData();
+    const { allStudentSubjects } = useSyllabus();
+    const { workItems, handleSaveWorkItem, handleDeleteWorkItem } = useWorkPool();
     const { students } = useStudent();
 
     const [showArchived, setShowArchived] = useState(false);

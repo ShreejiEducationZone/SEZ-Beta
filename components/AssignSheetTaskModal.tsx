@@ -7,12 +7,12 @@ interface SelectSheetTaskModalProps {
     onTaskSelect: (task: SheetColumn) => void;
     student: Student;
     subject: string;
-    chapter: SyllabusNode;
+    node: SyllabusNode;
     columns: SheetColumn[];
     workItems: WorkItem[];
 }
 
-const SelectSheetTaskModal: FC<SelectSheetTaskModalProps> = ({ isOpen, onClose, onTaskSelect, student, subject, chapter, columns, workItems }) => {
+const SelectSheetTaskModal: FC<SelectSheetTaskModalProps> = ({ isOpen, onClose, onTaskSelect, student, subject, node, columns, workItems }) => {
     
     const { pendingTaskIds, completedTaskIds } = useMemo(() => {
         const pending = new Set<string>();
@@ -21,7 +21,7 @@ const SelectSheetTaskModal: FC<SelectSheetTaskModalProps> = ({ isOpen, onClose, 
             .filter(item => 
                 item.studentId === student.id &&
                 item.subject === subject &&
-                String(item.chapterNo) === String(chapter.no) &&
+                item.nodePath === String(node.no) &&
                 item.source === 'sheets' &&
                 item.sheetTaskIds
             )
@@ -33,7 +33,7 @@ const SelectSheetTaskModal: FC<SelectSheetTaskModalProps> = ({ isOpen, onClose, 
                 }
             });
         return { pendingTaskIds: pending, completedTaskIds: completed };
-    }, [workItems, student.id, subject, chapter.no]);
+    }, [workItems, student.id, subject, node.no]);
 
     if (!isOpen) return null;
 
@@ -43,7 +43,7 @@ const SelectSheetTaskModal: FC<SelectSheetTaskModalProps> = ({ isOpen, onClose, 
                 <header>
                     <h3 className="text-xl font-bold text-foreground">Which task to assign?</h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                        For {student.name} - Chapter {chapter.no}: {chapter.name}
+                        For {student.name} - {node.no}: {node.name}
                     </p>
                 </header>
 

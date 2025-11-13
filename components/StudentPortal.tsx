@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
+import { useStudent } from '../context/StudentContext';
 import SPDashboard from './studentportal/SPDashboard';
 import SPWorkPoolPage from './studentportal/SPWorkPoolPage';
 import SPTestsPage from './studentportal/SPTestsPage';
@@ -9,16 +10,13 @@ import SPAiAssistantPage from './studentportal/SPAiAssistantPage';
 import SPVideoLibraryPage from './studentportal/SPVideoLibraryPage';
 import SplashScreenLoader from './auth/SplashScreenLoader';
 import SPBottomNav from './studentportal/SPBottomNav';
-// FIX: Import useStudent to get students data
-import { useStudent } from '../context/StudentContext';
 
 
 export type StudentPage = 'dashboard' | 'work-pool' | 'tests' | 'syllabus' | 'doubts' | 'videos' | 'ai-assistant';
 
 const StudentPortal: React.FC = () => {
-    // FIX: Use isLoadingStudents from useStudent and isAppReady from useData
-    const { currentUser, logout, isAppReady } = useData();
-    // FIX: Get students from useStudent hook
+    // FIX: Use isAppReady from useData and isLoadingStudents from useStudent for loading state.
+    const { currentUser, isAppReady } = useData();
     const { students, isLoadingStudents } = useStudent();
     const [currentPage, setCurrentPage] = useState<StudentPage>('dashboard');
 
@@ -27,6 +25,7 @@ const StudentPortal: React.FC = () => {
         return students.find(s => s.id === currentUser.studentId);
     }, [currentUser, students]);
 
+    // FIX: Check both isAppReady and isLoadingStudents before rendering.
     if (!isAppReady || isLoadingStudents || !student) {
         return <SplashScreenLoader />;
     }
@@ -34,24 +33,26 @@ const StudentPortal: React.FC = () => {
     const renderContent = () => {
         switch (currentPage) {
             case 'dashboard': return <SPDashboard student={student} onNavigate={setCurrentPage} />;
-            case 'work-pool': return <SPWorkPoolPage student={student} />;
-            case 'tests': return <SPTestsPage student={student} />;
-            case 'doubts': return <SPDoubtBoxPage student={student} />;
-            case 'syllabus': return <SPSyllabusProgressPage student={student} />;
-            case 'videos': return <SPVideoLibraryPage student={student} />;
+            case 'work-pool': return <SPWorkPoolPage student={student} onNavigate={setCurrentPage} />;
+            case 'tests': return <SPTestsPage student={student} onNavigate={setCurrentPage} />;
+            case 'doubts': return <SPDoubtBoxPage student={student} onNavigate={setCurrentPage} />;
+            case 'syllabus': return <SPSyllabusProgressPage student={student} onNavigate={setCurrentPage} />;
+            case 'videos': return <SPVideoLibraryPage student={student} onNavigate={setCurrentPage} />;
             case 'ai-assistant': return <SPAiAssistantPage student={student} onBack={() => setCurrentPage('dashboard')} />;
             default: return <SPDashboard student={student} onNavigate={setCurrentPage} />;
         }
     };
 
+    const isAiPage = currentPage === 'ai-assistant';
+
     return (
         <div className="min-h-screen bg-background flex flex-col">
-            <main className="flex-grow pb-20 flex flex-col">
-                <div className={`flex-grow ${currentPage === 'ai-assistant' ? '' : 'max-w-7xl mx-auto p-4 md:p-6 w-full'}`}>
+            <main className={`flex-grow flex flex-col ${isAiPage ? 'pb-0' : 'pb-24'}`}>
+                <div className={`flex-grow ${isAiPage ? 'h-[100dvh] p-0' : 'max-w-7xl mx-auto p-4 md:p-6 w-full'}`}>
                     {renderContent()}
                 </div>
             </main>
-            <SPBottomNav currentPage={currentPage} onNavigate={setCurrentPage} />
+            {!isAiPage && <SPBottomNav currentPage={currentPage} onNavigate={setCurrentPage} />}
         </div>
     );
 };

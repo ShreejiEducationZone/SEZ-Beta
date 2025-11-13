@@ -243,7 +243,7 @@ const WorkPoolDrawer: React.FC<WorkPoolDrawerProps> = ({ student, workItems, onC
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex justify-end" onClick={onClose}>
             <div className="w-full max-w-3xl h-full bg-card/80 dark:bg-card/70 backdrop-blur-lg border-l border-border shadow-2xl flex flex-col rounded-l-2xl" onClick={e => e.stopPropagation()}>
                 <header className="p-6 border-b border-border flex-shrink-0">
-                    <div className="flex justify-between items-start">
+                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                         <div className="flex items-center space-x-4">
                             <div className="w-16 h-16 rounded-full overflow-hidden bg-muted flex-shrink-0">
                                 {student.avatarUrl ? <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" /> : <PlaceholderAvatar />}

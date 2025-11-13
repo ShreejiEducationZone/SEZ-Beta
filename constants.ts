@@ -1,5 +1,4 @@
 
-
 import { Student, Board, WorkStatus, WorkPriority, DoubtStatus, DoubtPriority, DoubtOrigin, Gender, TestType, TestStatus, TestPriority, MistakeTypeDefinition, AttendanceStatus } from './types';
 
 export const initialStudents: Student[] = [
@@ -8,7 +7,7 @@ export const initialStudents: Student[] = [
     { id: '3', name: 'Amit Singh', grade: '11', board: 'Cambridge', programStage: 'AS Level (A1)', school: 'Global International', batch: 'C', timeSlot: '6:00–8:00', motherPhone: '9876543212', isArchived: false, avatarUrl: 'https://i.pravatar.cc/150?u=c3', email: 'amit@sez.com', password: 'amit123' },
     { id: '4', name: 'Sneha Reddy', grade: '12', board: 'IB', programStage: 'DP', school: 'Oakridge International', batch: 'A', timeSlot: '3:00–4:30', isArchived: true, avatarUrl: null, email: 'sneha@sez.com', password: 'sneha123' },
     { id: '5', name: 'Vikram Mehta', grade: '8', board: 'GSEB', school: 'Gujarat Public School', batch: 'B', timeSlot: '4:30–6:00', fatherPhone: '9876543214', isArchived: false, avatarUrl: 'https://i.pravatar.cc/150?u=d4', email: 'vikram@sez.com', password: 'vikram123' },
-    { id: '6', name: 'Dhruv Ahir', grade: '10', board: 'GSEB', school: 'Vivekananda School', batch: 'C', timeSlot: '6:00–8:00', isArchived: false, avatarUrl: 'https://i.pravatar.cc/150?u=e5', email: 'dhruv@sez.com', password: '12345' }
+    { id: '6', name: 'Dhruv', grade: '10', board: 'GSEB', school: 'Vivekananda School', batch: 'C', timeSlot: '6:00–8:00', isArchived: false, avatarUrl: 'https://i.pravatar.cc/150?u=e5', email: 'dhruv@sez.com', password: '111111' }
 ];
 
 export const BOARDS: Board[] = ['CBSE', 'ICSE', 'GSEB', 'Cambridge', 'IB'];

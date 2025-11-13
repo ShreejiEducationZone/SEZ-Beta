@@ -6,6 +6,11 @@ import AdminAiChat from './AdminAiChat';
 import StudentAiChat from './StudentAiChat';
 import PlaceholderAvatar from './PlaceholderAvatar';
 import ChevronRightIcon from './icons/ChevronRightIcon';
+import { useSyllabus } from '../context/SyllabusContext';
+import { useWorkPool } from '../context/WorkPoolContext';
+import { useDoubtBox } from '../context/DoubtBoxContext';
+import { useReports } from '../context/ReportsContext';
+import { useAttendance } from '../context/AttendanceContext';
 
 const AiAssistantPage: React.FC = () => {
     const [mode, setMode] = useState<'selection' | 'admin' | 'student'>('selection');
@@ -13,14 +18,11 @@ const AiAssistantPage: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
 
     const { students } = useStudent();
-    const { 
-        allStudentSubjects, 
-        syllabusProgress, 
-        workItems, 
-        doubts, 
-        tests, 
-        attendanceRecords, 
-    } = useData();
+    const { allStudentSubjects, syllabusProgress } = useSyllabus();
+    const { workItems } = useWorkPool();
+    const { doubts } = useDoubtBox();
+    const { tests } = useReports();
+    const { attendanceRecords } = useAttendance();
 
     const activeStudents = useMemo(() => students.filter(s => !s.isArchived), [students]);
     

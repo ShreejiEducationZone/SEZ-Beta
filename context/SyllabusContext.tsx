@@ -10,6 +10,8 @@ interface SyllabusContextType {
     handleSaveSubjects: (studentId: string, subjects: SubjectData[]) => Promise<void>;
     handleUpdateSyllabusNode: (studentId: string, subject: string, nodeNo: string | number, updates: { isCompleted?: boolean; notesToAdd?: ProgressEntry[]; noteIndicesToDelete?: number[] }) => Promise<void>;
     handleBatchUpdateSyllabusProgress: (changes: Map<string, boolean>) => Promise<void>;
+    subjectAreas: { [key: string]: AreaDefinition[] };
+    handleSaveSubjectAreas: (areas: { [key: string]: AreaDefinition[] }) => Promise<void>;
 }
 
 const SyllabusContext = createContext<SyllabusContextType | undefined>(undefined);
@@ -25,6 +27,7 @@ const DEFAULT_SHEET_COLUMNS: SheetColumn[] = [
 export const SyllabusProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [allStudentSubjects, setAllStudentSubjects] = useState<{ [key: string]: { studentId: string; subjects: SubjectData[] } }>({});
     const [syllabusProgress, setSyllabusProgress] = useState<SyllabusProgress[]>([]);
+    const [subjectAreas, setSubjectAreas] = useState<{ [key: string]: AreaDefinition[] }>({});
     const [isLoading, setIsLoading] = useState(false);
     
     const { currentUser, showToast } = useData();
@@ -34,13 +37,15 @@ export const SyllabusProvider: React.FC<{ children: ReactNode }> = ({ children }
             if (!currentUser) {
                 setAllStudentSubjects({});
                 setSyllabusProgress([]);
+                setSubjectAreas({});
                 return;
             }
             setIsLoading(true);
             try {
-                const [subjectsData, syllabusProgressData] = await Promise.all([
+                const [subjectsData, syllabusProgressData, subjectAreasDoc] = await Promise.all([
                     getCollection("studentSubjects"),
                     getCollection("syllabusProgress"),
+                    getDocument("configuration", "subjectAreas"),
                 ]);
                 
                 const studentId = currentUser.studentId;
@@ -56,6 +61,12 @@ export const SyllabusProvider: React.FC<{ children: ReactNode }> = ({ children }
 
                 setSyllabusProgress(isAdmin ? syllabusProgressData as SyllabusProgress[] : (syllabusProgressData as SyllabusProgress[]).filter(p => p.studentId === studentId));
                 
+                if (subjectAreasDoc && (subjectAreasDoc as any).areas) {
+                    setSubjectAreas((subjectAreasDoc as any).areas);
+                } else {
+                    setSubjectAreas({});
+                }
+
             } catch (error) {
                 console.error("Failed to fetch syllabus data:", error);
                 showToast("Could not load syllabus data.", 'error');
@@ -144,7 +155,27 @@ export const SyllabusProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
     }, [syllabusProgress, showToast]);
 
-    const value = { allStudentSubjects, syllabusProgress, isLoading, handleSaveSubjects, handleUpdateSyllabusNode, handleBatchUpdateSyllabusProgress };
+    const handleSaveSubjectAreas = useCallback(async (areas: { [key: string]: AreaDefinition[] }) => {
+        try {
+            await setDocument("configuration", "subjectAreas", { areas });
+            setSubjectAreas(areas);
+            showToast('Subject areas saved.', 'success');
+        } catch (error: any) {
+            showToast(`Failed to save areas: ${error.message}`, 'error');
+            throw error;
+        }
+    }, [showToast]);
+
+    const value = { 
+        allStudentSubjects, 
+        syllabusProgress, 
+        isLoading, 
+        handleSaveSubjects, 
+        handleUpdateSyllabusNode, 
+        handleBatchUpdateSyllabusProgress,
+        subjectAreas,
+        handleSaveSubjectAreas
+    };
 
     return <SyllabusContext.Provider value={value as SyllabusContextType}>{children}</SyllabusContext.Provider>;
 };

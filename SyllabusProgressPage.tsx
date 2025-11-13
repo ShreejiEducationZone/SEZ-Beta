@@ -3,7 +3,7 @@ import { Student, SubjectData, SyllabusProgress, SyllabusNode } from './types';
 import StudentProgressCard from './components/StudentProgressCard';
 import SyllabusFocusPage from './components/SyllabusFocusPage';
 import SyllabusFilterBar from './components/SyllabusFilterBar';
-import { useData } from './context/DataContext';
+import { useSyllabus } from './context/SyllabusContext';
 import { useStudent } from './context/StudentContext';
 
 const countNodes = (nodes: SyllabusNode[]): number => {
@@ -17,7 +17,7 @@ const countNodes = (nodes: SyllabusNode[]): number => {
 };
 
 const SyllabusProgressPage: React.FC = () => {
-    const { allStudentSubjects, syllabusProgress, handleUpdateSyllabusNode } = useData();
+    const { allStudentSubjects, syllabusProgress, handleUpdateSyllabusNode } = useSyllabus();
     const { students } = useStudent();
 
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);

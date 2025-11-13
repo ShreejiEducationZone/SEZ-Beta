@@ -3,6 +3,7 @@ import { useData } from '../../context/DataContext';
 import App from '../../App';
 import Login from './Login';
 import StudentPortal from '../StudentPortal';
+import ParentsPortal from '../ParentsPortal';
 import SplashScreenLoader from './SplashScreenLoader';
 
 const AuthWrapper: React.FC = () => {
@@ -22,6 +23,10 @@ const AuthWrapper: React.FC = () => {
 
     if (currentUser.role === 'student') {
         return <StudentPortal />;
+    }
+
+    if (currentUser.role === 'parent') {
+        return <ParentsPortal />;
     }
 
     // Fallback in case of an invalid role

@@ -16,7 +16,6 @@ import PinIcon from './icons/PinIcon';
 import BranchSettings from './settings/BranchSettings';
 import { useData } from '../context/DataContext';
 import { useStudent } from '../context/StudentContext';
-// FIX: Import useSyllabus hook to get syllabus-related data.
 import { useSyllabus } from '../context/SyllabusContext';
 
 type SettingsTab = 'administrator' | 'passwords' | 'mistakes' | 'manage-subject-areas' | 'branches' | 'appearance' | 'permissions';
@@ -31,7 +30,6 @@ const SettingsPage: React.FC = () => {
         handleSaveBranches
     } = useData();
     
-    // FIX: Get syllabus and subject area data from the useSyllabus hook.
     const { allStudentSubjects, subjectAreas, handleSaveSubjectAreas } = useSyllabus();
     const { students, handleSaveStudent } = useStudent();
 

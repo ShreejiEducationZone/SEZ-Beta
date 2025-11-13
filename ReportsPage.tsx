@@ -16,6 +16,8 @@ import XCircleIcon from './icons/XCircleIcon';
 import OverallStrengthsWeaknesses from './OverallStrengthsWeaknesses';
 import { useData } from '../context/DataContext';
 import { useStudent } from '../context/StudentContext';
+import { useSyllabus } from '../context/SyllabusContext';
+import { useWorkPool } from '../context/WorkPoolContext';
 
 const getScoreColor = (score: number) => {
     if (score >= 80) return '#10B981';
@@ -36,7 +38,9 @@ const StatCard: React.FC<{icon: React.ElementType, iconColor: string, bgColor: s
 );
 
 const ReportsPage: React.FC = () => {
-    const { allStudentSubjects, tests, handleSaveTest, handleDeleteTest, allMistakeTypes, subjectAreas } = useData();
+    const { allStudentSubjects } = useSyllabus();
+    const { tests, handleSaveTest, handleDeleteTest } = useWorkPool();
+    const { allMistakeTypes } = useData();
     const { students } = useStudent();
     
     const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
@@ -124,21 +128,23 @@ const ReportsPage: React.FC = () => {
                                 <StatCard icon={XCircleIcon} iconColor="text-red-500" bgColor="bg-red-100" darkBgColor="dark:bg-red-500/20" title="Absent Tests" value={stats.absentTests} />
                             </div>
                         </div>
-                        <OverallStrengthsWeaknesses tests={completedAndAbsentTests.filter(t => t.status === 'Completed')} />
+                        <OverallStrengthsWeaknesses tests={completedAndAbsentTests.filter(t => t.status === 'Completed')} studentSubjects={allStudentSubjects[selectedStudent.id]?.subjects || []} />
                         <TestSchedule 
                             tests={testsForSelectedStudent}
+                            workItems={[]} // Add empty or actual workItems if needed for assign logic in future
                             onTestSelect={setViewingTest}
                             onEditTest={handleEditTest}
                             onDeleteTest={handleDeleteTest}
                             onAddMarking={handleAddMarking}
+                            onAssignTestAsWork={() => {}} // Placeholder or implement if needed
                         />
                         <ScoreTrendChart completedTests={completedAndAbsentTests.filter(t => t.status === 'Completed')} onTestSelect={setViewingTest} />
                         <MistakeAnalytics tests={completedAndAbsentTests.filter(t => t.status === 'Completed')} />
                     </div>
                 </div>
             )}
-            {isTestFormOpen && selectedStudent && <TestForm student={selectedStudent} studentSubjects={allStudentSubjects[selectedStudent.id]?.subjects || []} test={editingTest} onSave={handleSaveTest} onCancel={handleCloseForm} allMistakeTypes={allMistakeTypes} subjectAreas={subjectAreas} />}
-            {viewingTest && selectedStudent && <TestDetailModal test={viewingTest} student={selectedStudent} onClose={() => setViewingTest(null)} onAddMarking={handleAddMarking} onEdit={handleEditTest} onDelete={handleDeleteAndCloseModal} />}
+            {isTestFormOpen && selectedStudent && <TestForm student={selectedStudent} studentSubjects={allStudentSubjects[selectedStudent.id]?.subjects || []} test={editingTest} onSave={handleSaveTest} onCancel={handleCloseForm} allMistakeTypes={allMistakeTypes} />}
+            {viewingTest && selectedStudent && <TestDetailModal test={viewingTest} student={selectedStudent} studentSubjects={allStudentSubjects[selectedStudent.id]?.subjects || []} onClose={() => setViewingTest(null)} onAddMarking={handleAddMarking} onEdit={handleEditTest} onDelete={handleDeleteAndCloseModal} />}
         </div>
     );
 };

@@ -32,7 +32,9 @@ const SyllabusProgressPage: React.FC = () => {
     const allSubjectsForFilter = useMemo(() => {
         const subjectsSet = new Set<string>();
         Object.values(allStudentSubjects).forEach((studentSubjects: { subjects: SubjectData[] }) => {
-            studentSubjects.subjects.forEach(subject => subjectsSet.add(subject.subject));
+            if (studentSubjects && studentSubjects.subjects) {
+                studentSubjects.subjects.forEach(subject => subjectsSet.add(subject.subject));
+            }
         });
         return Array.from(subjectsSet).sort();
     }, [allStudentSubjects]);
@@ -55,7 +57,9 @@ const SyllabusProgressPage: React.FC = () => {
             };
 
             studentSubjectsData.forEach(subject => {
-                addNodesToSet(subject.chapters);
+                if(subject.chapters) {
+                    addNodesToSet(subject.chapters);
+                }
             });
             totalNodes = allNodesForStudent.size;
 
@@ -63,11 +67,13 @@ const SyllabusProgressPage: React.FC = () => {
             const completedNodesCount = completedNodesForStudent.length;
             
             completedNodesForStudent.forEach(p => {
-                p.entries.forEach(e => {
-                    if (!lastUpdate || new Date(e.date) > new Date(lastUpdate)) {
-                        lastUpdate = e.date;
-                    }
-                });
+                if (p.entries) {
+                    p.entries.forEach(e => {
+                        if (!lastUpdate || new Date(e.date) > new Date(lastUpdate)) {
+                            lastUpdate = e.date;
+                        }
+                    });
+                }
             });
 
             const overallPercentage = totalNodes > 0 ? Math.round((completedNodesCount / totalNodes) * 100) : 0;
@@ -82,7 +88,9 @@ const SyllabusProgressPage: React.FC = () => {
                         }
                     });
                 };
-                addNodesToChapterSet(subject.chapters);
+                if(subject.chapters) {
+                    addNodesToChapterSet(subject.chapters);
+                }
                 const total = chapterNodes.size;
 
                 const completed = completedNodesForStudent.filter(p => p.subject === subject.subject).length;
@@ -102,7 +110,7 @@ const SyllabusProgressPage: React.FC = () => {
             if (filters.batch && student.batch !== filters.batch) return false;
             if (searchQuery && !student.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
             if (filters.subject) {
-                const studentSubjects = allStudentSubjects[student.id]?.subjects.map(s => s.subject) || [];
+                const studentSubjects = (allStudentSubjects[student.id]?.subjects || []).map(s => s.subject);
                 if (!studentSubjects.includes(filters.subject)) return false;
             }
             return true;

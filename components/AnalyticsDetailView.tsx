@@ -250,9 +250,12 @@ const ActivityTimelineView: React.FC<AnalyticsDetailViewProps> = ({ student, onB
 
     return (
         <div>
-            <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors mb-4">
+            <button 
+                onClick={onBack} 
+                className="inline-flex items-center justify-center gap-2 h-10 px-3 md:px-4 rounded-lg bg-muted text-sm font-semibold text-muted-foreground ring-offset-background transition-colors hover:bg-border hover:text-foreground mb-4"
+            >
                 <ChevronLeftIcon className="h-5 w-5" />
-                Back to All Students
+                <span className="hidden md:inline">Back to All Students</span>
             </button>
              <div className="mb-8 flex items-center gap-4">
                 <div className="w-16 h-16 rounded-full overflow-hidden bg-muted flex-shrink-0">

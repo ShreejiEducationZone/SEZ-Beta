@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useData } from './context/DataContext';
 import { useStudent } from './context/StudentContext';
@@ -295,6 +296,13 @@ const App: React.FC = () => {
         'analytics': 'Activity Timeline'
     };
 
+    const handleNavigate = (page: Page) => {
+        setCurrentPage(page);
+        if (window.innerWidth < 768) { // md breakpoint
+            setSidebarExpanded(false);
+        }
+    };
+
     const renderContent = () => {
         switch (currentPage) {
             case 'students':
@@ -419,7 +427,7 @@ const App: React.FC = () => {
                 isExpanded={isSidebarExpanded}
                 onToggle={() => setSidebarExpanded(!isSidebarExpanded)}
                 currentPage={currentPage}
-                onNavigate={(page) => setCurrentPage(page)}
+                onNavigate={handleNavigate}
             />
             
             {isSidebarExpanded && (

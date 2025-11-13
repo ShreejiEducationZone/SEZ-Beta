@@ -1,21 +1,21 @@
 import React, { useMemo, useState } from 'react';
 import { Student, Doubt } from '../../types';
-// FIX: Import specific context hooks
-import { useDoubtBox } from '../../context/DoubtBoxContext';
-import { useSyllabus } from '../../context/SyllabusContext';
 import { useWorkPool } from '../../context/WorkPoolContext';
+import { useSyllabus } from '../../context/SyllabusContext';
 import SPDoubtCard from './SPDoubtCard';
 import DoubtForm from '../DoubtForm';
 import PlusIcon from '../icons/PlusIcon';
 import { FaQuestionCircle } from 'react-icons/fa';
+import { StudentPage } from '../StudentPortal';
+import SPHeader from './SPHeader';
 
 interface SPDoubtBoxPageProps {
     student: Student;
+    onNavigate: (page: StudentPage) => void;
 }
 
-const SPDoubtBoxPage: React.FC<SPDoubtBoxPageProps> = ({ student }) => {
-    // FIX: Get data from specific context hooks
-    const { doubts, handleSaveDoubt } = useDoubtBox();
+const SPDoubtBoxPage: React.FC<SPDoubtBoxPageProps> = ({ student, onNavigate }) => {
+    const { doubts, handleSaveDoubt } = useWorkPool();
     const { allStudentSubjects } = useSyllabus();
     const { workItems } = useWorkPool();
     const [activeTab, setActiveTab] = useState<'Open' | 'Resolved'>('Open');
@@ -48,25 +48,23 @@ const SPDoubtBoxPage: React.FC<SPDoubtBoxPageProps> = ({ student }) => {
 
     return (
         <div className="relative h-full">
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold">My Doubt Box</h1>
-                    <p className="text-muted-foreground mt-1">Ask questions and track their status.</p>
-                </div>
-            </div>
+             <SPHeader title="My Doubt Box" student={student} onBack={() => onNavigate('dashboard')} />
+            <p className="text-muted-foreground mb-6 -mt-4">Ask questions and track their status.</p>
 
-            <div className="border-b border-border mb-6">
-                <nav className="-mb-px flex space-x-6">
-                    {(['Open', 'Resolved'] as const).map(tab => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={`whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm ${activeTab === tab ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                        >
-                            {tab} ({tab === 'Open' ? studentDoubts.open.length : studentDoubts.resolved.length})
-                        </button>
-                    ))}
-                </nav>
+            <div className="flex bg-muted/50 p-1 rounded-xl mb-6 w-full sm:w-fit">
+                {(['Open', 'Resolved'] as const).map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-semibold transition-all ${
+                            activeTab === tab 
+                            ? 'bg-background text-foreground shadow-sm' 
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                        {tab} ({tab === 'Open' ? studentDoubts.open.length : studentDoubts.resolved.length})
+                    </button>
+                ))}
             </div>
 
             {itemsToShow.length > 0 ? (

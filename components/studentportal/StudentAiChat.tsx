@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, Chat } from "@google/genai";
-import SendIcon from './icons/SendIcon';
-import RobotIcon from './icons/RobotIcon';
-import AiThinking from './AiThinking';
-import AnalyticsReport from './AnalyticsReport';
-import { Student } from '../types';
-import ChevronLeftIcon from './icons/ChevronLeftIcon';
-import { GEMINI_API_KEY } from '../utils/apiHUB';
-import PlaceholderAvatar from './PlaceholderAvatar';
+import SendIcon from '../icons/SendIcon';
+import RobotIcon from '../icons/RobotIcon';
+import AiThinking from '../AiThinking';
+import AnalyticsReport from '../AnalyticsReport';
+import { Student } from '../../types';
+import ChevronLeftIcon from '../icons/ChevronLeftIcon';
+import { GEMINI_API_KEY } from '../../utils/apiHUB';
+import PlaceholderAvatar from '../PlaceholderAvatar';
+import { useData } from '../../context/DataContext';
+import { FaSignOutAlt } from 'react-icons/fa';
 
 type Message = {
     role: 'user' | 'model';
@@ -55,6 +57,8 @@ function extractAndParseJSON(text: string): { jsonData: any | null, remainingTex
 }
 
 const StudentAiChat: React.FC<StudentAiChatProps> = ({ student, studentData, onBack }) => {
+    const { logout } = useData();
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -166,22 +170,34 @@ Answer the student's questions based ONLY on this data. Be conversational and he
     return (
         <div className="fixed inset-0 z-50 flex flex-col bg-background h-[100dvh]">
             {/* Header */}
-            <header className="flex-shrink-0 flex items-center gap-4 p-4 border-b border-border bg-card/80 backdrop-blur-xl z-10 shadow-sm">
-                {onBack && (
-                    <button onClick={onBack} className="p-2 rounded-full text-muted-foreground hover:bg-muted transition-colors">
-                        <ChevronLeftIcon className="h-6 w-6" />
-                    </button>
-                )}
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <RobotIcon className="h-6 w-6 text-primary"/>
+            <header className="flex-shrink-0 flex items-center justify-between gap-4 p-4 border-b border-border bg-card/80 backdrop-blur-xl z-10 shadow-sm">
+                <div className="flex items-center gap-4">
+                    {onBack && (
+                        <button onClick={onBack} className="p-2 rounded-full text-muted-foreground hover:bg-muted transition-colors">
+                            <ChevronLeftIcon className="h-6 w-6" />
+                        </button>
+                    )}
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <RobotIcon className="h-6 w-6 text-primary"/>
+                    </div>
+                    <div>
+                        <h2 className="font-bold text-lg text-foreground">Sez AI</h2>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                            <span className="h-2 w-2 rounded-full bg-success animate-pulse"></span>
+                            Online
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <h2 className="font-bold text-lg text-foreground">Sez AI</h2>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-success animate-pulse"></span>
-                        Online
-                    </p>
-                </div>
+                 <button
+                    onClick={() => setShowLogoutModal(true)}
+                    className="w-10 h-10 rounded-full overflow-hidden bg-muted border-2 border-card shadow-sm hover:ring-2 hover:ring-primary transition-all flex-shrink-0"
+                >
+                    {student.avatarUrl ? (
+                        <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
+                    ) : (
+                        <PlaceholderAvatar />
+                    )}
+                </button>
             </header>
 
             {/* Main Message Area */}
@@ -251,6 +267,37 @@ Answer the student's questions based ONLY on this data. Be conversational and he
                     </p>
                 </div>
             </footer>
+             {showLogoutModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowLogoutModal(false)}>
+                    <div className="bg-card p-6 rounded-2xl shadow-2xl max-w-sm w-full border border-border" onClick={e => e.stopPropagation()}>
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-16 h-16 bg-danger-muted rounded-full flex items-center justify-center mb-4">
+                                <FaSignOutAlt className="h-8 w-8 text-danger" />
+                            </div>
+                            <h3 className="text-xl font-bold text-foreground mb-2">
+                                Confirm Logout
+                            </h3>
+                            <p className="text-muted-foreground mb-6">
+                                Are you sure you want to logout?
+                            </p>
+                            <div className="flex gap-3 w-full">
+                                <button 
+                                    onClick={() => setShowLogoutModal(false)}
+                                    className="flex-1 py-2.5 rounded-xl font-semibold bg-muted text-muted-foreground hover:bg-border transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={logout}
+                                    className="flex-1 py-2.5 rounded-xl font-semibold bg-danger text-danger-foreground hover:bg-danger/90 transition-colors"
+                                >
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

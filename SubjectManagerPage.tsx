@@ -2,11 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { Student } from './types';
 import StudentSubjectCard from './components/StudentSubjectCard';
 import SubjectManagerDrawer from './components/SubjectManagerDrawer';
-import { useData } from './context/DataContext';
+import { useSyllabus } from './context/SyllabusContext';
 import { useStudent } from './context/StudentContext';
 
 const SubjectManagerPage: React.FC = () => {
-    const { allStudentSubjects, handleSaveSubjects } = useData();
+    const { allStudentSubjects, handleSaveSubjects } = useSyllabus();
     const { students } = useStudent();
     const [showArchived, setShowArchived] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);

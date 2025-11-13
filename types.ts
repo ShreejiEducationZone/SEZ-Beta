@@ -93,6 +93,7 @@ export interface WorkItem {
   chapterNo: string | number;
   chapterName: string;
   topic?: string;
+  nodePath?: string;
   description: string;
   dueDate: string; // YYYY-MM-DD
   status: WorkStatus;
@@ -119,6 +120,7 @@ export interface Doubt {
   chapterNo?: string | number;
   chapterName?: string;
   topic?: string;
+  nodePath?: string;
   testId?: string;
   text: string;
   priority: DoubtPriority;

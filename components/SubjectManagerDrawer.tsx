@@ -15,23 +15,28 @@ import JsonIcon from './icons/JsonIcon';
 const SyllabusNodeView: React.FC<{ node: SyllabusNode; level: number }> = ({ node, level }) => {
     const [isExpanded, setIsExpanded] = useState(level < 2);
     const paddingLeft = `${level * 1.5}rem`;
+    const hasChildren = node.children && node.children.length > 0;
 
     return (
         <div>
             <div
                 style={{ paddingLeft }}
-                className="flex items-center cursor-pointer py-1 hover:bg-muted/50 rounded group"
-                onClick={() => node.children && setIsExpanded(!isExpanded)}
+                className={`flex items-center py-1 hover:bg-muted/50 rounded group ${hasChildren ? 'cursor-pointer' : 'cursor-default'}`}
+                onClick={() => hasChildren && setIsExpanded(!isExpanded)}
             >
-                {node.children && (
+                {hasChildren ? (
                     <svg className={`h-4 w-4 mr-2 transition-transform flex-shrink-0 text-muted-foreground group-hover:text-foreground ${isExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
+                ) : (
+                    <div className="w-4 h-4 mr-2 flex-shrink-0 flex items-center justify-center">
+                       <div className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full group-hover:bg-muted-foreground transition-colors"></div>
+                    </div>
                 )}
                 <span className="font-mono text-xs text-muted-foreground mr-2 w-12 text-right flex-shrink-0">{node.no}.</span>
                 <span className="font-medium text-sm text-foreground">{node.name}</span>
             </div>
-            {isExpanded && node.children && (
+            {isExpanded && hasChildren && (
                 <div>
                     {node.children.map(child => (
                         <SyllabusNodeView key={`${child.no}-${child.name}`} node={child} level={level + 1} />
@@ -343,7 +348,7 @@ const SubjectManagerDrawer: React.FC<SubjectManagerDrawerProps> = ({ student, st
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-end" onClick={onClose}>
-            <div className="w-full max-w-2xl h-full bg-card/80 backdrop-blur-lg border-l border-border shadow-2xl flex flex-col rounded-l-2xl" onClick={e => e.stopPropagation()}>
+            <div className="w-full md:max-w-2xl h-full bg-card/80 backdrop-blur-lg border-l border-border shadow-2xl flex flex-col md:rounded-l-2xl" onClick={e => e.stopPropagation()}>
                 <input type="file" accept=".csv,.json" ref={fileInputRef} onChange={handleFileImport} className="hidden" />
                 {isArchived && (
                     <div className="p-2 bg-yellow-400 text-center text-black text-sm font-semibold">
@@ -351,22 +356,22 @@ const SubjectManagerDrawer: React.FC<SubjectManagerDrawerProps> = ({ student, st
                     </div>
                 )}
                 <header className="p-6 border-b border-border flex-shrink-0">
-                     <div className="flex justify-between items-start">
+                     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                         <div>
                              <h2 className="text-2xl font-bold text-foreground">{student.name}'s Subjects</h2>
                              <p className="text-muted-foreground">{`Grade ${student.grade} • ${student.board}`}</p>
                         </div>
                         {!isArchived && !isEditMode && subjects.length > 0 && (
-                            <div className="flex gap-2">
-                                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 py-2 px-4 rounded-lg font-semibold bg-primary/10 text-primary text-sm hover:bg-primary/20">
-                                    <UploadIcon className="h-4 w-4" /> Import
+                            <div className="flex gap-2 flex-shrink-0">
+                                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 py-2 px-3 rounded-lg font-semibold bg-primary/10 text-primary text-sm hover:bg-primary/20">
+                                    <UploadIcon className="h-4 w-4" /> <span>Import</span>
                                 </button>
                                 <div className="relative" ref={exportMenuRef}>
                                     <button
                                         onClick={() => setIsExportMenuOpen(prev => !prev)}
-                                        className="flex items-center gap-2 py-2 px-4 rounded-lg font-semibold bg-muted text-muted-foreground text-sm hover:bg-border"
+                                        className="flex items-center gap-2 py-2 px-3 rounded-lg font-semibold bg-muted text-muted-foreground text-sm hover:bg-border"
                                     >
-                                        <DownloadIcon className="h-4 w-4" /> Export <ChevronDownIcon className={`h-4 w-4 transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
+                                        <DownloadIcon className="h-4 w-4" /> <span>Export</span> <ChevronDownIcon className={`h-4 w-4 transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
                                     </button>
                                     {isExportMenuOpen && (
                                         <div className="absolute right-0 mt-2 w-48 bg-card rounded-xl shadow-soft-lg border border-border z-10 py-1">
@@ -381,8 +386,8 @@ const SubjectManagerDrawer: React.FC<SubjectManagerDrawerProps> = ({ student, st
                                         </div>
                                     )}
                                 </div>
-                                <button onClick={() => setIsEditMode(true)} className="flex items-center gap-2 py-2 px-4 rounded-lg font-semibold bg-background border border-border text-sm hover:bg-muted">
-                                    <EditIcon className="h-4 w-4" /> Edit
+                                <button onClick={() => setIsEditMode(true)} className="flex items-center gap-2 py-2 px-3 rounded-lg font-semibold bg-background border border-border text-sm hover:bg-muted">
+                                    <EditIcon className="h-4 w-4" /> <span>Edit</span>
                                 </button>
                             </div>
                         )}

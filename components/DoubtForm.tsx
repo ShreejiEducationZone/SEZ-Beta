@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect, useMemo, FC } from 'react';
 import { Student, SubjectData, WorkItem, Doubt, DoubtOrigin, SyllabusNode } from '../types';
 import { DOUBT_PRIORITIES, DOUBT_ORIGINS } from '../constants';
@@ -71,29 +68,73 @@ const DoubtForm: FC<DoubtFormProps> = ({ student, subjects, workItems, doubt, on
         });
     }, [formData.origin, formData.subject, formData.chapter, workItems]);
 
+    // Effect to populate selections from nodePath on initial edit
+    useEffect(() => {
+        if (isEditMode && doubt?.nodePath && subjects.length > 0) {
+            const nodePath = String(doubt.nodePath);
+            const parts = nodePath.split('.');
+            
+            if (parts.length >= 2) {
+                setSelectedTopicNo(parts.slice(0, 2).join('.'));
+            }
+            if (parts.length >= 3) {
+                setSelectedSubTopicNo(parts.slice(0, 3).join('.'));
+            }
+            if (parts.length >= 4) {
+                setSelectedMiniTopicNo(nodePath);
+            }
+        }
+    }, [isEditMode, doubt, subjects]);
+
     // Effects for managing hierarchical topic selection
-    useEffect(() => { if (!isEditMode) setFormData(prev => ({ ...prev, chapter: '', worksheet: '' })); }, [formData.subject, isEditMode]);
+    useEffect(() => {
+        if (!isEditMode && formData.subject !== doubt?.subject) {
+            setFormData(prev => ({ ...prev, chapter: '', worksheet: '' }));
+            setSelectedTopicNo('');
+            setSelectedSubTopicNo('');
+            setSelectedMiniTopicNo('');
+        }
+    }, [formData.subject, isEditMode, doubt?.subject]);
+
     useEffect(() => {
         const [chapterNo] = formData.chapter.split('::');
         const selectedSubjectData = subjects.find(s => s.subject === formData.subject);
         const chapterNode = selectedSubjectData?.chapters.find(c => String(c.no) === String(chapterNo));
         setTopicOptions(chapterNode?.children || []);
-        setSelectedTopicNo('');
     }, [formData.chapter, formData.subject, subjects]);
+    
     useEffect(() => {
         const topicNode = topicOptions.find(t => String(t.no) === selectedTopicNo);
         setSubTopicOptions(topicNode?.children || []);
-        setSelectedSubTopicNo('');
     }, [selectedTopicNo, topicOptions]);
+
     useEffect(() => {
         const subTopicNode = subTopicOptions.find(st => String(st.no) === selectedSubTopicNo);
         setMiniTopicOptions(subTopicNode?.children || []);
-        setSelectedMiniTopicNo('');
     }, [selectedSubTopicNo, subTopicOptions]);
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+    
+    const handleChapterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        handleChange(e);
+        setSelectedTopicNo('');
+        setSelectedSubTopicNo('');
+        setSelectedMiniTopicNo('');
+    };
+
+    const handleTopicChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        setSelectedTopicNo(e.target.value);
+        setSelectedSubTopicNo('');
+        setSelectedMiniTopicNo('');
+    };
+    
+    const handleSubTopicChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        setSelectedSubTopicNo(e.target.value);
+        setSelectedMiniTopicNo('');
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'attachment' | 'voiceNote') => {
@@ -125,10 +166,20 @@ const DoubtForm: FC<DoubtFormProps> = ({ student, subjects, workItems, doubt, on
         const [chapterNo, chapterName] = formData.chapter.split('::');
         
         let topicName = '';
+        let nodePath: string | undefined = undefined;
         let node: SyllabusNode | undefined;
-        if (selectedMiniTopicNo) node = miniTopicOptions.find(o => String(o.no) === selectedMiniTopicNo);
-        else if (selectedSubTopicNo) node = subTopicOptions.find(o => String(o.no) === selectedSubTopicNo);
-        else if (selectedTopicNo) node = topicOptions.find(o => String(o.no) === selectedTopicNo);
+        if (selectedMiniTopicNo) {
+            node = miniTopicOptions.find(o => String(o.no) === selectedMiniTopicNo);
+            nodePath = selectedMiniTopicNo;
+        }
+        else if (selectedSubTopicNo) {
+            node = subTopicOptions.find(o => String(o.no) === selectedSubTopicNo);
+            nodePath = selectedSubTopicNo;
+        }
+        else if (selectedTopicNo) {
+            node = topicOptions.find(o => String(o.no) === selectedTopicNo);
+            nodePath = selectedTopicNo;
+        }
         topicName = node ? node.name : '';
 
         const finalDoubt: Doubt = {
@@ -138,6 +189,7 @@ const DoubtForm: FC<DoubtFormProps> = ({ student, subjects, workItems, doubt, on
             chapterNo: chapterNo || undefined,
             chapterName: chapterName || undefined,
             topic: topicName || undefined,
+            nodePath: nodePath,
             testId: formData.testId || undefined,
             text: formData.text.trim(),
             priority: formData.priority as Doubt['priority'],
@@ -163,16 +215,15 @@ const DoubtForm: FC<DoubtFormProps> = ({ student, subjects, workItems, doubt, on
                         <SelectField label="Subject" name="subject" value={formData.subject} onChange={handleChange} options={subjects.map(s => s.subject)} error={errors.subject} required />
                          <div>
                             <label htmlFor="chapter" className="block text-sm font-medium text-muted-foreground">Chapter (Optional)</label>
-                            <select id="chapter" name="chapter" value={formData.chapter} onChange={handleChange} disabled={!formData.subject} className="mt-1 block w-full h-10 px-3 rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary/50 disabled:bg-muted">
+                            <select id="chapter" name="chapter" value={formData.chapter} onChange={handleChapterChange} disabled={!formData.subject} className="mt-1 block w-full h-10 px-3 rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary/50 disabled:bg-muted">
                                 <option value="">Select Chapter</option>
                                 {chapterOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                             </select>
                         </div>
                     </div>
-                    {isEditMode && doubt?.topic && <p className="text-xs text-muted-foreground -mt-2">Current Topic: {doubt.topic}. To change, please re-select from the dropdowns below.</p>}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                         {topicOptions.length > 0 && <SyllabusNodeSelect label="Topic (Optional)" value={selectedTopicNo} onChange={(e) => setSelectedTopicNo(e.target.value)} options={topicOptions} />}
-                         {subTopicOptions.length > 0 && <SyllabusNodeSelect label="Sub-topic (Optional)" value={selectedSubTopicNo} onChange={(e) => setSelectedSubTopicNo(e.target.value)} options={subTopicOptions} />}
+                         {topicOptions.length > 0 && <SyllabusNodeSelect label="Topic (Optional)" value={selectedTopicNo} onChange={handleTopicChange} options={topicOptions} />}
+                         {subTopicOptions.length > 0 && <SyllabusNodeSelect label="Sub-topic (Optional)" value={selectedSubTopicNo} onChange={handleSubTopicChange} options={subTopicOptions} />}
                          {miniTopicOptions.length > 0 && <SyllabusNodeSelect label="Mini-topic (Optional)" value={selectedMiniTopicNo} onChange={(e) => setSelectedMiniTopicNo(e.target.value)} options={miniTopicOptions} />}
                     </div>
 

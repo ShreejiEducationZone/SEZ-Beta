@@ -9,7 +9,6 @@ import UserPlusIcon from './icons/UserPlusIcon';
 import { Student, Board, Gender } from '../types';
 import { GRADES, BOARDS, TIME_SLOTS } from '../constants';
 import { getProgramStage, getBatchFromTime } from '../utils/studentUtils';
-// FIX: Import useStudent to get handleSaveStudent
 import { useStudent } from '../context/StudentContext';
 import ChevronLeftIcon from './icons/ChevronLeftIcon';
 import { GEMINI_API_KEY } from '../utils/apiHUB';
@@ -70,7 +69,7 @@ interface AdminAiChatProps {
 }
 
 const SuggestionChip: React.FC<{ onClick: () => void; children: React.ReactNode; icon?: React.ElementType }> = ({ onClick, children, icon: Icon }) => (
-    <button onClick={onClick} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground bg-muted rounded-lg hover:bg-border transition-colors">
+    <button onClick={onClick} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground bg-muted rounded-lg hover:bg-border transition-colors shadow-sm">
         {Icon && <Icon className="h-4 w-4" />}
         {children}
     </button>
@@ -78,7 +77,6 @@ const SuggestionChip: React.FC<{ onClick: () => void; children: React.ReactNode;
 
 
 const AdminAiChat: React.FC<AdminAiChatProps> = ({ onBack }) => {
-    // FIX: Get handleSaveStudent from useStudent hook
     const { handleSaveStudent } = useStudent();
 
     const [messages, setMessages] = useState<Message[]>([]);
@@ -219,11 +217,11 @@ const AdminAiChat: React.FC<AdminAiChatProps> = ({ onBack }) => {
         
         return (
             <div className="space-y-3">
-                {remainingText && <div className="prose prose-sm dark:prose-invert max-w-none text-foreground" dangerouslySetInnerHTML={{ __html: remainingText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>') }} />}
+                {remainingText && <div className="prose prose-sm dark:prose-invert max-w-none text-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: remainingText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>') }} />}
                 {jsonData && <AnalyticsReport data={jsonData} />}
                 {showOptions && (
                     <div className="flex flex-wrap gap-2 pt-2">
-                        {currentFormStep.options?.map(option => <button key={option} onClick={() => handleOptionClick(option)} className="px-3 py-1.5 text-sm font-medium text-primary bg-primary/10 rounded-lg hover:bg-primary/20">{option}</button>)}
+                        {currentFormStep.options?.map(option => <button key={option} onClick={() => handleOptionClick(option)} className="px-3 py-1.5 text-sm font-medium text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors">{option}</button>)}
                     </div>
                 )}
             </div>
@@ -232,8 +230,8 @@ const AdminAiChat: React.FC<AdminAiChatProps> = ({ onBack }) => {
 
     return (
         <div className="flex flex-col h-full bg-card rounded-2xl shadow-soft border border-border overflow-hidden">
-            <header className="flex items-center gap-4 p-4 border-b border-border flex-shrink-0">
-                <button onClick={onBack} className="p-2 rounded-full text-muted-foreground hover:bg-muted">
+            <header className="flex items-center gap-4 p-4 border-b border-border flex-shrink-0 bg-card/50 backdrop-blur-sm z-10">
+                <button onClick={onBack} className="p-2 rounded-full text-muted-foreground hover:bg-muted transition-colors">
                     <ChevronLeftIcon className="h-5 w-5" />
                 </button>
                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -245,51 +243,78 @@ const AdminAiChat: React.FC<AdminAiChatProps> = ({ onBack }) => {
                 </div>
             </header>
 
-            <main ref={chatContainerRef} className="flex-grow p-4 md:p-6 space-y-6 overflow-y-auto thin-scrollbar">
+            <main ref={chatContainerRef} className="flex-grow p-4 md:p-6 space-y-6 overflow-y-auto thin-scrollbar bg-muted/30">
                  {messages.length === 0 && !isLoading ? (
-                    <div className="flex-grow flex flex-col items-center justify-center text-center p-4">
-                        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                            <RobotIcon className="h-10 w-10 text-primary"/>
+                    <div className="flex-grow flex flex-col items-center justify-center text-center opacity-0 animate-[fadeIn_0.5s_ease-out_forwards] min-h-[300px]">
+                        <div className="w-20 h-20 rounded-full bg-primary/5 flex items-center justify-center mb-6">
+                            <RobotIcon className="h-12 w-12 text-primary/80"/>
                         </div>
-                        <h1 className="text-2xl font-bold text-foreground">Administrator AI Assistant</h1>
-                        <p className="text-muted-foreground mt-2 max-w-md">Ask questions about student data, get analytics, or manage student profiles directly from here.</p>
+                        <h1 className="text-2xl font-bold text-foreground mb-2">How can I help you today?</h1>
+                        <p className="text-muted-foreground max-w-md">Ask about students, work progress, tests, or manage the database directly.</p>
                     </div>
                  ) : (
                     messages.map((msg, idx) => (
-                        <div key={idx} className={`flex gap-4 items-start ${msg.role === 'user' ? 'justify-end' : ''}`}>
-                            {msg.role === 'model' && <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0"><UserCircleIcon className="h-5 w-5 text-muted-foreground" /></div>}
-                            <div className={`max-w-xl rounded-2xl px-4 py-3 shadow-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-muted rounded-bl-none'}`}>
+                        <div key={idx} className={`flex gap-4 items-start ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-[slideIn_0.3s_ease-out]`}>
+                            {msg.role === 'model' && (
+                                <div className="w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center flex-shrink-0 shadow-sm mb-1">
+                                    <UserCircleIcon className="h-5 w-5 text-primary" />
+                                </div>
+                            )}
+                            <div className={`max-w-[85%] lg:max-w-[75%] rounded-2xl px-5 py-3.5 shadow-sm leading-relaxed ${
+                                msg.role === 'user' 
+                                    ? 'bg-primary text-primary-foreground rounded-br-sm' 
+                                    : 'bg-card border border-border rounded-bl-sm'
+                            }`}>
                                 {renderMessageContent(msg, idx === messages.length - 1)}
                             </div>
-                            {msg.role === 'user' && <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0"><UserCircleIcon className="h-5 w-5 text-muted-foreground" /></div>}
+                            {msg.role === 'user' && (
+                                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-1">
+                                    <UserCircleIcon className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                            )}
                         </div>
                     ))
                  )}
             </main>
             
-            <footer className="p-4 border-t border-border flex-shrink-0">
-                <div className="flex flex-wrap justify-center gap-3 mb-3">
-                     {!isFormMode ? (
-                        <SuggestionChip onClick={startFormMode} icon={UserPlusIcon}>Add New Student</SuggestionChip>
-                    ) : (
-                        <SuggestionChip onClick={cancelFormMode}>Cancel Student Entry</SuggestionChip>
+            <footer className="p-4 border-t border-border flex-shrink-0 bg-card z-10">
+                <div className="max-w-3xl mx-auto w-full">
+                    {(!isFormMode && messages.length === 0) && (
+                        <div className="flex flex-wrap justify-center gap-2 mb-4">
+                            <SuggestionChip onClick={startFormMode} icon={UserPlusIcon}>Add Student</SuggestionChip>
+                            <SuggestionChip onClick={() => handleFormInput("Show me pending tasks")}>Pending Tasks</SuggestionChip>
+                            <SuggestionChip onClick={() => handleFormInput("Which tests are upcoming?")}>Upcoming Tests</SuggestionChip>
+                        </div>
                     )}
+                    {isFormMode && (
+                         <div className="flex flex-wrap justify-center gap-2 mb-4">
+                            <SuggestionChip onClick={cancelFormMode}>Cancel Entry</SuggestionChip>
+                        </div>
+                    )}
+                    
+                    <form onSubmit={handleSend} className="relative">
+                        <textarea 
+                            ref={textareaRef}
+                            value={input} 
+                            onChange={(e) => setInput(e.target.value)} 
+                            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(e); } }} 
+                            placeholder={isFormMode ? `Enter ${formSteps[formStep]?.key}...` : "Ask a question..."} 
+                            className="w-full p-3.5 pl-14 pr-14 rounded-[1.5rem] border bg-muted/50 border-border focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-background transition-all resize-none max-h-40 min-h-[52px] shadow-sm text-base text-center" 
+                            rows={1} 
+                            disabled={isLoading}
+                        />
+                        <button 
+                            type="submit" 
+                            disabled={isLoading || !input.trim()} 
+                            className="absolute right-2 bottom-2 h-10 w-10 rounded-full bg-primary text-primary-foreground disabled:bg-muted disabled:text-muted-foreground hover:bg-primary/90 transition-all flex items-center justify-center shadow-md"
+                        >
+                            <SendIcon className="h-5 w-5 transform rotate-90"/>
+                        </button>
+                    </form>
+                    <p className="text-[10px] text-center text-muted-foreground mt-2">
+                        Sez AI can make mistakes. Check important info.
+                    </p>
                 </div>
-                <form onSubmit={handleSend} className="relative">
-                    <textarea 
-                        ref={textareaRef}
-                        value={input} 
-                        onChange={(e) => setInput(e.target.value)} 
-                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(e); } }} 
-                        placeholder={isFormMode ? `Enter ${formSteps[formStep]?.key}...` : "Ask a question about students, work, or tests..."} 
-                        className="w-full p-3 pl-4 pr-12 rounded-full border bg-background border-border focus:ring-2 focus:ring-primary/50 resize-none max-h-40" 
-                        rows={1} 
-                        disabled={isLoading}
-                    />
-                    <button type="submit" disabled={isLoading || !input.trim()} className="absolute right-2 bottom-1.5 h-10 w-10 rounded-full bg-primary text-primary-foreground disabled:bg-muted disabled:text-muted-foreground hover:bg-primary/90 transition-colors flex items-center justify-center">
-                        <SendIcon className="h-5 w-5"/>
-                    </button>
-                </form>
             </footer>
         </div>
     );

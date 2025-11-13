@@ -1,13 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Student, SyllabusNode } from '../../types';
 import { useData } from '../../context/DataContext';
 import { useWorkPool } from '../../context/WorkPoolContext';
-import { StudentPage } from '../StudentPortal';
+import { useAttendance } from '../../context/AttendanceContext';
+import { ParentPage } from '../ParentsPortal';
 import PlaceholderAvatar from '../PlaceholderAvatar';
 import { BsArrowUpRight } from 'react-icons/bs';
 import { FaSun, FaMoon, FaSignOutAlt, FaRobot } from 'react-icons/fa';
 import { useSyllabus } from '../../context/SyllabusContext';
 
+// Redesigned Dashboard Card
 interface DashboardCardProps {
     title: string;
     tag: string;
@@ -49,25 +51,29 @@ const DashboardCard: React.FC<DashboardCardProps> = ({ title, tag, mainValue, su
 );
 
 
-interface SPDashboardProps {
+interface PPDashboardProps {
     student: Student;
-    onNavigate: (page: StudentPage) => void;
+    onNavigate: (page: ParentPage) => void;
 }
 
-const SPDashboard: React.FC<SPDashboardProps> = ({ student, onNavigate }) => {
+const PPDashboard: React.FC<PPDashboardProps> = ({ student, onNavigate }) => {
     const { logout, darkMode, setDarkMode } = useData();
-    const { workItems, tests, doubts } = useWorkPool();
+    const { tests } = useWorkPool();
+    const { attendanceRecords } = useAttendance();
     const { syllabusProgress, allStudentSubjects } = useSyllabus();
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [activeCategory, setActiveCategory] = useState('All');
 
-    const studentData = useMemo(() => {
+    const stats = useMemo(() => {
         const studentId = student.id;
         
-        const pendingWorkCount = workItems.filter(w => w.studentId === studentId && w.status !== 'Completed').length;
-        const openDoubtsCount = doubts.filter(d => d.studentId === studentId && d.status !== 'Resolved').length;
-
-        // Syllabus calculation
+        // Attendance
+        const records = attendanceRecords.filter(r => r.studentId === studentId);
+        const present = records.filter(r => r.status === 'Present').length;
+        const total = records.filter(r => r.status === 'Present' || r.status === 'Absent' || r.status === 'Leave').length;
+        const attendancePct = total > 0 ? Math.round((present / total) * 100) : 0;
+        
+        // Syllabus
         const studentSubjectsData = allStudentSubjects[student.id]?.subjects || [];
         let totalNodes = 0;
         if (studentSubjectsData) {
@@ -79,76 +85,64 @@ const SPDashboard: React.FC<SPDashboardProps> = ({ student, onNavigate }) => {
                 });
             };
             studentSubjectsData.forEach(subject => {
-                if (subject.chapters) { // Add safety check
+                if (subject.chapters) {
                     addNodesToSet(subject.chapters);
                 }
             });
             totalNodes = allNodesForStudent.size;
         }
-        
         const completedNodesCount = syllabusProgress.filter(p => p.studentId === student.id && p.isCompleted).length;
         const syllabusPercentage = totalNodes > 0 ? Math.round((completedNodesCount / totalNodes) * 100) : 0;
-        
-        // New avgScore calculation
-        const completedTests = tests.filter(t => t.studentId === studentId && t.status === 'Completed' && t.marksObtained != null && t.totalMarks != null && t.totalMarks > 0);
+
+        // Tests
+        const completedTests = tests.filter(t => t.studentId === studentId && t.status === 'Completed');
         let avgScore = 0;
         if (completedTests.length > 0) {
-            const totalMarks = completedTests.reduce((sum, t) => sum + t.totalMarks!, 0);
-            const obtained = completedTests.reduce((sum, t) => sum + t.marksObtained!, 0);
+            const totalMarks = completedTests.reduce((sum, t) => sum + (t.totalMarks || 0), 0);
+            const obtained = completedTests.reduce((sum, t) => sum + (t.marksObtained || 0), 0);
             avgScore = totalMarks > 0 ? Math.round((obtained / totalMarks) * 100) : 0;
         }
 
-        return { 
-            pendingWorkCount,
-            openDoubtsCount,
-            syllabusPercentage,
-            avgScore
-        };
-    }, [student.id, workItems, tests, doubts, allStudentSubjects, syllabusProgress]);
+        return { attendancePct, avgScore, syllabusPercentage };
+    }, [student.id, tests, attendanceRecords, allStudentSubjects, syllabusProgress]);
 
     const categories = ['All', 'Programming', 'Design'];
     
     return (
         <div className="space-y-8 pb-24">
              {/* Header Section */}
-             <div className="flex justify-between items-center pt-2">
-                {/* User Profile (Left) */}
-                <div 
-                    className="flex items-center gap-3 cursor-pointer group" 
-                    onClick={() => setShowLogoutModal(true)}
-                >
-                     <div className="w-12 h-12 rounded-full overflow-hidden bg-muted border-2 border-card shadow-sm group-hover:ring-2 group-hover:ring-primary transition-all">
-                        {student.avatarUrl ? (
-                            <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
-                        ) : (
-                            <PlaceholderAvatar />
-                        )}
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="text-xs text-muted-foreground font-medium">Welcome back</span>
-                        <span className="text-base font-bold text-foreground leading-tight">{student.name}</span>
-                    </div>
-                </div>
-
-                {/* Dark Mode Toggle (Right - replacing Search Icon) */}
+             <header className="flex justify-between items-center pt-2 pb-6">
                 <button
-                    onClick={() => setDarkMode(!darkMode)}
-                    className="w-12 h-12 rounded-full bg-muted/50 backdrop-blur-md border border-border shadow-sm flex items-center justify-center hover:bg-muted transition-all group"
-                    aria-label={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                    onClick={() => setShowLogoutModal(true)}
+                    className="w-12 h-12 rounded-full overflow-hidden bg-muted border-2 border-card shadow-sm hover:ring-2 hover:ring-primary transition-all"
                 >
-                    {darkMode ? (
-                        <FaSun className="h-5 w-5 text-yellow-500 transition-transform group-hover:rotate-90" />
+                    {student.avatarUrl ? (
+                        <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
                     ) : (
-                        <FaMoon className="h-5 w-5 text-indigo-500 transition-transform group-hover:-rotate-12" />
+                        <PlaceholderAvatar />
                     )}
                 </button>
-            </div>
+                
+                <h1 className="text-lg sm:text-xl font-bold text-foreground absolute left-1/2 -translate-x-1/2 whitespace-nowrap">
+                    Overview
+                </h1>
+
+                <button
+                    onClick={() => setDarkMode(!darkMode)}
+                    className="w-12 h-12 rounded-full bg-muted/50 border border-border flex items-center justify-center hover:bg-muted transition-all group"
+                    aria-label={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                >
+                    {darkMode ? <FaSun className="h-5 w-5 text-yellow-500" /> : <FaMoon className="h-5 w-5 text-indigo-500" />}
+                </button>
+            </header>
 
             {/* Title & Categories */}
             <div>
                 <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-foreground tracking-tight mb-6 leading-[1.1]">
-                    Let&apos;s explore<br />new fields
+                    Let's check<br/>
+                    <span className="text-primary">{student.name.split(' ')[0]}'s progress</span>
                 </h1>
+                
                 <div className="flex overflow-x-auto gap-2 w-full no-scrollbar pb-1">
                     {categories.map(category => (
                         <button
@@ -167,67 +161,66 @@ const SPDashboard: React.FC<SPDashboardProps> = ({ student, onNavigate }) => {
             </div>
 
             {/* Cards Grid */}
-            <div className="grid grid-cols-2 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-4">
                 
-                {/* Syllabus */}
+                {/* Syllabus Progress */}
                 <DashboardCard 
                     title="Syllabus"
-                    tag="Academics"
-                    mainValue={<>{studentData.syllabusPercentage}<span className="text-2xl sm:text-3xl">%</span></>}
+                    tag="Progress"
+                    mainValue={<>{stats.syllabusPercentage}<span className="text-2xl sm:text-3xl">%</span></>}
                     subLabel="Completed"
-                    colorClass="bg-[#A0C4FF] text-slate-900" 
-                    tagColorClass="bg-blue-600/20 text-blue-900"
+                    colorClass="bg-[#BDB2FF] text-slate-900"
+                    tagColorClass="bg-purple-600/20 text-purple-900"
                     onClick={() => onNavigate('syllabus')}
                 />
 
-                {/* Assignments */}
+                {/* Attendance */}
                 <DashboardCard 
-                    title="Assignments"
-                    tag="Tasks"
-                    mainValue={studentData.pendingWorkCount}
-                    subLabel="Pending"
-                    colorClass="bg-[#FFD972] text-slate-900" 
-                    tagColorClass="bg-yellow-600/20 text-yellow-900"
-                    onClick={() => onNavigate('work-pool')}
+                    title="Attendance"
+                    tag="Record"
+                    mainValue={<>{stats.attendancePct}<span className="text-2xl sm:text-3xl">%</span></>}
+                    subLabel="Present"
+                    colorClass="bg-[#8AE9A7] text-slate-900"
+                    tagColorClass="bg-green-600/20 text-green-900"
+                    onClick={() => onNavigate('attendance')}
                 />
 
-                {/* Performance */}
+                {/* Overall Performance */}
                 <DashboardCard 
                     title="Performance"
                     tag="Tests"
-                    mainValue={<>{studentData.avgScore}<span className="text-2xl sm:text-3xl">%</span></>}
+                    mainValue={<>{stats.avgScore}<span className="text-2xl sm:text-3xl">%</span></>}
                     subLabel="Average Score"
-                    colorClass="bg-[#8AE9A7] text-slate-900" 
-                    tagColorClass="bg-green-600/20 text-green-900"
-                    onClick={() => onNavigate('tests')}
+                    colorClass="bg-[#FFD972] text-slate-900"
+                    tagColorClass="bg-yellow-600/20 text-yellow-900"
+                    onClick={() => onNavigate('performance')}
                 />
 
                 {/* AI Assistant */}
                 <DashboardCard 
                     title="AI Assistant"
-                    tag="Productivity"
+                    tag="Support"
                     mainValue={<FaRobot className="text-slate-900/80 text-4xl sm:text-5xl" />}
                     subLabel="Ask a Question"
-                    colorClass="bg-[#FFACE4] text-slate-900" 
+                    colorClass="bg-[#FFACE4] text-slate-900"
                     tagColorClass="bg-pink-600/20 text-pink-900"
                     onClick={() => onNavigate('ai-assistant')}
                 />
-
             </div>
 
             {/* Logout Confirmation Modal */}
             {showLogoutModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowLogoutModal(false)}>
-                    <div className="bg-card p-6 rounded-2xl shadow-2xl max-w-sm w-full border border-border transform transition-all scale-100" onClick={e => e.stopPropagation()}>
+                    <div className="bg-card p-6 rounded-2xl shadow-2xl max-w-sm w-full border border-border" onClick={e => e.stopPropagation()}>
                         <div className="flex flex-col items-center text-center">
-                            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
-                                <FaSignOutAlt className="h-8 w-8 text-red-600 dark:text-red-400 ml-1" />
+                            <div className="w-16 h-16 bg-danger-muted rounded-full flex items-center justify-center mb-4">
+                                <FaSignOutAlt className="h-8 w-8 text-danger" />
                             </div>
                             <h3 className="text-xl font-bold text-foreground mb-2">
-                                Ready to leave, {student.name.split(' ')[0]}?
+                                Confirm Logout
                             </h3>
                             <p className="text-muted-foreground mb-6">
-                                Are you sure you want to logout from <strong>{student.name}</strong>&apos;s account?
+                                Are you sure you want to logout from <strong>{student.name}</strong>'s parent portal?
                             </p>
                             <div className="flex gap-3 w-full">
                                 <button 
@@ -238,7 +231,7 @@ const SPDashboard: React.FC<SPDashboardProps> = ({ student, onNavigate }) => {
                                 </button>
                                 <button 
                                     onClick={logout}
-                                    className="flex-1 py-2.5 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors"
+                                    className="flex-1 py-2.5 rounded-xl font-semibold bg-danger text-danger-foreground hover:bg-danger/90 transition-colors"
                                 >
                                     Logout
                                 </button>
@@ -251,4 +244,4 @@ const SPDashboard: React.FC<SPDashboardProps> = ({ student, onNavigate }) => {
     );
 };
 
-export default SPDashboard;
+export default PPDashboard;

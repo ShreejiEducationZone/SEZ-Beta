@@ -4,12 +4,15 @@ import { Student } from '../../types';
 import { useWorkPool } from '../../context/WorkPoolContext';
 import SPWorkItemCard from './SPWorkItemCard';
 import { HiOutlineCollection } from 'react-icons/hi';
+import { StudentPage } from '../StudentPortal';
+import SPHeader from './SPHeader';
 
 interface SPWorkPoolPageProps {
     student: Student;
+    onNavigate: (page: StudentPage) => void;
 }
 
-const SPWorkPoolPage: React.FC<SPWorkPoolPageProps> = ({ student }) => {
+const SPWorkPoolPage: React.FC<SPWorkPoolPageProps> = ({ student, onNavigate }) => {
     // FIX: Get work items from useWorkPool hook
     const { workItems } = useWorkPool();
     const [activeTab, setActiveTab] = useState<'Pending' | 'Completed'>('Pending');
@@ -25,21 +28,23 @@ const SPWorkPoolPage: React.FC<SPWorkPoolPageProps> = ({ student }) => {
 
     return (
         <div>
-            <h1 className="text-3xl font-bold mb-2">My Work Pool</h1>
-            <p className="text-muted-foreground mb-6">Here's a list of all your assignments.</p>
+            <SPHeader title="My Work Pool" student={student} onBack={() => onNavigate('dashboard')} />
+            <p className="text-muted-foreground mb-6 -mt-4">Here's a list of all your assignments.</p>
 
-            <div className="border-b border-border mb-6">
-                <nav className="-mb-px flex space-x-6">
-                    {(['Pending', 'Completed'] as const).map(tab => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={`whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm ${activeTab === tab ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                        >
-                            {tab} ({tab === 'Pending' ? studentWork.pending.length : studentWork.completed.length})
-                        </button>
-                    ))}
-                </nav>
+            <div className="flex bg-muted/50 p-1 rounded-xl mb-6 w-full sm:w-fit">
+                {(['Pending', 'Completed'] as const).map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-semibold transition-all ${
+                            activeTab === tab 
+                            ? 'bg-background text-foreground shadow-sm' 
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                        {tab} ({tab === 'Pending' ? studentWork.pending.length : studentWork.completed.length})
+                    </button>
+                ))}
             </div>
 
             {itemsToShow.length > 0 ? (

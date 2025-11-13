@@ -239,11 +239,7 @@ const WorkPoolPage: React.FC = () => {
 
     return (
         <div>
-            <p className="mt-2 mb-6 text-muted-foreground max-w-3xl">
-                Assign and manage student tasks like tuition work, homework, and other assignments. Click on a student to view their work or "+ Add Work" to get started.
-            </p>
-
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div className="flex items-center">
                     <input
                         type="checkbox"
@@ -261,14 +257,14 @@ const WorkPoolPage: React.FC = () => {
                         className="absolute h-[calc(100%-0.5rem)] bg-background rounded-full shadow-soft transition-all duration-300"
                         style={sliderStyle}
                     ></div>
-                    <button data-viewmode="cards" onClick={() => setViewMode('cards')} className={`relative z-10 flex items-center justify-center gap-2 px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${viewMode === 'cards' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                        <CardsIcon className="h-5 w-5" /> Cards
+                    <button data-viewmode="cards" onClick={() => setViewMode('cards')} className={`relative z-10 flex items-center justify-center gap-2 sm:px-4 px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${viewMode === 'cards' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        <CardsIcon className="h-5 w-5" /> <span className="hidden sm:inline">Cards</span>
                     </button>
-                    <button data-viewmode="table" onClick={() => setViewMode('table')} className={`relative z-10 flex items-center justify-center gap-2 px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${viewMode === 'table' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                        <TableIcon className="h-5 w-5" /> Table
+                    <button data-viewmode="table" onClick={() => setViewMode('table')} className={`relative z-10 flex items-center justify-center gap-2 sm:px-4 px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${viewMode === 'table' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        <TableIcon className="h-5 w-5" /> <span className="hidden sm:inline">Table</span>
                     </button>
-                    <button data-viewmode="calendar" onClick={() => setViewMode('calendar')} className={`relative z-10 flex items-center justify-center gap-2 px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${viewMode === 'calendar' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                        <CalendarIcon className="h-5 w-5" /> Calendar
+                    <button data-viewmode="calendar" onClick={() => setViewMode('calendar')} className={`relative z-10 flex items-center justify-center gap-2 sm:px-4 px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${viewMode === 'calendar' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        <CalendarIcon className="h-5 w-5" /> <span className="hidden sm:inline">Calendar</span>
                     </button>
                 </div>
             </div>

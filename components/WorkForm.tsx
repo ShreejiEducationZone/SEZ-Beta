@@ -60,42 +60,79 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
             value: `${c.no}::${c.name}`
         })) || [];
     }, [formData.subject, subjects]);
-
-    // Effect to reset children when subject changes
+    
+    // Effect to initially populate selections from workItem.nodePath.
     useEffect(() => {
-        if (!isEditMode) {
-             setFormData(prev => ({ ...prev, chapter: '' }));
+        if (workItem?.nodePath && subjects.length > 0) {
+            const nodePath = String(workItem.nodePath);
+            const parts = nodePath.split('.');
+            
+            if (parts.length >= 2) {
+                setSelectedTopicNo(parts.slice(0, 2).join('.'));
+            }
+            if (parts.length >= 3) {
+                setSelectedSubTopicNo(parts.slice(0, 3).join('.'));
+            }
+            if (parts.length >= 4) {
+                setSelectedMiniTopicNo(nodePath);
+            }
         }
-    }, [formData.subject, isEditMode]);
+    }, [workItem?.nodePath, subjects]);
 
-    // Effect to manage topic dropdown
+    // Effect for populating topic options
     useEffect(() => {
         const [chapterNo] = formData.chapter.split('::');
         const selectedSubjectData = subjects.find(s => s.subject === formData.subject);
         const chapterNode = selectedSubjectData?.chapters.find(c => String(c.no) === String(chapterNo));
-        
-        setTopicOptions(chapterNode?.children || []);
-        setSelectedTopicNo('');
+        const newTopicOptions = chapterNode?.children || [];
+        setTopicOptions(newTopicOptions);
     }, [formData.chapter, formData.subject, subjects]);
 
-    // Effect to manage sub-topic dropdown
+    // Effect for populating sub-topic options
     useEffect(() => {
         const topicNode = topicOptions.find(t => String(t.no) === selectedTopicNo);
-        setSubTopicOptions(topicNode?.children || []);
-        setSelectedSubTopicNo('');
+        const newSubTopicOptions = topicNode?.children || [];
+        setSubTopicOptions(newSubTopicOptions);
     }, [selectedTopicNo, topicOptions]);
-
-    // Effect to manage mini-topic dropdown
+    
+    // Effect for populating mini-topic options
     useEffect(() => {
         const subTopicNode = subTopicOptions.find(st => String(st.no) === selectedSubTopicNo);
-        setMiniTopicOptions(subTopicNode?.children || []);
-        setSelectedMiniTopicNo('');
+        const newMiniTopicOptions = subTopicNode?.children || [];
+        setMiniTopicOptions(newMiniTopicOptions);
     }, [selectedSubTopicNo, subTopicOptions]);
-    
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        
+        const newFormData = { ...formData, [name]: value };
+
+        // If subject or chapter changes, reset the topic selections
+        if (name === 'subject') {
+            newFormData.chapter = '';
+            setSelectedTopicNo('');
+            setSelectedSubTopicNo('');
+            setSelectedMiniTopicNo('');
+        }
+        if (name === 'chapter') {
+            setSelectedTopicNo('');
+            setSelectedSubTopicNo('');
+            setSelectedMiniTopicNo('');
+        }
+
+        setFormData(newFormData);
+    };
+
+    const handleTopicChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        setSelectedTopicNo(e.target.value);
+        setSelectedSubTopicNo('');
+        setSelectedMiniTopicNo('');
+    };
+
+    const handleSubTopicChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        setSelectedSubTopicNo(e.target.value);
+        setSelectedMiniTopicNo('');
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,10 +197,19 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
         const [chapterNo, chapterName] = formData.chapter.split('::');
         
         let topicName = '';
+        let nodePath: string | undefined = undefined;
         let node: SyllabusNode | undefined;
-        if (selectedMiniTopicNo) node = miniTopicOptions.find(o => String(o.no) === selectedMiniTopicNo);
-        else if (selectedSubTopicNo) node = subTopicOptions.find(o => String(o.no) === selectedSubTopicNo);
-        else if (selectedTopicNo) node = topicOptions.find(o => String(o.no) === selectedTopicNo);
+
+        if (selectedMiniTopicNo) {
+            node = miniTopicOptions.find(o => String(o.no) === selectedMiniTopicNo);
+            nodePath = selectedMiniTopicNo;
+        } else if (selectedSubTopicNo) {
+            node = subTopicOptions.find(o => String(o.no) === selectedSubTopicNo);
+            nodePath = selectedSubTopicNo;
+        } else if (selectedTopicNo) {
+            node = topicOptions.find(o => String(o.no) === selectedTopicNo);
+            nodePath = selectedTopicNo;
+        }
         topicName = node ? node.name : '';
     
         const finalWorkItem: WorkItem = {
@@ -175,6 +221,7 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
             chapterNo,
             chapterName,
             topic: topicName || workItem?.topic || undefined,
+            nodePath: nodePath || workItem?.nodePath || undefined,
             description: formData.description.trim(),
             dueDate: formData.dueDate,
             status: formData.status as WorkStatus,
@@ -217,12 +264,10 @@ const WorkForm: React.FC<WorkFormProps> = ({ student, subjects, workItem, workIt
                             {errors.chapter && <p className="text-red-500 text-xs mt-1">{errors.chapter}</p>}
                         </div>
                     </div>
-
-                    {workItem?.topic && <p className="text-xs text-muted-foreground -mt-2">Current Topic: {workItem.topic}. To change, please re-select from the dropdowns below.</p>}
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                         {topicOptions.length > 0 && <SyllabusNodeSelect label="Topic (Optional)" value={selectedTopicNo} onChange={(e) => setSelectedTopicNo(e.target.value)} options={topicOptions} />}
-                         {subTopicOptions.length > 0 && <SyllabusNodeSelect label="Sub-topic (Optional)" value={selectedSubTopicNo} onChange={(e) => setSelectedSubTopicNo(e.target.value)} options={subTopicOptions} />}
+                         {topicOptions.length > 0 && <SyllabusNodeSelect label="Topic (Optional)" value={selectedTopicNo} onChange={handleTopicChange} options={topicOptions} />}
+                         {subTopicOptions.length > 0 && <SyllabusNodeSelect label="Sub-topic (Optional)" value={selectedSubTopicNo} onChange={handleSubTopicChange} options={subTopicOptions} />}
                          {miniTopicOptions.length > 0 && <SyllabusNodeSelect label="Mini-topic (Optional)" value={selectedMiniTopicNo} onChange={(e) => setSelectedMiniTopicNo(e.target.value)} options={miniTopicOptions} />}
                     </div>
 

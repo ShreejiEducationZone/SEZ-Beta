@@ -59,6 +59,7 @@ const SyllabusFocusPage: FC<SyllabusFocusPageProps> = ({ student, studentSubject
             chapterNo: rootChapter.no,
             chapterName: rootChapter.name,
             topic: node.level > 1 ? `${node.no} ${node.name}` : undefined,
+            nodePath: String(node.no),
             description: `Complete the work related to "${node.name}".`,
             source: 'syllabus',
             status: 'Assign'
@@ -88,6 +89,7 @@ const SyllabusFocusPage: FC<SyllabusFocusPageProps> = ({ student, studentSubject
             chapterNo: rootChapter.no,
             chapterName: rootChapter.name,
             topic: node.level > 1 ? `${node.no} ${node.name}` : undefined,
+            nodePath: String(node.no),
             origin: 'During Reading'
         };
         openDoubtForm(student, partialDoubt);
@@ -151,7 +153,14 @@ const SyllabusFocusPage: FC<SyllabusFocusPageProps> = ({ student, studentSubject
     return (
         <>
             <div>
-                <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors mb-4"><ChevronLeftIcon className="h-5 w-5" />Back to All Students</button>
+                <button
+                    onClick={onBack}
+                    className="mb-6 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-muted px-3 text-sm font-semibold text-muted-foreground ring-offset-background transition-colors hover:bg-border hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:px-4"
+                    aria-label="Back to all students"
+                >
+                    <ChevronLeftIcon className="h-5 w-5" />
+                    <span className="hidden md:inline">Back to All Students</span>
+                </button>
             </div>
             <div className="bg-card rounded-2xl shadow-soft border border-border p-6">
                 <div className="flex items-center gap-4 mb-4">

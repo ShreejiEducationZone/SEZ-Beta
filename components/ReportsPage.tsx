@@ -134,21 +134,26 @@ const ReportsPage: React.FC = () => {
                 </>
             ) : (
                 <div>
-                    <div className="mb-8 flex justify-between items-center">
-                        <button onClick={handleBackToList} className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors">
-                            <ChevronLeftIcon className="h-5 w-5" />Back to All Students
+                    <div className="flex justify-end mb-4">
+                        <button onClick={handleBackToList} className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors h-10 px-4 rounded-lg hover:bg-muted">
+                            <ChevronLeftIcon className="h-5 w-5" />
+                            Back to All Students
                         </button>
+                    </div>
+            
+                    <div className="mb-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div className="text-center sm:text-left flex-grow">
+                            <h2 className="text-3xl font-bold">Detailed Report for <span className="text-primary">{selectedStudent.name}</span></h2>
+                        </div>
                         <button 
                             onClick={handleAddTest} 
-                            className="flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold"
+                            className="w-full sm:w-auto flex-shrink-0 flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold"
                         >
                            <FaPlus className="h-4 w-4" /> Add Test Record
                         </button>
                     </div>
+
                     <div className="space-y-12">
-                        <div className="text-center">
-                            <h2 className="text-3xl font-bold">Detailed Report for <span className="text-primary">{selectedStudent.name}</span></h2>
-                        </div>
                         <div className="bg-card p-6 rounded-2xl shadow-soft border border-border flex flex-col md:flex-row items-center gap-8">
                             <div className="relative w-48 h-48 flex-shrink-0">
                                 <ResponsiveContainer width="100%" height="100%">

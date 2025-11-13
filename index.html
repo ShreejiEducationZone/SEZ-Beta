@@ -235,6 +235,26 @@
         .thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .thin-scrollbar::-webkit-scrollbar-thumb { background-color: hsl(var(--border)); border-radius: 20px; }
         .dark .thin-scrollbar::-webkit-scrollbar-thumb { background-color: hsl(var(--border)); }
+
+        /* Utility class to hide scrollbar */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+
+        /* Hide scrollbar on mobile devices for better aesthetic */
+        @media (max-width: 768px) {
+            ::-webkit-scrollbar {
+                display: none;
+            }
+            * {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+        }
     </style>
 <script type="importmap">
 {

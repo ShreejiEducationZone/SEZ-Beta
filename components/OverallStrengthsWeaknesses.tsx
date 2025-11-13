@@ -14,15 +14,17 @@ const OverallStrengthsWeaknesses: React.FC<OverallStrengthsWeaknessesProps> = ({
     const syllabusMap = useMemo(() => {
         const map = new Map<string, Map<string, string>>();
         studentSubjects.forEach(subjectData => {
-            const nodeMap = new Map<string, string>();
-            const recurse = (nodes: SyllabusNode[]) => {
-                nodes.forEach(node => {
-                    nodeMap.set(String(node.no), node.name);
-                    if (node.children) recurse(node.children);
-                });
-            };
-            recurse(subjectData.chapters);
-            map.set(subjectData.subject, nodeMap);
+            if (subjectData && subjectData.chapters) {
+                const nodeMap = new Map<string, string>();
+                const recurse = (nodes: SyllabusNode[]) => {
+                    nodes.forEach(node => {
+                        nodeMap.set(String(node.no), node.name);
+                        if (node.children) recurse(node.children);
+                    });
+                };
+                recurse(subjectData.chapters);
+                map.set(subjectData.subject, nodeMap);
+            }
         });
         return map;
     }, [studentSubjects]);

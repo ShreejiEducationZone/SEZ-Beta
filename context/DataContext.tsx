@@ -8,9 +8,9 @@ import { MISTAKE_TYPES } from '../constants';
 export interface User {
     id: string;
     email: string;
-    role: 'admin' | 'student';
+    role: 'admin' | 'student' | 'parent';
     name: string;
-    studentId?: string; // Link to student object if role is student
+    studentId?: string; // Link to student object if role is student or parent
     avatarUrl?: string | null;
     password?: string;
 }
@@ -25,7 +25,7 @@ interface DataContextType {
     currentUser: User | null;
 
     // Auth Handlers
-    login: (identifier: string, pass: string, students: Student[]) => Promise<void>;
+    login: (identifier: string, pass: string, students: Student[], role?: 'admin' | 'student' | 'parent') => Promise<void>;
     logout: () => void;
     
     // Config Handlers
@@ -64,36 +64,41 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setToasts(prev => [...prev, newToast]);
     }, []);
 
-    const login = useCallback(async (identifier: string, pass: string, students: Student[]) => {
-        const adminUser: User & { password?: string } = {
-            id: 'admin01',
-            email: 'sez@admin.com',
-            password: 'pass12345',
-            role: 'admin',
-            name: 'Administrator',
-            avatarUrl: 'https://i.pravatar.cc/150?u=admin'
-        };
+    const login = useCallback(async (identifier: string, pass: string, students: Student[], role: 'admin' | 'student' | 'parent' = 'student') => {
+        // Admin Login
+        if (role === 'admin') {
+            const adminUser: User & { password?: string } = {
+                id: 'admin01',
+                email: 'sez@admin.com',
+                password: 'pass12345',
+                role: 'admin',
+                name: 'Administrator',
+                avatarUrl: 'https://i.pravatar.cc/150?u=admin'
+            };
 
-        if (identifier.toLowerCase() === adminUser.email.toLowerCase()) {
-            if (adminUser.password === pass) {
-                const { password, ...userSessionData } = adminUser;
-                setCurrentUser(userSessionData);
-                window.localStorage.setItem('sez-currentUser', JSON.stringify(userSessionData));
-                return;
-            } else {
-                throw new Error('Invalid password for administrator.');
+            if (identifier.toLowerCase() === adminUser.email.toLowerCase()) {
+                if (adminUser.password === pass) {
+                    const { password, ...userSessionData } = adminUser;
+                    setCurrentUser(userSessionData);
+                    window.localStorage.setItem('sez-currentUser', JSON.stringify(userSessionData));
+                    return;
+                } else {
+                    throw new Error('Invalid password for administrator.');
+                }
             }
+            throw new Error('Admin user not found.');
         }
 
+        // Student OR Parent Login (Same credentials)
         const studentToLogin = students.find(s => s.name.toLowerCase() === identifier.toLowerCase());
 
         if (studentToLogin) {
             if (studentToLogin.password === pass) {
                 const userSessionData: User = {
-                    id: `user-${studentToLogin.id}`,
+                    id: role === 'parent' ? `parent-${studentToLogin.id}` : `user-${studentToLogin.id}`,
                     email: studentToLogin.email || '',
-                    role: 'student',
-                    name: studentToLogin.name,
+                    role: role, // Set role based on selection
+                    name: role === 'parent' ? `${studentToLogin.name}'s Parent` : studentToLogin.name,
                     studentId: studentToLogin.id,
                     avatarUrl: studentToLogin.avatarUrl
                 };
@@ -101,18 +106,17 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 window.localStorage.setItem('sez-currentUser', JSON.stringify(userSessionData));
                 return;
             } else {
-                throw new Error('Invalid password for this student.');
+                throw new Error('Invalid password.');
             }
         }
         
-        throw new Error('User not found. Please check the name or email.');
+        throw new Error('User not found. Please check the name.');
 
     }, []);
     
     const logout = useCallback(() => {
         setCurrentUser(null);
         window.localStorage.removeItem('sez-currentUser');
-        // Child contexts will clear their own data upon seeing currentUser is null
     }, []);
 
     const removeToast = useCallback((id: number) => {

@@ -1,13 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import { Student } from '../../types';
-// FIX: Import useWorkPool hook
 import { useWorkPool } from '../../context/WorkPoolContext';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, Cell } from 'recharts';
-import { StudentPage } from '../StudentPortal';
-import SPHeader from './SPHeader';
+import { ParentPage } from '../ParentsPortal';
+import { useData } from '../../context/DataContext';
+import { FaChevronLeft, FaSun, FaMoon, FaSignOutAlt } from 'react-icons/fa';
+import PlaceholderAvatar from '../PlaceholderAvatar';
 
-const SPTestsPage: React.FC<{ student: Student; onNavigate: (page: StudentPage) => void; }> = ({ student, onNavigate }) => {
+const PPPerformancePage: React.FC<{ student: Student, onNavigate: (page: ParentPage) => void; }> = ({ student, onNavigate }) => {
     const { tests } = useWorkPool();
+    const { logout, darkMode, setDarkMode } = useData();
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     const completedTests = useMemo(() => {
         return tests
@@ -16,7 +19,7 @@ const SPTestsPage: React.FC<{ student: Student; onNavigate: (page: StudentPage) 
     }, [tests, student.id]);
     
     const performanceStats = useMemo(() => {
-        const studentTests = completedTests.filter(t => t.marksObtained != null && t.totalMarks != null && t.totalMarks > 0);
+        const studentTests = tests.filter(t => t.studentId === student.id && t.status === 'Completed' && t.marksObtained != null && t.totalMarks != null && t.totalMarks > 0);
 
         if (studentTests.length === 0) {
             return { overallPercentage: 0, subjectAverages: [] };
@@ -45,7 +48,7 @@ const SPTestsPage: React.FC<{ student: Student; onNavigate: (page: StudentPage) 
         })).sort((a,b) => b.percentage - a.percentage);
 
         return { overallPercentage, subjectAverages };
-    }, [completedTests]);
+    }, [tests, student.id]);
 
     const chartData = completedTests.map(t => ({
         name: new Date(t.testDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
@@ -55,7 +58,36 @@ const SPTestsPage: React.FC<{ student: Student; onNavigate: (page: StudentPage) 
 
     return (
         <div className="space-y-8 pb-20">
-            <SPHeader title="My Performance" student={student} onBack={() => onNavigate('dashboard')} />
+             <header className="flex justify-between items-center pt-2 pb-6">
+                <div className="w-12">
+                    <button
+                        onClick={() => onNavigate('dashboard')}
+                        className="w-12 h-12 rounded-full bg-muted/50 border border-border flex items-center justify-center hover:bg-muted transition-all group"
+                    >
+                        <FaChevronLeft className="h-5 w-5 text-foreground" />
+                    </button>
+                </div>
+                
+                <h1 className="text-lg sm:text-xl font-bold text-foreground absolute left-1/2 -translate-x-1/2 whitespace-nowrap">
+                    Performance
+                </h1>
+
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setDarkMode(!darkMode)}
+                        className="w-12 h-12 rounded-full bg-muted/50 border border-border flex items-center justify-center hover:bg-muted transition-all group"
+                        aria-label={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                    >
+                        {darkMode ? <FaSun className="h-5 w-5 text-yellow-500" /> : <FaMoon className="h-5 w-5 text-indigo-500" />}
+                    </button>
+                    <button
+                        onClick={() => setShowLogoutModal(true)}
+                        className="w-12 h-12 rounded-full overflow-hidden bg-muted border-2 border-card shadow-sm hover:ring-2 hover:ring-primary transition-all"
+                    >
+                        {student.avatarUrl ? <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" /> : <PlaceholderAvatar />}
+                    </button>
+                </div>
+            </header>
 
             {/* Overall Performance Card */}
             <div className="bg-gradient-to-br from-primary to-accent rounded-2xl p-6 text-primary-foreground shadow-lg">
@@ -133,8 +165,33 @@ const SPTestsPage: React.FC<{ student: Student; onNavigate: (page: StudentPage) 
                     {completedTests.length === 0 && <div className="text-center text-muted-foreground text-sm">No completed tests found.</div>}
                 </div>
             </div>
+             {showLogoutModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowLogoutModal(false)}>
+                    <div className="bg-card p-6 rounded-2xl shadow-2xl max-w-sm w-full border border-border" onClick={e => e.stopPropagation()}>
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-16 h-16 bg-danger-muted rounded-full flex items-center justify-center mb-4">
+                                <FaSignOutAlt className="h-8 w-8 text-danger" />
+                            </div>
+                            <h3 className="text-xl font-bold text-foreground mb-2">
+                                Confirm Logout
+                            </h3>
+                            <p className="text-muted-foreground mb-6">
+                                Are you sure you want to logout from <strong>{student.name}</strong>'s parent portal?
+                            </p>
+                            <div className="flex gap-3 w-full">
+                                <button onClick={() => setShowLogoutModal(false)} className="flex-1 py-2.5 rounded-xl font-semibold bg-muted text-muted-foreground hover:bg-border transition-colors">
+                                    Cancel
+                                </button>
+                                <button onClick={logout} className="flex-1 py-2.5 rounded-xl font-semibold bg-danger text-danger-foreground hover:bg-danger/90 transition-colors">
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
 
-export default SPTestsPage;
+export default PPPerformancePage;

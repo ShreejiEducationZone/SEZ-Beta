@@ -10,43 +10,16 @@ import TableIcon from './components/icons/TableIcon';
 import CardsIcon from './components/icons/CardsIcon';
 import WorkItemDetailModal from './components/WorkItemDetailModal';
 import DoubtDetailModal from './components/DoubtDetailModal';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-// FIX: Import specific context hooks
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Label } from 'recharts';
 import { useSyllabus } from './context/SyllabusContext';
 import { useWorkPool } from './context/WorkPoolContext';
 import { useDoubtBox } from './context/DoubtBoxContext';
-// FIX: Import useStudent to get students data
 import { useStudent } from './context/StudentContext';
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-card/80 dark:bg-card/70 backdrop-blur-sm p-3 rounded-lg shadow-lg border border-border text-sm">
-          <p className="font-bold text-foreground">{data.fullDate || label}</p>
-          <p className="font-semibold text-primary">{`${data.count} doubt(s)`}</p>
-        </div>
-      );
-    }
-    return null;
-};
-  
-const CustomActiveDot = (props: any) => {
-    const { cx, cy, stroke } = props;
-    return (
-        <g>
-            <circle cx={cx} cy={cy} r={8} fill={stroke} fillOpacity={0.2} />
-            <circle cx={cx} cy={cy} r={4} fill={stroke} />
-        </g>
-    );
-};
-
 const DoubtBoxPage: React.FC = () => {
-    // FIX: Get data from specific context hooks
     const { allStudentSubjects } = useSyllabus();
-    const { workItems, handleSaveWorkItem } = useWorkPool();
+    const { workItems, handleSaveWorkItem, openWorkForm } = useWorkPool();
     const { doubts, handleSaveDoubt, handleDeleteDoubt } = useDoubtBox();
-    // FIX: Get students from useStudent hook
     const { students } = useStudent();
 
     const [showArchived, setShowArchived] = useState(false);
@@ -63,8 +36,7 @@ const DoubtBoxPage: React.FC = () => {
     });
     const [searchSuggestions, setSearchSuggestions] = useState<Student[]>([]);
 
-    // FIX: Explicitly type the 'd' parameter in the map function to resolve type inference issue.
-    const uniqueSubjects = useMemo(() => Array.from(new Set(doubts.map((d: Doubt) => d.subject))).sort(), [doubts]);
+    const uniqueSubjects = useMemo(() => Array.from(new Set(doubts.map(d => d.subject))).sort(), [doubts]);
 
     const chartData = useMemo(() => {
         const doubtsByDate: { [key: string]: number } = {};
@@ -122,10 +94,7 @@ const DoubtBoxPage: React.FC = () => {
                 return true;
             }).map(d => d.studentId)
         );
-        // FIX: Explicitly type the 'student' parameter in the filter callback
-        // to prevent it from being inferred as 'unknown' due to type conflicts
-        // in a large project with duplicated type definitions.
-        return (students as Student[]).filter((student: Student) => {
+        return (students as Student[]).filter(student => {
             if (student.isArchived !== showArchived) return false;
             if (filters.board && student.board !== filters.board) return false;
             if (filters.grade && student.grade.toString() !== filters.grade) return false;
@@ -139,8 +108,6 @@ const DoubtBoxPage: React.FC = () => {
 
     const filteredDoubtsForTable = useMemo(() => {
         const studentMap = new Map((students as Student[]).map(s => [s.id, s]));
-        // FIX: Explicitly type the 'doubt' and 'student' variables to ensure
-        // type safety and prevent errors from 'unknown' type inference.
         return doubts.filter((doubt: Doubt) => {
             const student: Student | undefined = studentMap.get(doubt.studentId);
             if (!student || student.isArchived !== showArchived) return false;
@@ -193,66 +160,14 @@ const DoubtBoxPage: React.FC = () => {
     const handleViewTask = useCallback((workItem: WorkItem) => setViewingWorkItem(workItem), []);
     const studentForWorkItemModal = useMemo(() => viewingWorkItem ? students.find(s => s.id === viewingWorkItem.studentId) || null : null, [viewingWorkItem, students]);
 
+    const handleConvertToTask = (student: Student, workItem: Partial<WorkItem>) => {
+        setSelectedStudent(null);
+        openWorkForm(student, workItem);
+    };
+
     return (
         <div>
-            <p className="mt-2 mb-6 text-muted-foreground max-w-3xl">Track and resolve student doubts. Click on a student to view their doubt history, or add a new one.</p>
-            
-            <div className="bg-card p-4 rounded-xl shadow-soft border border-border mb-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                <div>
-                    <p className="text-3xl font-bold text-warning">{doubtStats.open}</p>
-                    <p className="text-xs font-semibold text-muted-foreground tracking-wider uppercase">Open</p>
-                </div>
-                <div>
-                    <p className="text-3xl font-bold text-accent">{doubtStats.tasked}</p>
-                    <p className="text-xs font-semibold text-muted-foreground tracking-wider uppercase">Tasked</p>
-                </div>
-                <div>
-                    <p className="text-3xl font-bold text-success">{doubtStats.resolved}</p>
-                    <p className="text-xs font-semibold text-muted-foreground tracking-wider uppercase">Resolved</p>
-                </div>
-                <div>
-                    <p className="text-3xl font-bold text-foreground">{doubtStats.total}</p>
-                    <p className="text-xs font-semibold text-muted-foreground tracking-wider uppercase">Total Filtered</p>
-                </div>
-            </div>
-
-            <div className="flex justify-end items-center mb-6">
-                <div className="flex bg-muted rounded-lg p-1">
-                    <button onClick={() => setViewMode('cards')} className={`flex items-center gap-2 px-3 py-1 text-sm font-semibold rounded-md transition-colors ${viewMode === 'cards' ? 'bg-background shadow-soft' : 'text-muted-foreground'}`}><CardsIcon className="h-5 w-5" /> Cards View</button>
-                    <button onClick={() => setViewMode('table')} className={`flex items-center gap-2 px-3 py-1 text-sm font-semibold rounded-md transition-colors ${viewMode === 'table' ? 'bg-background shadow-soft' : 'text-muted-foreground'}`}><TableIcon className="h-5 w-5" /> Table View</button>
-                </div>
-            </div>
-
-            <div className="my-8 p-6 bg-card rounded-2xl shadow-soft border border-border">
-                <h3 className="text-lg font-semibold text-center mb-4 text-muted-foreground">Doubt Activity – Last 30 Days</h3>
-                <div style={{ width: '100%', height: 300 }}>
-                    <ResponsiveContainer>
-                        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
-                            <defs>
-                                <linearGradient id="doubtChartGradient" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4}/>
-                                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
-                            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                            <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Area 
-                                type="monotone" 
-                                dataKey="count" 
-                                stroke="hsl(var(--primary))" 
-                                strokeWidth={2} 
-                                fillOpacity={1} 
-                                fill="url(#doubtChartGradient)" 
-                                activeDot={<CustomActiveDot />} 
-                                name="Doubts"
-                            />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
-            
+            <p className="mt-2 mb-6 text-gray-600 dark:text-gray-400 max-w-3xl">Track and resolve student doubts. Click on a student to view their doubt history, or add a new one.</p>
             <DoubtFilterBar 
                 filters={filters} 
                 onFilterChange={handleFilterChange} 
@@ -267,41 +182,68 @@ const DoubtBoxPage: React.FC = () => {
                 allGrades={GRADES} 
                 allBatches={BATCHES} 
             />
-            
-            <div className="flex items-center my-6">
-                <input type="checkbox" id="showArchivedDoubtBox" checked={showArchived} onChange={() => setShowArchived(!showArchived)} className="h-4 w-4 rounded border-border text-primary focus:ring-primary" />
-                <label htmlFor="showArchivedDoubtBox" className="ml-2 block text-sm text-muted-foreground">Show Archived Students</label>
+            {viewMode === 'cards' && (
+                <div className="my-8 p-6 bg-light-card dark:bg-dark-card rounded-2xl shadow-sm">
+                    <h3 className="text-lg font-semibold text-center mb-4 text-gray-800 dark:text-gray-200">Doubt Activity – Last 30 Days</h3>
+                    <div style={{ width: '100%', height: 300 }}>
+                        <ResponsiveContainer>
+                            <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.2} />
+                                <XAxis dataKey="date" tick={{ fontSize: 12, fill: 'currentColor' }} stroke="currentColor" tickLine={{ stroke: 'currentColor' }} />
+                                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: 'currentColor' }} stroke="currentColor" tickLine={{ stroke: 'currentColor' }}>
+                                    <Label value="Doubts" angle={-90} position="insideLeft" style={{ textAnchor: 'middle', fill: 'currentColor' }} />
+                                </YAxis>
+                                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--card-foreground))', borderRadius: '0.5rem' }} wrapperClassName="!border-none !shadow-lg" formatter={(value: number) => [`${value} doubts`, null]} labelFormatter={(label, payload) => payload[0]?.payload.fullDate || label} />
+                                <Line type="monotone" dataKey="count" name="Doubts Logged" stroke="#3B82F6" strokeWidth={2} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6, strokeWidth: 2 }} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            )}
+            <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center">
+                    <input type="checkbox" id="showArchivedDoubtBox" checked={showArchived} onChange={() => setShowArchived(!showArchived)} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                    <label htmlFor="showArchivedDoubtBox" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">Show Archived Students</label>
+                </div>
+                <div className="flex bg-gray-200 dark:bg-gray-700 rounded-lg p-1">
+                    <button onClick={() => setViewMode('cards')} className={`flex items-center gap-2 px-3 py-1 text-sm font-semibold rounded-md transition-colors ${viewMode === 'cards' ? 'bg-white dark:bg-dark-card shadow' : 'text-gray-600 dark:text-gray-300'}`}><CardsIcon className="h-5 w-5" /> Cards View</button>
+                    <button onClick={() => setViewMode('table')} className={`flex items-center gap-2 px-3 py-1 text-sm font-semibold rounded-md transition-colors ${viewMode === 'table' ? 'bg-white dark:bg-dark-card shadow' : 'text-gray-600 dark:text-gray-300'}`}><TableIcon className="h-5 w-5" /> Table View</button>
+                </div>
             </div>
-
             {viewMode === 'cards' ? (
                 displayedStudents.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {displayedStudents.map(student => <StudentDoubtCard key={student.id} student={student} doubts={doubtsByStudent[student.id] || []} onViewDoubts={() => setSelectedStudent(student)} />)}
                     </div>
                 ) : (
-                    <div className="text-center py-16 text-muted-foreground"><h3 className="text-xl font-semibold">No students found.</h3><p>Try adjusting your search or filters.</p></div>
+                    <div className="text-center py-16 text-gray-500 dark:text-gray-400"><h3 className="text-xl font-semibold">No students found.</h3><p>Try adjusting your search or filters.</p></div>
                 )
             ) : (
-                <DoubtTableView {...{ doubts: filteredDoubtsForTable, students, workItems, onEdit: handleEditDoubt, onDelete: handleDeleteDoubt, onResolve: handleResolveDoubt, onViewTask: handleViewTask, onViewDetails: handleViewDoubtDetails }} />
+                <>
+                    <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm mb-4 flex items-center gap-6 text-sm flex-wrap">
+                        <div className="font-semibold text-gray-800 dark:text-white">Total: <span className="text-base">{doubtStats.total}</span> doubts</div>
+                        <div className="flex items-center gap-2"><span className="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">Open: {doubtStats.open}</span></div>
+                        <div className="flex items-center gap-2"><span className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">Tasked: {doubtStats.tasked}</span></div>
+                        <div className="flex items-center gap-2"><span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Resolved: {doubtStats.resolved}</span></div>
+                    </div>
+                    <DoubtTableView {...{ doubts: filteredDoubtsForTable, students, workItems, onEdit: handleEditDoubt, onDelete: handleDeleteDoubt, onResolve: handleResolveDoubt, onViewTask: handleViewTask, onViewDetails: handleViewDoubtDetails }} />
+                </>
             )}
-            
-            {selectedStudent && (
-                <DoubtDrawer 
-                    student={selectedStudent}
-                    doubts={doubtsByStudent[selectedStudent.id] || []}
-                    subjects={allStudentSubjects[selectedStudent.id]?.subjects || []}
-                    workItems={workItems.filter(w => w.studentId === selectedStudent.id)}
-                    onClose={() => setSelectedStudent(null)}
-                    onSaveDoubt={handleSaveDoubt}
-                    onDeleteDoubt={handleDeleteDoubt}
-                    onSaveWorkItem={handleSaveWorkItem}
-                    onAddDoubt={() => {
-                        const studentForNew = selectedStudent;
-                        setSelectedStudent(null);
-                        setStudentForNewDoubt(studentForNew);
-                    }}
-                />
-            )}
+            {selectedStudent && <DoubtDrawer
+                student={selectedStudent}
+                doubts={doubtsByStudent[selectedStudent.id] || []}
+                subjects={allStudentSubjects[selectedStudent.id]?.subjects || []}
+                workItems={workItems.filter(w => w.studentId === selectedStudent.id)}
+                onClose={() => setSelectedStudent(null)}
+                onSaveDoubt={handleSaveDoubt}
+                onDeleteDoubt={handleDeleteDoubt}
+                onSaveWorkItem={handleSaveWorkItem}
+                onConvertToTask={handleConvertToTask}
+                onAddDoubt={() => {
+                    setStudentForNewDoubt(selectedStudent);
+                    setSelectedStudent(null);
+                }}
+            />}
             {(studentForNewDoubt || (editingDoubt && studentForEditingDoubt)) && <DoubtForm student={studentForNewDoubt || studentForEditingDoubt!} subjects={allStudentSubjects[studentForNewDoubt?.id || studentForEditingDoubt!.id]?.subjects || []} workItems={workItems.filter(w => w.studentId === (studentForNewDoubt?.id || studentForEditingDoubt!.id))} doubt={editingDoubt || undefined} onSave={handleSaveDoubt} onCancel={() => { setStudentForNewDoubt(null); setEditingDoubt(null); setStudentForEditingDoubt(null); }} />}
             {viewingDoubt && studentForDoubtModal && <DoubtDetailModal doubt={viewingDoubt} student={studentForDoubtModal} linkedWorkItem={linkedWorkItemForDoubtModal} onClose={() => setViewingDoubt(null)} />}
             {viewingWorkItem && studentForWorkItemModal && <WorkItemDetailModal item={viewingWorkItem} student={studentForWorkItemModal} onClose={() => setViewingWorkItem(null)} />}

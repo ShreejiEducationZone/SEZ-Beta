@@ -39,7 +39,7 @@ export const WorkPoolProvider: React.FC<{ children: ReactNode }> = ({ children }
 
     const { currentUser, showToast, allMistakeTypes } = useData();
     const { handleSaveSheetProgress } = useSheet();
-    const { allStudentSubjects, subjectAreas } = useSyllabus();
+    const { allStudentSubjects } = useSyllabus();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -235,7 +235,6 @@ export const WorkPoolProvider: React.FC<{ children: ReactNode }> = ({ children }
                     onSave={handleSaveTest}
                     onCancel={closeTestForm}
                     allMistakeTypes={allMistakeTypes}
-                    subjectAreas={subjectAreas}
                 />
             )}
             {doubtFormData && (

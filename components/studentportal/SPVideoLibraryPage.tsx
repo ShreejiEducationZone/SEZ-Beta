@@ -8,7 +8,8 @@ import FolderCard from '../FolderCard';
 import FolderIcon from '../icons/FolderIcon';
 // FIX: Import useStudent to get students data
 import { useStudent } from '../../context/StudentContext';
-
+import { StudentPage } from '../StudentPortal';
+import SPHeader from './SPHeader';
 
 export interface GroupData {
     id: string;
@@ -34,7 +35,7 @@ const boardColorClasses: Record<Board, string> = {
     IB: 'text-pink-600',
 };
 
-const SPVideoLibraryPage: React.FC<{ student: Student }> = ({ student }) => {
+const SPVideoLibraryPage: React.FC<{ student: Student, onNavigate: (page: StudentPage) => void; }> = ({ student, onNavigate }) => {
     // FIX: Get syllabus data from useSyllabus hook
     const { allStudentSubjects } = useSyllabus();
     // FIX: Get students from useStudent hook
@@ -138,9 +139,9 @@ const SPVideoLibraryPage: React.FC<{ student: Student }> = ({ student }) => {
 
     return (
         <div>
-            <h1 className="text-3xl font-bold mb-2">Video Library</h1>
-            <p className="mt-2 mb-6 text-muted-foreground max-w-3xl">
-                Select a library to browse videos.
+            <SPHeader title="Video Library" student={student} onBack={() => onNavigate('dashboard')} />
+            <p className="mt-2 mb-6 text-muted-foreground max-w-3xl -mt-4">
+                A shared library of educational videos organized by curriculum. Select a library to begin.
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-6">
                 <FolderCard

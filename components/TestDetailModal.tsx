@@ -40,14 +40,15 @@ const TestDetailModal: React.FC<TestDetailModalProps> = ({ test, student, studen
     const nodeMap = useMemo(() => {
         const map = new Map<string, string>();
         const subjectData = studentSubjects.find(s => s.subject === test.subject);
-        if (!subjectData) return map;
-        const recurse = (nodes: SyllabusNode[]) => {
-            nodes.forEach(node => {
-                map.set(String(node.no), node.name);
-                if (node.children) recurse(node.children);
-            });
-        };
-        recurse(subjectData.chapters);
+        if (subjectData && subjectData.chapters) {
+            const recurse = (nodes: SyllabusNode[]) => {
+                nodes.forEach(node => {
+                    map.set(String(node.no), node.name);
+                    if (node.children) recurse(node.children);
+                });
+            };
+            recurse(subjectData.chapters);
+        }
         return map;
     }, [studentSubjects, test.subject]);
 

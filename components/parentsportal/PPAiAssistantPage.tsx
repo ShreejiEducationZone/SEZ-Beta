@@ -1,16 +1,17 @@
+
 import React, { useMemo } from 'react';
 import { Student } from '../../types';
-import StudentAiChat from '../StudentAiChat';
 import { useSyllabus } from '../../context/SyllabusContext';
 import { useWorkPool } from '../../context/WorkPoolContext';
 import { useAttendance } from '../../context/AttendanceContext';
+import ParentAiChat from './ParentAiChat';
 
-interface SPAiAssistantPageProps {
+interface PPAiAssistantPageProps {
     student: Student;
-    onBack: () => void;
+    onBack?: () => void;
 }
 
-const SPAiAssistantPage: React.FC<SPAiAssistantPageProps> = ({ student, onBack }) => {
+const PPAiAssistantPage: React.FC<PPAiAssistantPageProps> = ({ student, onBack }) => {
     const { allStudentSubjects, syllabusProgress } = useSyllabus();
     const { workItems, doubts, tests } = useWorkPool();
     const { attendanceRecords } = useAttendance();
@@ -27,14 +28,14 @@ const SPAiAssistantPage: React.FC<SPAiAssistantPageProps> = ({ student, onBack }
     }, [student.id, allStudentSubjects, syllabusProgress, workItems, doubts, tests, attendanceRecords]);
 
     return (
-        <div className="h-full">
-            <StudentAiChat 
+        <div className="h-full w-full">
+            <ParentAiChat 
                 student={student}
                 studentData={studentData}
-                onBack={onBack} 
+                onBack={onBack}
             />
         </div>
     );
 };
 
-export default SPAiAssistantPage;
+export default PPAiAssistantPage;

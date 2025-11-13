@@ -1,23 +1,48 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Student } from '../types';
 import StudentSubjectCard from './StudentSubjectCard';
 import SubjectManagerDrawer from './SubjectManagerDrawer';
-// FIX: Import useSyllabus to get syllabus data
 import { useSyllabus } from '../context/SyllabusContext';
-// FIX: Import useStudent to get students data
 import { useStudent } from '../context/StudentContext';
+import { useData } from '../context/DataContext';
+import FilterBar from './FilterBar';
 
 const SubjectManagerPage: React.FC = () => {
-    // FIX: Get syllabus data from useSyllabus hook
     const { allStudentSubjects, handleSaveSubjects } = useSyllabus();
-    // FIX: Get students from useStudent hook
     const { students } = useStudent();
+    const { branches } = useData();
+
     const [showArchived, setShowArchived] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+    
+    const [filters, setFilters] = useState({ board: '', grade: '', batch: '', branch: '' });
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const handleFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setFilters(prev => ({ ...prev, [name]: value }));
+    }, []);
+
+    const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchQuery(e.target.value);
+    }, []);
+
+    const clearFilters = useCallback(() => {
+        setFilters({ board: '', grade: '', batch: '', branch: '' });
+        setSearchQuery('');
+    }, []);
 
     const displayedStudents = useMemo(() => {
-        return students.filter(student => student.isArchived === showArchived);
-    }, [students, showArchived]);
+        return students.filter(student => {
+            if (student.isArchived !== showArchived) return false;
+            if (filters.board && student.board !== filters.board) return false;
+            if (filters.grade && student.grade.toString() !== filters.grade) return false;
+            if (filters.batch && student.batch !== filters.batch) return false;
+            if (filters.branch && student.branch !== filters.branch) return false;
+            if (searchQuery && !student.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+            return true;
+        });
+    }, [students, showArchived, filters, searchQuery]);
 
     const handleSelect = (student: Student) => {
         setSelectedStudent(student);
@@ -29,9 +54,14 @@ const SubjectManagerPage: React.FC = () => {
 
     return (
         <div>
-            <p className="mt-2 mb-6 text-muted-foreground max-w-3xl">
-                A central place to define subjects and curriculum for each student. Click on a student to manage their syllabus. You can use the AI assistant, import a CSV, or enter data manually.
-            </p>
+            <FilterBar
+                filters={filters}
+                onFilterChange={handleFilterChange}
+                onClearFilters={clearFilters}
+                searchQuery={searchQuery}
+                onSearchChange={handleSearchChange}
+                branchOptions={branches}
+            />
 
             <div className="flex items-center mb-6">
                 <input
@@ -47,7 +77,7 @@ const SubjectManagerPage: React.FC = () => {
             </div>
             
             {displayedStudents.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {displayedStudents.map(student => {
                         const subjects = allStudentSubjects[student.id]?.subjects || [];
                         return (
@@ -63,7 +93,7 @@ const SubjectManagerPage: React.FC = () => {
             ) : (
                 <div className="text-center py-16 text-muted-foreground">
                     <h3 className="text-xl font-semibold">No {showArchived ? 'archived' : 'active'} students found.</h3>
-                    <p>Try viewing {showArchived ? 'active' : 'archived'} students.</p>
+                    <p>Try adjusting your search or filters.</p>
                 </div>
             )}
 

@@ -189,15 +189,15 @@ const WorkCalendarView: React.FC<WorkCalendarViewProps> = ({ workItems, students
                 onDragEnd={handleDragEnd}
                 onClick={() => onItemClick(item)}
                 title={`Description: ${item.description}\nStatus: ${item.status}`}
-                className={`p-1.5 rounded text-xs cursor-grab active:cursor-grabbing transition-shadow shadow-sm hover:shadow-md ${STATUS_BORDER_STYLES[item.status]} bg-background/80`}
+                className={`p-1 sm:p-1.5 rounded text-[10px] sm:text-xs cursor-grab active:cursor-grabbing transition-shadow shadow-sm hover:shadow-md ${STATUS_BORDER_STYLES[item.status]} bg-background/80`}
             >
                 <div className="flex justify-between items-start">
-                    <p className="font-bold flex-1 mr-1 text-foreground break-words">{item.title}</p>
+                    <p className="font-bold flex-1 mr-1 text-foreground break-words leading-tight">{item.title}</p>
                     <span className={`px-1.5 py-0.5 text-[10px] rounded-full font-semibold ${PRIORITY_BADGE_STYLES[item.priority]}`}>
                         {item.priority}
                     </span>
                 </div>
-                <p className="text-muted-foreground mt-1 truncate">{student?.name} | {item.subject}</p>
+                <p className="text-muted-foreground mt-0.5 sm:mt-1 truncate">{student?.name} | {item.subject}</p>
             </div>
         );
     }
@@ -258,7 +258,10 @@ const WorkCalendarView: React.FC<WorkCalendarViewProps> = ({ workItems, students
                 <>
                     <div className="grid grid-cols-7 text-center text-xs font-semibold text-muted-foreground">
                         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                            <div key={day} className="py-2 border-b border-border">{day}</div>
+                            <div key={day} className="py-2 border-b border-border">
+                                <span className="hidden sm:inline">{day}</span>
+                                <span className="sm:hidden">{day.charAt(0)}</span>
+                            </div>
                         ))}
                     </div>
                     <div className="grid grid-cols-7 grid-rows-6">
@@ -272,7 +275,7 @@ const WorkCalendarView: React.FC<WorkCalendarViewProps> = ({ workItems, students
                             return (
                                 <div 
                                     key={idx} 
-                                    className={`p-2 h-36 flex flex-col overflow-hidden border-b border-r border-border transition-colors
+                                    className={`p-1 sm:p-2 h-28 sm:h-36 flex flex-col overflow-hidden border-b border-r border-border transition-colors
                                         ${!isCurrentMonth ? 'bg-muted/30' : ''}
                                         ${isPast && isCurrentMonth ? 'bg-muted/50' : ''}
                                         ${dragOverDate === dateString ? 'bg-primary/20' : ''}
@@ -282,7 +285,7 @@ const WorkCalendarView: React.FC<WorkCalendarViewProps> = ({ workItems, students
                                     onDrop={(e) => handleDrop(e, dateString)}
                                     onDragLeave={handleDragLeave}
                                 >
-                                    <span className={`font-semibold text-sm ${isCurrentMonth ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+                                    <span className={`font-semibold text-xs sm:text-sm ${isCurrentMonth ? 'text-foreground' : 'text-muted-foreground/50'}`}>
                                         {date.getDate()}
                                     </span>
                                     <div className="mt-1 space-y-1.5 overflow-y-auto -mr-2 pr-1 thin-scrollbar">
