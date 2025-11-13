@@ -1,12 +1,7 @@
 // User's Firebase project configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyB_PcFeNPA45rdqIN3GL0JQagLnRo1QnBs",
-  authDomain: "sez-beta.firebaseapp.com",
-  projectId: "sez-beta",
-  storageBucket: "sez-beta.firebasestorage.app",
-  messagingSenderId: "557765008413",
-  appId: "1:557765008413:web:dac87e217f0deaf74cbaf4",
-  measurementId: "G-V9RYQ8YYXW"
+  apiKey: "AIzaSyB6YR3oa9G7fKV9obY1FnVXYg9wHclAqOM",
+  projectId: "sez-v1",
 };
 
 const API_KEY = firebaseConfig.apiKey;
